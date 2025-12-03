@@ -432,6 +432,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [showOverrideLog, setShowOverrideLog] = React.useState(false);
     const [showThresholds, setShowThresholds] = React.useState(false);
     const [previewThresholds, setPreviewThresholds] = React.useState(null);
+    const [notesModal, setNotesModal] = React.useState(null);
 
     // Initialize preview thresholds from settings if not set
     React.useEffect(() => {
@@ -488,7 +489,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
         essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprTruePolicy: 'ESS SIPR True Policy',
         vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
         vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
-        vramNiprRaCrit: 'NIPR RA Critical', vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level', notes: 'Notes',
+        vramNiprRaCrit: 'NIPR RA Critical', vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level',
         vramNiprScanExempt: 'NIPR Scan Exempt', vramSiprScanExempt: 'SIPR Scan Exempt'
     };
 
@@ -529,7 +530,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                 if (b.boatName !== boatName) return b;
                 const overrides = (b.overrides || []).filter(o => o.field !== field);
                 let parsedValue;
-                if (field === 'riskLevel' || field === 'notes') {
+                if (field === 'riskLevel') {
                     parsedValue = newValue;
                 } else if (field === 'vramNiprScanExempt' || field === 'vramSiprScanExempt') {
                     parsedValue = newValue === 'true' || newValue === true;
@@ -540,7 +541,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                     overrides.push({ field, originalValue, overrideValue: parsedValue, reason: reason || 'Manual override', timestamp: new Date().toISOString(), user: 'User' });
                 }
                 const updated = { ...b, [field]: parsedValue, overrides };
-                if (field !== 'riskLevel' && field !== 'notes') { const { level, reasons } = calculateRisk(updated, activeThresholds); updated.riskLevel = level; updated.riskReasons = reasons; }
+                if (field !== 'riskLevel') { const { level, reasons } = calculateRisk(updated, activeThresholds); updated.riskLevel = level; updated.riskReasons = reasons; }
                 return updated;
             });
             return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString() };
@@ -549,6 +550,20 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     };
 
     const isOverridden = (boat, field) => boat.overrides?.some(o => o.field === field);
+
+    const openNotesEdit = (boatName, currentNotes) => {
+        setNotesModal({ boatName, notes: currentNotes });
+    };
+
+    const saveNotes = () => {
+        if (!notesModal) return;
+        setReportData(prev => ({
+            ...prev,
+            boats: prev.boats.map(b => b.boatName === notesModal.boatName ? { ...b, notes: notesModal.notes } : b),
+            lastModifiedAt: new Date().toISOString()
+        }));
+        setNotesModal(null);
+    };
 
     const Cell = ({ boat, field, value, format = 'num', className = '' }) => {
         const overridden = isOverridden(boat, field);
@@ -646,7 +661,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                     <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
                                     <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
                                     <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
-                                    <Cell boat={b} field="notes" value={b.notes || '-'} className="text-xs max-w-[60px] truncate" />
+                                    <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
                                 </tr>)}</tbody>
                             </table>
                         </div>
@@ -672,8 +687,6 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                     <select value={String(overrideModal.newValue)} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full">
                                         <option value="false">No (N)</option><option value="true">Yes (Y)</option>
                                     </select>
-                                ) : overrideModal.field === 'notes' ? (
-                                    <input type="text" maxLength={30} value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" placeholder="Short note (3-5 words)" />
                                 ) : (
                                     <input type="number" step="any" value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" />
                                 )}
@@ -686,6 +699,20 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                         <div className="flex gap-2 mt-6">
                             <button onClick={saveOverride} className="btn-primary">Save Override</button>
                             <button onClick={() => setOverrideModal(null)} className="btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {notesModal && (
+                <div className="modal-overlay" onClick={() => setNotesModal(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Edit Note</h3>
+                        <div className="text-sm text-slate-500 mb-2">Boat: <span className="text-cyan-600 font-mono">{notesModal.boatName}</span></div>
+                        <input type="text" maxLength={30} value={notesModal.notes} onChange={(e) => setNotesModal({...notesModal, notes: e.target.value})} className="w-full mb-4" placeholder="Short note (3-5 words)" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveNotes()} />
+                        <div className="flex gap-2">
+                            <button onClick={saveNotes} className="btn-primary">Save</button>
+                            <button onClick={() => setNotesModal(null)} className="btn-secondary">Cancel</button>
                         </div>
                     </div>
                 </div>
