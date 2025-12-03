@@ -401,7 +401,7 @@ const PreviewTab = ({ reportData, settings, userName }) => {
     );
 };
 
-const SettingsTab = ({ settings, setSettings }) => {
+const SettingsTab = ({ settings, setSettings, userName, setUserName }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
     
@@ -416,7 +416,7 @@ const SettingsTab = ({ settings, setSettings }) => {
     return (
         <div>
             <h2 className="text-2xl font-bold mb-6" style={{color:'#22d3ee'}}>Settings</h2>
-            <div className="flex gap-2 mb-6">{['registry', 'thresholds'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'text-white' : 'text-slate-300'}`} style={{background: subTab === t ? '#06b6d4' : '#243552'}}>{t}</button>)}</div>
+            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'user'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'text-white' : 'text-slate-300'}`} style={{background: subTab === t ? '#06b6d4' : '#243552'}}>{t}</button>)}</div>
             
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -436,6 +436,19 @@ const SettingsTab = ({ settings, setSettings }) => {
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>Risk Thresholds</h3>
                     <div className="grid grid-cols-2 gap-4">{Object.entries(settings.thresholds).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-400 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}</div>
+                </div>
+            )}
+
+            {subTab === 'user' && (
+                <div className="card p-4">
+                    <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>User Settings</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm text-slate-400 mb-1">Your Name (for report attribution)</label>
+                            <input value={userName} onChange={(e) => { setUserName(e.target.value); setSettings(p => ({ ...p, user: { ...p.user, default_name: e.target.value } })); }} placeholder="Enter your name" className="w-full max-w-md" />
+                            <p className="text-xs text-slate-500 mt-1">This name will appear in the "Created By" field of generated reports.</p>
+                        </div>
+                    </div>
                 </div>
             )}
             
@@ -467,7 +480,6 @@ function App() {
     const [userName, setUserName] = React.useState(settings.user.default_name || '');
     const [alerts, setAlerts] = React.useState([]);
     
-    React.useEffect(() => { if (!userName) { const name = prompt('Enter your name (for report attribution):'); if (name) { setUserName(name); setSettings(p => ({ ...p, user: { ...p.user, default_name: name } })); } } }, []);
     
     const handleGlobalDrop = async (e) => {
         e.preventDefault();
@@ -498,7 +510,7 @@ function App() {
             <main className="max-w-7xl mx-auto p-6">
                 {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} userName={userName} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} />}
                 {currentTab === 'preview' && <PreviewTab reportData={reportData} settings={settings} userName={userName} />}
-                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} />}
+                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} userName={userName} setUserName={setUserName} />}
             </main>
             
             <footer className="text-center py-6 text-slate-600 text-sm">Cyber Dashboard Generator v1.0 • Settings and registry are embedded in this HTML file</footer>
