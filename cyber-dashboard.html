@@ -87,31 +87,31 @@
         "color_scan_quality_red": 98
     },
     "user": {"default_name": ""},
-    "columnMappings": {
-        "vram": {
-            "siteName": ["Site Name", "Site", "SiteName"],
-            "scanDate": ["Last Scan Date", "Scan Date"],
-            "assets": ["Valid Assets", "Assets"],
-            "raVph": ["RA VPH", "VPH"],
-            "scanIntegrity": ["Scan Integrity", "Integrity"],
-            "scanPercent": ["Percent Scanned", "Scanned"],
-            "raCrit": ["RA Crit", "Crit"],
-            "raHigh": ["RA High", "High"],
-            "scanExempt": ["Scan Exempt"]
-        },
-        "ess": {
-            "shipName": ["Ships", "Ship", "Boat"],
-            "isic": ["ISICs", "ISIC"],
-            "productCompliance": ["Product Compliance", "Compliance"],
-            "policyEnforced": ["Policy Enforced", "Enforced"],
-            "breakfix": ["Assets in Breakfix", "Breakfix"],
-            "assets": ["Asset Count", "Assets"]
-        },
-        "tam": {
-            "boatName": ["Boat", "Ship"],
-            "pastDue": ["# Past Due", "Past Due", "Overdue"],
-            "extensions": ["# Extensions", "Extensions"]
-        }
+    "schemaConfig": {
+        "vram": [
+            {"field": "siteName", "label": "Site/Boat Name", "column": "Site Name", "visible": true},
+            {"field": "scanDate", "label": "Last Scan Date", "column": "Last Scan Date", "visible": true},
+            {"field": "assets", "label": "Asset Count", "column": "Valid Assets", "visible": true},
+            {"field": "raVph", "label": "RA VPH", "column": "RA VPH", "visible": true},
+            {"field": "scanIntegrity", "label": "Scan Integrity %", "column": "Scan Integrity", "visible": true},
+            {"field": "scanPercent", "label": "Percent Scanned", "column": "Percent Scanned", "visible": true},
+            {"field": "raCrit", "label": "RA Critical", "column": "RA Crit", "visible": true},
+            {"field": "raHigh", "label": "RA High", "column": "RA High", "visible": true},
+            {"field": "scanExempt", "label": "Scan Exempt", "column": "Scan Exempt", "visible": true}
+        ],
+        "ess": [
+            {"field": "shipName", "label": "Ship/Boat Name", "column": "Ships", "visible": true},
+            {"field": "isic", "label": "ISIC Column", "column": "ISICs", "visible": true},
+            {"field": "productCompliance", "label": "Product Compliance %", "column": "Product Compliance", "visible": true},
+            {"field": "policyEnforced", "label": "Policy Enforced %", "column": "Policy Enforced", "visible": true},
+            {"field": "breakfix", "label": "Breakfix Count", "column": "Assets in Breakfix", "visible": true},
+            {"field": "assets", "label": "Asset Count", "column": "Asset Count", "visible": true}
+        ],
+        "tam": [
+            {"field": "boatName", "label": "Boat Name", "column": "Boat", "visible": true},
+            {"field": "pastDue", "label": "Past Due Count", "column": "# Past Due", "visible": true},
+            {"field": "extensions", "label": "Extensions Count", "column": "# Extensions", "visible": true}
+        ]
     },
     "tabConfig": [
         {"id": "csl", "label": "CSL Summary", "visible": true},
@@ -129,41 +129,41 @@ const normalizeBoatName = (name) => { if (!name) return ''; const upper = name.t
 const parseNumber = (val) => { if (val === null || val === undefined || val === '') return null; if (typeof val === 'number') return val; const num = parseFloat(String(val).replace(/[%,]/g, '')); return isNaN(num) ? null : num; };
 const parsePercent = (val) => { if (val === null || val === undefined || val === '') return null; const num = parseFloat(String(val).replace('%', '')); return isNaN(num) ? null : num; };
 
-// Column mapping helper - finds first matching column from list of possible names
-const getColValue = (row, possibleNames) => {
-    if (!Array.isArray(possibleNames)) possibleNames = [possibleNames];
-    for (const name of possibleNames) {
-        if (row[name] !== undefined) return row[name];
-    }
-    return undefined;
+// Default schema configuration - defines fields to extract from each file type
+const defaultSchemaConfig = {
+    vram: [
+        {field: 'siteName', label: 'Site/Boat Name', column: 'Site Name', visible: true},
+        {field: 'scanDate', label: 'Last Scan Date', column: 'Last Scan Date', visible: true},
+        {field: 'assets', label: 'Asset Count', column: 'Valid Assets', visible: true},
+        {field: 'raVph', label: 'RA VPH', column: 'RA VPH', visible: true},
+        {field: 'scanIntegrity', label: 'Scan Integrity %', column: 'Scan Integrity', visible: true},
+        {field: 'scanPercent', label: 'Percent Scanned', column: 'Percent Scanned', visible: true},
+        {field: 'raCrit', label: 'RA Critical', column: 'RA Crit', visible: true},
+        {field: 'raHigh', label: 'RA High', column: 'RA High', visible: true},
+        {field: 'scanExempt', label: 'Scan Exempt', column: 'Scan Exempt', visible: true}
+    ],
+    ess: [
+        {field: 'shipName', label: 'Ship/Boat Name', column: 'Ships', visible: true},
+        {field: 'isic', label: 'ISIC Column', column: 'ISICs', visible: true},
+        {field: 'productCompliance', label: 'Product Compliance %', column: 'Product Compliance', visible: true},
+        {field: 'policyEnforced', label: 'Policy Enforced %', column: 'Policy Enforced', visible: true},
+        {field: 'breakfix', label: 'Breakfix Count', column: 'Assets in Breakfix', visible: true},
+        {field: 'assets', label: 'Asset Count', column: 'Asset Count', visible: true}
+    ],
+    tam: [
+        {field: 'boatName', label: 'Boat Name', column: 'Boat', visible: true},
+        {field: 'pastDue', label: 'Past Due Count', column: '# Past Due', visible: true},
+        {field: 'extensions', label: 'Extensions Count', column: '# Extensions', visible: true}
+    ]
 };
 
-// Default column mappings
-const defaultColumnMappings = {
-    vram: {
-        siteName: ['Site Name', 'Site', 'SiteName'],
-        scanDate: ['Last Scan Date', 'Scan Date'],
-        assets: ['Valid Assets', 'Assets'],
-        raVph: ['RA VPH', 'VPH'],
-        scanIntegrity: ['Scan Integrity', 'Integrity'],
-        scanPercent: ['Percent Scanned', 'Scanned'],
-        raCrit: ['RA Crit', 'Crit'],
-        raHigh: ['RA High', 'High'],
-        scanExempt: ['Scan Exempt']
-    },
-    ess: {
-        shipName: ['Ships', 'Ship', 'Boat'],
-        isic: ['ISICs', 'ISIC'],
-        productCompliance: ['Product Compliance', 'Compliance'],
-        policyEnforced: ['Policy Enforced', 'Enforced'],
-        breakfix: ['Assets in Breakfix', 'Breakfix'],
-        assets: ['Asset Count', 'Assets']
-    },
-    tam: {
-        boatName: ['Boat', 'Ship'],
-        pastDue: ['# Past Due', 'Past Due', 'Overdue'],
-        extensions: ['# Extensions', 'Extensions']
+// Build column map from schema config (field -> column name)
+const buildColumnMap = (schemaArr) => {
+    const map = {};
+    for (const item of schemaArr) {
+        if (item.visible !== false) map[item.field] = item.column;
     }
+    return map;
 };
 
 // Settings Manager
@@ -171,14 +171,38 @@ const SettingsManager = {
     load() {
         try {
             const settings = JSON.parse(document.getElementById('app-settings').textContent);
-            // Ensure columnMappings exists with defaults
-            if (!settings.columnMappings) settings.columnMappings = defaultColumnMappings;
+            // Migrate old columnMappings to new schemaConfig format
+            if (settings.columnMappings && !settings.schemaConfig) {
+                settings.schemaConfig = this.migrateColumnMappings(settings.columnMappings);
+                delete settings.columnMappings;
+            }
+            // Ensure schemaConfig exists with defaults
+            if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
             // Ensure tabConfig exists with defaults
             if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
             return settings;
         } catch { return this.getDefaults(); }
     },
-    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, columnMappings: defaultColumnMappings, tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}] }; },
+    migrateColumnMappings(old) {
+        // Convert old array-based columnMappings to new schemaConfig format
+        const labels = {
+            vram: {siteName:'Site/Boat Name',scanDate:'Last Scan Date',assets:'Asset Count',raVph:'RA VPH',scanIntegrity:'Scan Integrity %',scanPercent:'Percent Scanned',raCrit:'RA Critical',raHigh:'RA High',scanExempt:'Scan Exempt'},
+            ess: {shipName:'Ship/Boat Name',isic:'ISIC Column',productCompliance:'Product Compliance %',policyEnforced:'Policy Enforced %',breakfix:'Breakfix Count',assets:'Asset Count'},
+            tam: {boatName:'Boat Name',pastDue:'Past Due Count',extensions:'Extensions Count'}
+        };
+        const result = {};
+        for (const type of ['vram', 'ess', 'tam']) {
+            result[type] = [];
+            if (old[type]) {
+                for (const [field, vals] of Object.entries(old[type])) {
+                    const col = Array.isArray(vals) ? vals[0] : vals;
+                    result[type].push({field, label: labels[type]?.[field] || field, column: col || '', visible: true});
+                }
+            }
+        }
+        return result;
+    },
+    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)), tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}] }; },
     saveApplication(settings) {
         const html = document.documentElement.outerHTML;
         const updated = '<!DOCTYPE html>\n' + html.replace(/(<script type="application\/json" id="app-settings">)([\s\S]*?)(<\/script>)/, `$1\n${JSON.stringify(settings, null, 4)}\n$3`);
@@ -197,41 +221,41 @@ const createBoatData = (name, fullName, isic, tycom) => ({
     tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: ''
 });
 
-// Parsers - use column mappings from settings, fall back to defaults
-const parseVRAM = (data, colMap) => {
-    const m = { ...defaultColumnMappings.vram, ...colMap };
+// Parsers - use schema config from settings to build column maps
+const parseVRAM = (data, schemaArr) => {
+    const m = buildColumnMap(schemaArr || defaultSchemaConfig.vram);
     const wb = XLSX.read(data, { type: 'array', cellDates: true }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
-        const site = getColValue(row, m.siteName); if (!site) continue;
+        const site = row[m.siteName]; if (!site) continue;
         const name = normalizeBoatName(site); if (!name) continue;
-        let scanDate = null; const rawDate = getColValue(row, m.scanDate);
+        let scanDate = null; const rawDate = row[m.scanDate];
         if (rawDate) { scanDate = rawDate instanceof Date ? rawDate : new Date(rawDate); if (isNaN(scanDate)) scanDate = null; }
-        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(getColValue(row, m.assets)), raVph: parseNumber(getColValue(row, m.raVph)), scanIntegrity: parseNumber(getColValue(row, m.scanIntegrity)), scanPercent: parseNumber(getColValue(row, m.scanPercent)), raCrit: parseNumber(getColValue(row, m.raCrit)), raHigh: parseNumber(getColValue(row, m.raHigh)), scanExempt: String(getColValue(row, m.scanExempt)).toLowerCase() === 'true' };
+        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row[m.assets]), raVph: parseNumber(row[m.raVph]), scanIntegrity: parseNumber(row[m.scanIntegrity]), scanPercent: parseNumber(row[m.scanPercent]), raCrit: parseNumber(row[m.raCrit]), raHigh: parseNumber(row[m.raHigh]), scanExempt: String(row[m.scanExempt]).toLowerCase() === 'true' };
     }
     return { parsed, raw: rows };
 };
 
-const parseESS = (data, colMap) => {
-    const m = { ...defaultColumnMappings.ess, ...colMap };
+const parseESS = (data, schemaArr) => {
+    const m = buildColumnMap(schemaArr || defaultSchemaConfig.ess);
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {}; const isicMap = {};
     for (const row of rows) {
-        const ship = getColValue(row, m.shipName); if (!ship) continue;
+        const ship = row[m.shipName]; if (!ship) continue;
         const name = normalizeBoatName(ship); if (!name) continue;
-        const isic = getColValue(row, m.isic); if (isic) isicMap[name] = isic.trim();
-        const prodComp = parsePercent(getColValue(row, m.productCompliance)); const polEnf = parsePercent(getColValue(row, m.policyEnforced));
+        const isic = row[m.isic]; if (isic) isicMap[name] = String(isic).trim();
+        const prodComp = parsePercent(row[m.productCompliance]); const polEnf = parsePercent(row[m.policyEnforced]);
         const truePolicy = (prodComp && polEnf && prodComp > 0) ? polEnf * (100 / prodComp) : null;
-        parsed[name] = { assets: parseNumber(getColValue(row, m.assets)), breakfix: parseNumber(getColValue(row, m.breakfix)), productCompliance: prodComp, truePolicy };
+        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy };
     }
     return { parsed, isicMap, raw: rows };
 };
 
-const parseTAM = (data, colMap) => {
-    const m = { ...defaultColumnMappings.tam, ...colMap };
+const parseTAM = (data, schemaArr) => {
+    const m = buildColumnMap(schemaArr || defaultSchemaConfig.tam);
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
-        const boat = getColValue(row, m.boatName); if (!boat) continue;
+        const boat = row[m.boatName]; if (!boat) continue;
         const name = normalizeBoatName(boat); if (!name) continue;
-        parsed[name] = { pastDue: parseNumber(getColValue(row, m.pastDue)), extensions: parseNumber(getColValue(row, m.extensions)) };
+        parsed[name] = { pastDue: parseNumber(row[m.pastDue]), extensions: parseNumber(row[m.extensions]) };
     }
     return { parsed, raw: rows };
 };
@@ -600,7 +624,7 @@ const DragDropZone = ({ label, file, onDrop, onClear }) => {
             onClick={() => document.getElementById('file-' + label).click()}>
             <div className="font-medium text-slate-600 mb-2">{label}</div>
             {file ? <div className="flex items-center justify-center gap-2"><span className="text-emerald-600">[OK] {file.name}</span><button onClick={(e) => { e.stopPropagation(); onClear(); }} className="text-red-500 ml-2">x</button></div> : <div className="text-slate-400 text-sm">Drag & drop or click</div>}
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { if (e.target.files[0]) onDrop(e.target.files[0]); }} className="hidden" id={'file-' + label} />
+            <input type="file" accept=".xlsx,.xls,.csv,.ods" onChange={(e) => { if (e.target.files[0]) onDrop(e.target.files[0]); }} className="hidden" id={'file-' + label} />
         </div>
     );
 };
@@ -621,13 +645,13 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onP
 
     const process = () => {
         try {
-            const colMaps = settings.columnMappings || {};
+            const schema = settings.schemaConfig || defaultSchemaConfig;
             const sources = {
-                vramNipr: importedFiles.vramNipr ? parseVRAM(importedFiles.vramNipr.data, colMaps.vram) : null,
-                vramSipr: importedFiles.vramSipr ? parseVRAM(importedFiles.vramSipr.data, colMaps.vram) : null,
-                essNipr: importedFiles.essNipr ? parseESS(importedFiles.essNipr.data, colMaps.ess) : null,
-                essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data, colMaps.ess) : null,
-                tam: importedFiles.tam ? parseTAM(importedFiles.tam.data, colMaps.tam) : null
+                vramNipr: importedFiles.vramNipr ? parseVRAM(importedFiles.vramNipr.data, schema.vram) : null,
+                vramSipr: importedFiles.vramSipr ? parseVRAM(importedFiles.vramSipr.data, schema.vram) : null,
+                essNipr: importedFiles.essNipr ? parseESS(importedFiles.essNipr.data, schema.ess) : null,
+                essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data, schema.ess) : null,
+                tam: importedFiles.tam ? parseTAM(importedFiles.tam.data, schema.tam) : null
             };
             const { boats, unregistered } = mergeData(sources, settings);
             calculateAllRisks(boats, settings.thresholds);
@@ -997,33 +1021,43 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
         });
     };
 
-    // Column mapping helpers - merge with defaults to ensure all fields are shown
-    const colMaps = {
-        vram: { ...defaultColumnMappings.vram, ...(settings.columnMappings?.vram || {}) },
-        ess: { ...defaultColumnMappings.ess, ...(settings.columnMappings?.ess || {}) },
-        tam: { ...defaultColumnMappings.tam, ...(settings.columnMappings?.tam || {}) }
-    };
-    const updateColMap = (type, field, value) => {
-        const parsed = value.split(',').map(s => s.trim()).filter(s => s);
-        const newMappings = {
-            vram: { ...colMaps.vram },
-            ess: { ...colMaps.ess },
-            tam: { ...colMaps.tam },
-            [type]: { ...colMaps[type], [field]: parsed.length > 0 ? parsed : defaultColumnMappings[type][field] }
-        };
-        setSettings(prev => ({ ...prev, columnMappings: newMappings }));
+    // Schema config helpers
+    const schema = settings.schemaConfig || JSON.parse(JSON.stringify(defaultSchemaConfig));
+    const [newFieldModal, setNewFieldModal] = React.useState(null);
+
+    const updateSchemaField = (type, idx, updates) => {
+        const newSchema = JSON.parse(JSON.stringify(schema));
+        newSchema[type][idx] = { ...newSchema[type][idx], ...updates };
+        setSettings(prev => ({ ...prev, schemaConfig: newSchema }));
     };
 
-    const colLabels = {
-        vram: { siteName: 'Site/Boat Name', scanDate: 'Last Scan Date', assets: 'Asset Count', raVph: 'RA VPH', scanIntegrity: 'Scan Integrity %', scanPercent: 'Percent Scanned', raCrit: 'RA Critical Count', raHigh: 'RA High Count', scanExempt: 'Scan Exempt' },
-        ess: { shipName: 'Ship/Boat Name', isic: 'ISIC Column', productCompliance: 'Product Compliance %', policyEnforced: 'Policy Enforced %', breakfix: 'Breakfix Count', assets: 'Asset Count' },
-        tam: { boatName: 'Boat Name', pastDue: 'Past Due Count', extensions: 'Extensions Count' }
+    const reorderSchema = (type, fromIdx, toIdx) => {
+        if (fromIdx === toIdx) return;
+        const newSchema = JSON.parse(JSON.stringify(schema));
+        const [moved] = newSchema[type].splice(fromIdx, 1);
+        newSchema[type].splice(toIdx, 0, moved);
+        setSettings(prev => ({ ...prev, schemaConfig: newSchema }));
     };
+
+    const removeSchemaField = (type, idx) => {
+        const newSchema = JSON.parse(JSON.stringify(schema));
+        newSchema[type].splice(idx, 1);
+        setSettings(prev => ({ ...prev, schemaConfig: newSchema }));
+    };
+
+    const addSchemaField = (type, field, label, column) => {
+        const newSchema = JSON.parse(JSON.stringify(schema));
+        newSchema[type].push({ field, label, column, visible: true });
+        setSettings(prev => ({ ...prev, schemaConfig: newSchema }));
+    };
+
+    const schemaTypeLabels = { vram: 'VRAM Files', ess: 'ESS Files', tam: 'TAM Files' };
+    const schemaTypeColors = { vram: 'cyan', ess: 'indigo', tam: 'orange' };
 
     return (
         <div>
             <h2 className="text-2xl font-bold mb-6 text-slate-800">Settings</h2>
-            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'columns', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'Column Mappings' : t === 'tabs' ? 'Report Tabs' : t}</button>)}</div>
+            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'columns', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -1049,47 +1083,55 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
             {subTab === 'columns' && (
                 <div className="space-y-6">
                     <div className="card p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-700">Excel Column Mappings</h3>
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Excel/ODS Schema Configuration</h3>
+                        <p className="text-sm text-slate-500 mb-4">Configure fields to extract from each file type. Drag to reorder, toggle visibility, edit column headers. Supports .xlsx, .xls, .csv, and .ods files.</p>
+                        {['vram', 'ess', 'tam'].map(type => (
+                            <div key={type} className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className={`font-bold text-${schemaTypeColors[type]}-700`}>{schemaTypeLabels[type]}</h4>
+                                    <button onClick={() => setNewFieldModal({ type, field: '', label: '', column: '' })} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Field</button>
+                                </div>
+                                <div className="border border-slate-200 rounded">
+                                    <div className="grid grid-cols-12 gap-2 p-2 bg-slate-100 text-xs font-semibold text-slate-600 border-b">
+                                        <div className="col-span-1"></div>
+                                        <div className="col-span-1">Use</div>
+                                        <div className="col-span-3">Field Label</div>
+                                        <div className="col-span-3">Field ID</div>
+                                        <div className="col-span-3">Excel Column</div>
+                                        <div className="col-span-1"></div>
+                                    </div>
+                                    {(schema[type] || []).map((item, idx) => (
+                                        <div key={item.field + idx} className="grid grid-cols-12 gap-2 p-2 items-center border-b border-slate-100 hover:bg-slate-50"
+                                            draggable onDragStart={(e) => e.dataTransfer.setData('schemaIdx', JSON.stringify({type, idx}))}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={(e) => { e.preventDefault(); const from = JSON.parse(e.dataTransfer.getData('schemaIdx')); if (from.type === type) reorderSchema(type, from.idx, idx); }}>
+                                            <div className="col-span-1 cursor-move text-slate-400" title="Drag to reorder">&#9776;</div>
+                                            <div className="col-span-1"><input type="checkbox" checked={item.visible !== false} onChange={(e) => updateSchemaField(type, idx, { visible: e.target.checked })} /></div>
+                                            <div className="col-span-3"><input value={item.label} onChange={(e) => updateSchemaField(type, idx, { label: e.target.value })} className="w-full text-sm p-1" /></div>
+                                            <div className="col-span-3"><input value={item.field} onChange={(e) => updateSchemaField(type, idx, { field: e.target.value })} className="w-full text-sm p-1 font-mono text-xs" /></div>
+                                            <div className="col-span-3"><input value={item.column} onChange={(e) => updateSchemaField(type, idx, { column: e.target.value })} className="w-full text-sm p-1" placeholder="Excel column header" /></div>
+                                            <div className="col-span-1"><button onClick={() => removeSchemaField(type, idx)} className="text-red-500 hover:text-red-700 text-sm" title="Remove field">✕</button></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {newFieldModal && (
+                <div className="modal-overlay" onClick={() => setNewFieldModal(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Add New Field to {schemaTypeLabels[newFieldModal.type]}</h3>
+                        <div className="space-y-3">
+                            <div><label className="block text-sm text-slate-500 mb-1">Field ID (camelCase)</label><input value={newFieldModal.field} onChange={(e) => setNewFieldModal({...newFieldModal, field: e.target.value})} className="w-full font-mono" placeholder="e.g. customField" /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">Display Label</label><input value={newFieldModal.label} onChange={(e) => setNewFieldModal({...newFieldModal, label: e.target.value})} className="w-full" placeholder="e.g. Custom Field Name" /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">Excel Column Header</label><input value={newFieldModal.column} onChange={(e) => setNewFieldModal({...newFieldModal, column: e.target.value})} className="w-full" placeholder="Exact column name in Excel" /></div>
                         </div>
-                        <p className="text-sm text-slate-500 mb-4">Configure which column headers to look for in each Excel file type. Enter multiple possible names separated by commas. The first matching column will be used.</p>
-
-                        <div className="space-y-6">
-                            <div className="border-b border-slate-200 pb-4">
-                                <h4 className="font-bold text-cyan-700 mb-3">VRAM Files</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {Object.entries(colLabels.vram).map(([field, label]) => (
-                                        <div key={field} className="flex flex-col">
-                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
-                                            <input value={(colMaps.vram?.[field] || []).join(', ')} onChange={(e) => updateColMap('vram', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="border-b border-slate-200 pb-4">
-                                <h4 className="font-bold text-indigo-700 mb-3">ESS Files</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {Object.entries(colLabels.ess).map(([field, label]) => (
-                                        <div key={field} className="flex flex-col">
-                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
-                                            <input value={(colMaps.ess?.[field] || []).join(', ')} onChange={(e) => updateColMap('ess', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="font-bold text-orange-700 mb-3">TAM Files</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {Object.entries(colLabels.tam).map(([field, label]) => (
-                                        <div key={field} className="flex flex-col">
-                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
-                                            <input value={(colMaps.tam?.[field] || []).join(', ')} onChange={(e) => updateColMap('tam', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="flex gap-2 mt-6">
+                            <button onClick={() => { if (newFieldModal.field && newFieldModal.column) { addSchemaField(newFieldModal.type, newFieldModal.field, newFieldModal.label || newFieldModal.field, newFieldModal.column); setNewFieldModal(null); } }} className="btn-primary">Add Field</button>
+                            <button onClick={() => setNewFieldModal(null)} className="btn-secondary">Cancel</button>
                         </div>
                     </div>
                 </div>
