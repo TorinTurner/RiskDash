@@ -313,9 +313,20 @@ const DragDropZone = ({ label, file, onDrop, onClear }) => {
     );
 };
 
-const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, userName, onProcess, onAlert }) => {
+const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, userName, onProcess, onAlert, onReportImport }) => {
+    const [reportDrag, setReportDrag] = React.useState(false);
     const handleDrop = (key) => (file) => { const r = new FileReader(); r.onload = (e) => setImportedFiles(p => ({...p, [key]: { name: file.name, data: new Uint8Array(e.target.result) }})); r.readAsArrayBuffer(file); };
-    
+
+    const handleReportDrop = async (e) => {
+        e.preventDefault(); e.stopPropagation(); setReportDrag(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (file?.name.endsWith('.html')) { onReportImport(file); }
+        else { onAlert({ type: 'error', msg: 'Please drop an HTML report file' }); }
+    };
+
+    const handleReportClick = () => { document.getElementById('report-file-input').click(); };
+    const handleReportFileChange = (e) => { if (e.target.files?.[0]) onReportImport(e.target.files[0]); };
+
     const process = () => {
         try {
             const sources = { vramNipr: importedFiles.vramNipr ? parseVRAM(importedFiles.vramNipr.data) : null, vramSipr: importedFiles.vramSipr ? parseVRAM(importedFiles.vramSipr.data) : null, essNipr: importedFiles.essNipr ? parseESS(importedFiles.essNipr.data) : null, essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data) : null, tam: importedFiles.tam ? parseTAM(importedFiles.tam.data) : null };
@@ -326,13 +337,28 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, use
             onProcess(report);
         } catch (err) { onAlert({ type: 'error', msg: err.message }); }
     };
-    
+
     const slots = [{ key: 'vramNipr', label: 'VRAM NIPR' }, { key: 'vramSipr', label: 'VRAM SIPR' }, { key: 'essNipr', label: 'ESS NIPR' }, { key: 'essSipr', label: 'ESS SIPR' }, { key: 'tam', label: 'TAM Overdue' }];
-    
+
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6" style={{color:'#22d3ee'}}>Import Data Files</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">{slots.map(s => <DragDropZone key={s.key} label={s.label} file={importedFiles[s.key]} onDrop={handleDrop(s.key)} onClear={() => setImportedFiles(p => ({...p, [s.key]: null}))} />)}</div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold mb-4" style={{color:'#22d3ee'}}>Import Data Files</h2>
+                    <div className="grid grid-cols-2 gap-3">{slots.map(s => <DragDropZone key={s.key} label={s.label} file={importedFiles[s.key]} onDrop={handleDrop(s.key)} onClear={() => setImportedFiles(p => ({...p, [s.key]: null}))} />)}</div>
+                </div>
+                <div>
+                    <h2 className="text-2xl font-bold mb-4" style={{color:'#a78bfa'}}>Re-Edit Previous Report</h2>
+                    <div className={`drag-zone p-8 text-center cursor-pointer h-full min-h-[200px] flex flex-col items-center justify-center ${reportDrag ? 'drag-active' : ''}`}
+                        style={{borderColor: reportDrag ? '#a78bfa' : '#243552', background: reportDrag ? 'rgba(167,139,250,0.1)' : 'rgba(17,29,50,0.5)'}}
+                        onDragOver={(e) => { e.preventDefault(); setReportDrag(true); }} onDragLeave={() => setReportDrag(false)} onDrop={handleReportDrop} onClick={handleReportClick}>
+                        <div className="text-4xl mb-3" style={{color:'#a78bfa'}}>↻</div>
+                        <div className="font-medium text-slate-300 mb-2">Drop Generated Report HTML</div>
+                        <div className="text-slate-500 text-sm">Re-edit with original settings & data</div>
+                        <input type="file" accept=".html" onChange={handleReportFileChange} className="hidden" id="report-file-input" />
+                    </div>
+                </div>
+            </div>
             <div className="flex gap-4 flex-wrap">
                 <button onClick={process} disabled={!Object.values(importedFiles).some(f=>f)} className="btn-primary">Process & Preview →</button>
                 <button onClick={() => setImportedFiles({vramNipr:null,vramSipr:null,essNipr:null,essSipr:null,tam:null})} className="btn-secondary">Clear All</button>
@@ -342,38 +368,95 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, use
     );
 };
 
-const PreviewTab = ({ reportData, settings, userName }) => {
+const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
     const [subTab, setSubTab] = React.useState('csl');
     const [selectedISIC, setSelectedISIC] = React.useState('');
-    
+    const [overrideModal, setOverrideModal] = React.useState(null);
+    const [showOverrideLog, setShowOverrideLog] = React.useState(false);
+
     if (!reportData) return <div className="text-center py-12 text-slate-500">No data loaded. Import files or drop a report.</div>;
-    
+
     const { boats } = reportData; const aggs = aggregateByISIC(boats, settings);
     const current = subTab === 'csl' ? boats.filter(b => b.tycom === 'CSL') : subTab === 'csp' ? boats.filter(b => b.tycom === 'CSP') : [];
     const isics = [...new Set(current.map(b => b.isic))];
     const filtered = selectedISIC ? current.filter(b => b.isic === selectedISIC) : current;
     const groupByISIC = (list) => { const g = {}; for (const b of list) { if (!g[b.isic]) g[b.isic] = []; g[b.isic].push(b); } return g; };
-    
+
+    const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
+
     const generate = () => {
         const html = generateReportHTML(reportData, settings);
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `cyber-report-${new Date().toISOString().slice(0,10)}.html`; a.click();
     };
-    
+
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
-    
+
+    const fieldLabels = {
+        essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprTruePolicy: 'ESS NIPR True Policy',
+        essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprTruePolicy: 'ESS SIPR True Policy',
+        vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
+        vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
+        vramNiprRaCrit: 'NIPR RA Critical', vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level', notes: 'Notes'
+    };
+
+    const openOverride = (boatName, field, currentValue) => {
+        const boat = boats.find(b => b.boatName === boatName);
+        const existingOverride = boat?.overrides?.find(o => o.field === field);
+        setOverrideModal({ boatName, field, currentValue, newValue: existingOverride?.overrideValue ?? currentValue ?? '', reason: existingOverride?.reason || '', originalValue: existingOverride?.originalValue ?? currentValue });
+    };
+
+    const saveOverride = () => {
+        if (!overrideModal) return;
+        const { boatName, field, newValue, reason, originalValue } = overrideModal;
+        setReportData(prev => {
+            const updatedBoats = prev.boats.map(b => {
+                if (b.boatName !== boatName) return b;
+                const overrides = (b.overrides || []).filter(o => o.field !== field);
+                const parsedValue = field === 'riskLevel' ? newValue : (field === 'notes' ? newValue : parseFloat(newValue));
+                if (String(parsedValue) !== String(originalValue)) {
+                    overrides.push({ field, originalValue, overrideValue: parsedValue, reason: reason || 'Manual override', timestamp: new Date().toISOString(), user: userName });
+                }
+                const updated = { ...b, [field]: parsedValue, overrides };
+                if (field !== 'riskLevel' && field !== 'notes') { const { level, reasons } = calculateRisk(updated, settings.thresholds); updated.riskLevel = level; updated.riskReasons = reasons; }
+                return updated;
+            });
+            return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString(), lastModifiedBy: userName };
+        });
+        setOverrideModal(null);
+    };
+
+    const isOverridden = (boat, field) => boat.overrides?.some(o => o.field === field);
+
+    const Cell = ({ boat, field, value, format = 'num', className = '' }) => {
+        const overridden = isOverridden(boat, field);
+        return <td className={`${className} ${overridden ? 'overridden' : ''} cursor-pointer hover:bg-cyan-900/30`} onClick={() => openOverride(boat.boatName, field, boat[field])} title={overridden ? 'Overridden - click to edit' : 'Click to override'}>{format === 'pct' ? fmtPct(value) : format === 'date' ? fmtDate(value) : format === 'num2' ? fmt(value, 2) : value ?? '-'}</td>;
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold" style={{color:'#22d3ee'}}>Preview Report</h2>
-                <button onClick={generate} className="btn-success">⬇ Generate HTML Report</button>
+                <div className="flex gap-2">
+                    {allOverrides.length > 0 && <button onClick={() => setShowOverrideLog(!showOverrideLog)} className="btn-secondary text-sm">{showOverrideLog ? 'Hide' : 'Show'} Override Log ({allOverrides.length})</button>}
+                    <button onClick={generate} className="btn-success">Generate HTML Report</button>
+                </div>
             </div>
+
+            {showOverrideLog && allOverrides.length > 0 && (
+                <div className="card p-4 mb-6">
+                    <h3 className="text-lg font-bold mb-3" style={{color:'#a78bfa'}}>Override Log</h3>
+                    <div className="overflow-x-auto"><table className="data-table text-xs"><thead><tr><th>Boat</th><th>Field</th><th>Original</th><th>New</th><th>Reason</th><th>By</th><th>Time</th></tr></thead>
+                    <tbody>{allOverrides.map((o, i) => <tr key={i}><td className="boat-name">{o.boatName}</td><td>{fieldLabels[o.field] || o.field}</td><td>{o.originalValue}</td><td>{o.overrideValue}</td><td>{o.reason}</td><td>{o.user}</td><td>{new Date(o.timestamp).toLocaleString()}</td></tr>)}</tbody></table></div>
+                </div>
+            )}
+
             <div className="flex gap-2 mb-4">
                 {['csl', 'csp', 'hq'].map(t => <button key={t} onClick={() => { setSubTab(t); setSelectedISIC(''); }} className={`px-4 py-2 rounded font-medium uppercase text-sm ${subTab === t ? 'text-white' : 'text-slate-300'}`} style={{background: subTab === t ? '#06b6d4' : '#243552'}}>{t === 'hq' ? 'HQ Status' : `${t} Summary`}</button>)}
             </div>
-            {(subTab === 'csl' || subTab === 'csp') && <div className="mb-4"><select value={selectedISIC} onChange={(e) => setSelectedISIC(e.target.value)} className="px-4 py-2 rounded"><option value="">All Squadrons</option>{isics.map(i => <option key={i} value={i}>{i}</option>)}</select></div>}
-            
+            {(subTab === 'csl' || subTab === 'csp') && <div className="mb-4"><select value={selectedISIC} onChange={(e) => setSelectedISIC(e.target.value)} className="px-4 py-2 rounded"><option value="">All Squadrons</option>{isics.map(i => <option key={i} value={i}>{i}</option>)}</select><span className="ml-4 text-sm text-slate-500">Click any cell to override</span></div>}
+
             {subTab === 'hq' ? (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>CSL Status</h3>
@@ -383,7 +466,7 @@ const PreviewTab = ({ reportData, settings, userName }) => {
                 </div>
             ) : (
                 <div className="card p-4 overflow-x-auto">
-                    {Object.entries(groupByISIC(filtered)).map(([isic, boats]) => (
+                    {Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) => (
                         <div key={isic} className="mb-6">
                             <h3 className="text-sm font-bold mb-2 px-3 py-2 rounded" style={{color:'#22d3ee', background:'#1a2942'}}>{isic}</h3>
                             <table className="data-table">
@@ -391,10 +474,67 @@ const PreviewTab = ({ reportData, settings, userName }) => {
                                     <tr><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="2" className="col-status">STATUS</th></tr>
                                     <tr><th className="col-ess-n">Ast</th><th className="col-ess-n">BF</th><th className="col-ess-n">Prd%</th><th className="col-ess-n">TPol%</th><th className="col-ess-s">Ast</th><th className="col-ess-s">BF</th><th className="col-ess-s">Prd%</th><th className="col-ess-s">TPol%</th><th className="col-vram-n">Ast</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Int%</th><th className="col-vram-n">Pct%</th><th className="col-vram-s">Ast</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Int%</th><th className="col-vram-s">Pct%</th><th className="col-ra">Crit</th><th className="col-ra">High</th><th className="col-tam">Due</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">SEx</th></tr>
                                 </thead>
-                                <tbody>{boats.map(b => <tr key={b.boatName}><td className="boat-name">{b.boatName}</td><td>{fmt(b.essNiprAssets)}</td><td className={(b.essNiprBreakfix||0)>0?'alert-red':''}>{fmt(b.essNiprBreakfix)}</td><td>{fmtPct(b.essNiprProductCompliance)}</td><td>{fmtPct(b.essNiprTruePolicy)}</td><td>{fmt(b.essSiprAssets)}</td><td className={(b.essSiprBreakfix||0)>0?'alert-red':''}>{fmt(b.essSiprBreakfix)}</td><td>{fmtPct(b.essSiprProductCompliance)}</td><td>{fmtPct(b.essSiprTruePolicy)}</td><td>{fmt(b.vramNiprAssets)}</td><td>{fmtDate(b.vramNiprScanDate)}</td><td>{fmt(b.vramNiprRaVph,2)}</td><td>{fmtPct(b.vramNiprScanIntegrity)}</td><td>{fmtPct(b.vramNiprScanPercent)}</td><td>{fmt(b.vramSiprAssets)}</td><td>{fmtDate(b.vramSiprScanDate)}</td><td>{fmt(b.vramSiprRaVph,2)}</td><td>{fmtPct(b.vramSiprScanIntegrity)}</td><td>{fmtPct(b.vramSiprScanPercent)}</td><td>{fmt(b.vramNiprRaCrit)}</td><td>{fmt(b.vramNiprRaHigh)}</td><td>{fmt(b.tamPastDue)}</td><td>{fmt(b.tamExtensions)}</td><td className={`risk-${b.riskLevel.toLowerCase()}`}>{b.riskLevel}</td><td className={(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}>{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td></tr>)}</tbody>
+                                <tbody>{isicBoats.map(b => <tr key={b.boatName}>
+                                    <td className="boat-name">{b.boatName}</td>
+                                    <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
+                                    <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
+                                    <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
+                                    <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
+                                    <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
+                                    <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
+                                    <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
+                                    <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
+                                    <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
+                                    <td>{fmtDate(b.vramNiprScanDate)}</td>
+                                    <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
+                                    <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
+                                    <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
+                                    <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
+                                    <td>{fmtDate(b.vramSiprScanDate)}</td>
+                                    <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
+                                    <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
+                                    <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
+                                    <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
+                                    <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
+                                    <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
+                                    <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
+                                    <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-900/30`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
+                                    <td className={(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}>{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                </tr>)}</tbody>
                             </table>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {overrideModal && (
+                <div className="modal-overlay" onClick={() => setOverrideModal(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{color:'#a78bfa'}}>Override Value</h3>
+                        <div className="space-y-4">
+                            <div className="text-sm text-slate-400">Boat: <span className="text-cyan-400 font-mono">{overrideModal.boatName}</span></div>
+                            <div className="text-sm text-slate-400">Field: <span className="text-white">{fieldLabels[overrideModal.field] || overrideModal.field}</span></div>
+                            <div className="text-sm text-slate-400">Original: <span className="text-slate-300">{overrideModal.originalValue ?? 'null'}</span></div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">New Value</label>
+                                {overrideModal.field === 'riskLevel' ? (
+                                    <select value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full">
+                                        <option value="LOW">LOW</option><option value="MED">MED</option><option value="HIGH">HIGH</option>
+                                    </select>
+                                ) : (
+                                    <input type={overrideModal.field === 'notes' ? 'text' : 'number'} step="any" value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" />
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Reason for Override</label>
+                                <input value={overrideModal.reason} onChange={(e) => setOverrideModal({...overrideModal, reason: e.target.value})} placeholder="Why is this being overridden?" className="w-full" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-6">
+                            <button onClick={saveOverride} className="btn-primary">Save Override</button>
+                            <button onClick={() => setOverrideModal(null)} className="btn-secondary">Cancel</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -481,14 +621,23 @@ function App() {
     const [alerts, setAlerts] = React.useState([]);
     
     
+    const handleReportImport = async (file) => {
+        const result = await importReportHTML(file);
+        if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
+        else {
+            setSettings(result.settings);
+            result.reportData.lastModifiedBy = userName;
+            setReportData(result.reportData);
+            setCurrentTab('preview');
+            setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
+            if (!result.valid) setAlerts(p => [...p, { type: 'warning', msg: 'Report hash invalid - data may have been modified' }]);
+        }
+    };
+
     const handleGlobalDrop = async (e) => {
         e.preventDefault();
         const file = e.dataTransfer?.files?.[0];
-        if (file?.name.endsWith('.html')) {
-            const result = await importReportHTML(file);
-            if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
-            else { setSettings(result.settings); result.reportData.lastModifiedBy = userName; setReportData(result.reportData); setCurrentTab('preview'); if (!result.valid) setAlerts([{ type: 'warning', msg: 'Report hash invalid - data may have been modified' }]); }
-        }
+        if (file?.name.endsWith('.html')) { handleReportImport(file); }
     };
     
     return (
@@ -508,8 +657,8 @@ function App() {
             <nav style={{borderBottom:'1px solid #1a2942'}} className="px-6"><div className="flex gap-1 max-w-7xl mx-auto">{['import', 'preview', 'settings'].map(tab => <button key={tab} onClick={() => setCurrentTab(tab)} className={`tab-btn ${currentTab === tab ? 'active' : ''}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}</div></nav>
             
             <main className="max-w-7xl mx-auto p-6">
-                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} userName={userName} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} />}
-                {currentTab === 'preview' && <PreviewTab reportData={reportData} settings={settings} userName={userName} />}
+                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} userName={userName} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
+                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} userName={userName} />}
                 {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} userName={userName} setUserName={setUserName} />}
             </main>
             
