@@ -119,7 +119,34 @@
         {"id": "hq", "label": "HQ Status", "visible": true},
         {"id": "analytics", "label": "Analytics", "visible": true},
         {"id": "changelog", "label": "Changes", "visible": true}
-    ]
+    ],
+    "analyticsConfig": {
+        "statCards": [
+            {"id": "totalBoats", "label": "Total Boats", "visible": true},
+            {"id": "highRisk", "label": "High Risk", "visible": true},
+            {"id": "medRisk", "label": "Medium Risk", "visible": true},
+            {"id": "lowRisk", "label": "Low Risk", "visible": true},
+            {"id": "avgVph", "label": "Avg NIPR VPH", "visible": true},
+            {"id": "totalBreakfix", "label": "Total Breakfix", "visible": true},
+            {"id": "avgCompliance", "label": "Avg ESS Compliance", "visible": true},
+            {"id": "scanExempt", "label": "Scan Exempt", "visible": true}
+        ],
+        "charts": [
+            {"id": "riskDistribution", "label": "Risk Distribution - All", "visible": true},
+            {"id": "riskByTycom", "label": "Risk by TYCOM", "visible": true},
+            {"id": "vphByIsic", "label": "Average VPH by ISIC", "visible": true},
+            {"id": "highRiskTable", "label": "High Risk Boats Table", "visible": true}
+        ],
+        "summaryColumns": [
+            {"id": "isic", "label": "ISIC", "visible": true},
+            {"id": "boats", "label": "Boats", "visible": true},
+            {"id": "high", "label": "High", "visible": true},
+            {"id": "med", "label": "Med", "visible": true},
+            {"id": "low", "label": "Low", "visible": true},
+            {"id": "avgVph", "label": "Avg VPH", "visible": true},
+            {"id": "breakfix", "label": "Breakfix", "visible": true}
+        ]
+    }
 }
 </script>
 
@@ -166,6 +193,35 @@ const buildColumnMap = (schemaArr) => {
     return map;
 };
 
+// Default analytics configuration
+const defaultAnalyticsConfig = {
+    statCards: [
+        {id: 'totalBoats', label: 'Total Boats', visible: true},
+        {id: 'highRisk', label: 'High Risk', visible: true},
+        {id: 'medRisk', label: 'Medium Risk', visible: true},
+        {id: 'lowRisk', label: 'Low Risk', visible: true},
+        {id: 'avgVph', label: 'Avg NIPR VPH', visible: true},
+        {id: 'totalBreakfix', label: 'Total Breakfix', visible: true},
+        {id: 'avgCompliance', label: 'Avg ESS Compliance', visible: true},
+        {id: 'scanExempt', label: 'Scan Exempt', visible: true}
+    ],
+    charts: [
+        {id: 'riskDistribution', label: 'Risk Distribution - All', visible: true},
+        {id: 'riskByTycom', label: 'Risk by TYCOM', visible: true},
+        {id: 'vphByIsic', label: 'Average VPH by ISIC', visible: true},
+        {id: 'highRiskTable', label: 'High Risk Boats Table', visible: true}
+    ],
+    summaryColumns: [
+        {id: 'isic', label: 'ISIC', visible: true},
+        {id: 'boats', label: 'Boats', visible: true},
+        {id: 'high', label: 'High', visible: true},
+        {id: 'med', label: 'Med', visible: true},
+        {id: 'low', label: 'Low', visible: true},
+        {id: 'avgVph', label: 'Avg VPH', visible: true},
+        {id: 'breakfix', label: 'Breakfix', visible: true}
+    ]
+};
+
 // Settings Manager
 const SettingsManager = {
     load() {
@@ -180,6 +236,8 @@ const SettingsManager = {
             if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
             // Ensure tabConfig exists with defaults
             if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
+            // Ensure analyticsConfig exists with defaults
+            if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
             return settings;
         } catch { return this.getDefaults(); }
     },
@@ -202,7 +260,7 @@ const SettingsManager = {
         }
         return result;
     },
-    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)), tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}] }; },
+    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)), tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}], analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)) }; },
     saveApplication(settings) {
         const html = document.documentElement.outerHTML;
         const updated = '<!DOCTYPE html>\n' + html.replace(/(<script type="application\/json" id="app-settings">)([\s\S]*?)(<\/script>)/, `$1\n${JSON.stringify(settings, null, 4)}\n$3`);
@@ -503,36 +561,63 @@ ${hqTable(aggs.csp, 'CSP Status')}
 </div>
 </div>` : ''}
 
-${isTabVisible('analytics') ? `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
-<div class="stat-cards">
-<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>
-<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>
-<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>
-<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>
-<div class="stat-card"><h3>Avg NIPR VPH</h3><div class="value">${avgVph}</div></div>
-<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>
-<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>
-<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length}</div></div>
-</div>
-<div class="chart-grid">
-<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>
-<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>
-<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>
-<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>
-</div>
-<div class="page">
+${isTabVisible('analytics') ? (() => {
+    const ac = settings.analyticsConfig || defaultAnalyticsConfig;
+    const isStatVisible = (id) => ac.statCards?.find(s => s.id === id)?.visible !== false;
+    const isChartVisible = (id) => ac.charts?.find(c => c.id === id)?.visible !== false;
+    const isColVisible = (id) => ac.summaryColumns?.find(c => c.id === id)?.visible !== false;
+    const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
+    const visibleStats = [
+        isStatVisible('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
+        isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
+        isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
+        isStatVisible('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
+        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg NIPR VPH</h3><div class="value">${avgVph}</div></div>` : '',
+        isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
+        isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
+        isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
+    ].filter(Boolean).join('');
+    const visibleCharts = [
+        isChartVisible('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
+        isChartVisible('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
+        isChartVisible('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
+        isChartVisible('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
+    ].filter(Boolean).join('');
+    const summaryHeaders = [
+        isColVisible('isic') ? `<th style="text-align:left">ISIC</th>` : '',
+        isColVisible('boats') ? `<th>Boats</th>` : '',
+        isColVisible('high') ? `<th>High</th>` : '',
+        isColVisible('med') ? `<th>Med</th>` : '',
+        isColVisible('low') ? `<th>Low</th>` : '',
+        isColVisible('avgVph') ? `<th>Avg VPH</th>` : '',
+        isColVisible('breakfix') ? `<th>Breakfix</th>` : ''
+    ].filter(Boolean).join('');
+    const summaryRows = Object.entries(groupByISIC(boats)).map(([isic, isicBoats]) => {
+        const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
+        const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
+        const l = isicBoats.filter(b => b.riskLevel === 'LOW').length;
+        const vph = (isicBoats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / isicBoats.length).toFixed(2);
+        const bf = isicBoats.reduce((s, b) => s + (b.essNiprBreakfix || 0), 0);
+        return `<tr>${[
+            isColVisible('isic') ? `<td style="text-align:left;font-weight:600">${isic}</td>` : '',
+            isColVisible('boats') ? `<td>${isicBoats.length}</td>` : '',
+            isColVisible('high') ? `<td class="${h>0?'risk-high':''}">${h}</td>` : '',
+            isColVisible('med') ? `<td class="${m>0?'risk-med':''}">${m}</td>` : '',
+            isColVisible('low') ? `<td class="risk-low">${l}</td>` : '',
+            isColVisible('avgVph') ? `<td>${vph}</td>` : '',
+            isColVisible('breakfix') ? `<td class="${bf>0?'alert-red':''}">${bf}</td>` : ''
+        ].filter(Boolean).join('')}</tr>`;
+    }).join('');
+    return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
+${visibleStats ? `<div class="stat-cards">${visibleStats}</div>` : ''}
+${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
+${summaryHeaders ? `<div class="page">
 <div class="page-header"><h2>Risk Summary by ISIC</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
-<table class="summary-table"><thead><tr><th style="text-align:left">ISIC</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th></tr></thead>
-<tbody>${Object.entries(groupByISIC(boats)).map(([isic, isicBoats]) => {
-    const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
-    const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
-    const l = isicBoats.filter(b => b.riskLevel === 'LOW').length;
-    const vph = (isicBoats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / isicBoats.length).toFixed(2);
-    const bf = isicBoats.reduce((s, b) => s + (b.essNiprBreakfix || 0), 0);
-    return `<tr><td style="text-align:left;font-weight:600">${isic}</td><td>${isicBoats.length}</td><td class="${h>0?'risk-high':''}">${h}</td><td class="${m>0?'risk-med':''}">${m}</td><td class="risk-low">${l}</td><td>${vph}</td><td class="${bf>0?'alert-red':''}">${bf}</td></tr>`;
-}).join('')}</tbody></table>
-</div>
+<table class="summary-table"><thead><tr>${summaryHeaders}</tr></thead>
+<tbody>${summaryRows}</tbody></table>
 </div>` : ''}
+</div>`;
+})() : ''}
 
 ${(hasChanges && isTabVisible('changelog')) ? `<div id="tab-changelog" class="tab-content${firstVisibleTab==='changelog'?' active':''}">
 <div class="page">
@@ -590,12 +675,14 @@ function exportToExcel() {
     } catch (e) { alert('Export failed: ' + e.message); }
 }
 function initCharts() {
-    new Chart(document.getElementById('chart-risk-all'), {
+    const el1 = document.getElementById('chart-risk-all');
+    if (el1) new Chart(el1, {
         type: 'doughnut',
         data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskData.HIGH, riskData.MED, riskData.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
         options: { plugins: { legend: { position: 'bottom' } } }
     });
-    new Chart(document.getElementById('chart-risk-tycom'), {
+    const el2 = document.getElementById('chart-risk-tycom');
+    if (el2) new Chart(el2, {
         type: 'bar',
         data: { labels: ['CSL', 'CSP'], datasets: [
             { label: 'High', data: [cslRisk.HIGH, cspRisk.HIGH], backgroundColor: '#dc2626' },
@@ -604,7 +691,8 @@ function initCharts() {
         ] },
         options: { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } }
     });
-    new Chart(document.getElementById('chart-vph-isic'), {
+    const el3 = document.getElementById('chart-vph-isic');
+    if (el3) new Chart(el3, {
         type: 'bar',
         data: { labels: isicVphData.map(d => d.isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS')), datasets: [{ label: 'Avg VPH', data: isicVphData.map(d => d.avg), backgroundColor: '#3b82f6' }] },
         options: { indexAxis: 'y', plugins: { legend: { display: false } } }
@@ -1054,10 +1142,18 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
     const schemaTypeLabels = { vram: 'VRAM Files', ess: 'ESS Files', tam: 'TAM Files' };
     const schemaTypeColors = { vram: 'cyan', ess: 'indigo', tam: 'orange' };
 
+    // Analytics config helpers
+    const analytics = settings.analyticsConfig || JSON.parse(JSON.stringify(defaultAnalyticsConfig));
+    const updateAnalyticsItem = (section, idx, updates) => {
+        const newConfig = JSON.parse(JSON.stringify(analytics));
+        newConfig[section][idx] = { ...newConfig[section][idx], ...updates };
+        setSettings(prev => ({ ...prev, analyticsConfig: newConfig }));
+    };
+
     return (
         <div>
             <h2 className="text-2xl font-bold mb-6 text-slate-800">Settings</h2>
-            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'columns', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t}</button>)}</div>
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'columns', 'analytics', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t === 'analytics' ? 'Analytics' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -1132,6 +1228,51 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
                         <div className="flex gap-2 mt-6">
                             <button onClick={() => { if (newFieldModal.field && newFieldModal.column) { addSchemaField(newFieldModal.type, newFieldModal.field, newFieldModal.label || newFieldModal.field, newFieldModal.column); setNewFieldModal(null); } }} className="btn-primary">Add Field</button>
                             <button onClick={() => setNewFieldModal(null)} className="btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {subTab === 'analytics' && (
+                <div className="space-y-6">
+                    <div className="card p-4">
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Analytics Page Configuration</h3>
+                        <p className="text-sm text-slate-500 mb-4">Select which items to display on the Analytics tab of generated reports.</p>
+
+                        <div className="mb-6">
+                            <h4 className="font-bold text-purple-700 mb-3">Stat Cards</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {(analytics.statCards || []).map((item, idx) => (
+                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('statCards', idx, { visible: e.target.checked })} />
+                                        <span className="text-sm text-slate-700">{item.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h4 className="font-bold text-emerald-700 mb-3">Charts & Visualizations</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(analytics.charts || []).map((item, idx) => (
+                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('charts', idx, { visible: e.target.checked })} />
+                                        <span className="text-sm text-slate-700">{item.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-bold text-amber-700 mb-3">Summary Table Columns</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {(analytics.summaryColumns || []).map((item, idx) => (
+                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('summaryColumns', idx, { visible: e.target.checked })} />
+                                        <span className="text-sm text-slate-700">{item.label}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
