@@ -11,34 +11,36 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
-        :root { --navy-900: #0a1628; --navy-800: #111d32; --navy-700: #1a2942; --navy-600: #243552; --cyan-400: #22d3ee; --cyan-500: #06b6d4; --emerald-400: #34d399; --amber-400: #fbbf24; --red-400: #f87171; --purple-400: #a78bfa; }
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-800) 100%); min-height: 100vh; color: #e2e8f0; margin: 0; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; min-height: 100vh; color: #1e293b; margin: 0; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: var(--navy-800); } ::-webkit-scrollbar-thumb { background: var(--navy-600); border-radius: 4px; }
-        .drag-zone { border: 2px dashed var(--navy-600); transition: all 0.2s; background: rgba(17,29,50,0.5); border-radius: 8px; }
-        .drag-zone:hover, .drag-zone.drag-active { border-color: var(--cyan-400); background: rgba(34,211,238,0.05); }
-        .drag-zone.has-file { border-color: var(--emerald-400); background: rgba(52,211,153,0.1); }
-        .risk-high { background: rgba(248,113,113,0.2); color: #fca5a5; } .risk-med { background: rgba(251,191,36,0.2); color: #fcd34d; } .risk-low { background: rgba(52,211,153,0.2); color: #6ee7b7; }
-        .alert-red { background: rgba(248,113,113,0.15); } .alert-amber { background: rgba(251,191,36,0.15); } .alert-blue { background: rgba(96,165,250,0.15); }
-        .tab-btn { position: relative; padding: 12px 24px; font-weight: 500; color: #94a3b8; transition: all 0.2s; background: none; border: none; cursor: pointer; }
-        .tab-btn:hover { color: white; } .tab-btn.active { color: var(--cyan-400); } .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--cyan-400); }
-        .btn-primary { background: linear-gradient(135deg, var(--cyan-500) 0%, #0891b2 100%); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(6,182,212,0.3); } .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary { background: var(--navy-600); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: none; cursor: pointer; } .btn-secondary:hover { background: var(--navy-700); }
-        .btn-success { background: linear-gradient(135deg, var(--emerald-400) 0%, #10b981 100%); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
-        .card { background: var(--navy-800); border: 1px solid var(--navy-600); border-radius: 8px; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #e2e8f0; } ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .drag-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; background: #ffffff; border-radius: 8px; }
+        .drag-zone:hover, .drag-zone.drag-active { border-color: #0891b2; background: #ecfeff; }
+        .drag-zone.has-file { border-color: #10b981; background: #ecfdf5; }
+        .risk-high { background: #fee2e2; color: #991b1b; font-weight: bold; }
+        .risk-med { background: #fef3c7; color: #92400e; font-weight: bold; }
+        .risk-low { background: #d1fae5; color: #065f46; }
+        .alert-red { background: #fee2e2; } .alert-amber { background: #fef3c7; } .alert-blue { background: #dbeafe; }
+        .tab-btn { position: relative; padding: 12px 24px; font-weight: 500; color: #64748b; transition: all 0.2s; background: none; border: none; cursor: pointer; }
+        .tab-btn:hover { color: #0f172a; } .tab-btn.active { color: #0891b2; } .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #0891b2; }
+        .btn-primary { background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(8,145,178,0.3); } .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: #e2e8f0; color: #475569; padding: 10px 20px; border-radius: 6px; font-weight: 500; border: none; cursor: pointer; } .btn-secondary:hover { background: #cbd5e1; }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .data-table th { background: var(--navy-700); color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; padding: 8px 4px; text-align: center; border: 1px solid var(--navy-600); }
-        .data-table td { padding: 5px 4px; text-align: center; border: 1px solid var(--navy-600); background: var(--navy-800); }
-        .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--cyan-400); }
-        .col-ess-n { background: rgba(59,130,246,0.15) !important; } .col-ess-s { background: rgba(99,102,241,0.15) !important; }
-        .col-vram-n { background: rgba(249,115,22,0.15) !important; } .col-vram-s { background: rgba(234,88,12,0.15) !important; }
-        .col-ra { background: rgba(168,85,247,0.15) !important; } .col-tam { background: rgba(107,114,128,0.15) !important; } .col-status { background: rgba(16,185,129,0.15) !important; }
-        input, select { background: var(--navy-700); border: 1px solid var(--navy-600); color: white; padding: 8px 12px; border-radius: 4px; }
-        input:focus, select:focus { outline: none; border-color: var(--cyan-400); }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: var(--navy-800); border: 1px solid var(--navy-600); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; }
+        .data-table th { background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; padding: 8px 4px; text-align: center; border: 1px solid #e2e8f0; }
+        .data-table td { padding: 5px 4px; text-align: center; border: 1px solid #e2e8f0; background: #ffffff; }
+        .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #0891b2; }
+        .col-ess-n { background: rgba(59,130,246,0.1) !important; } .col-ess-s { background: rgba(99,102,241,0.1) !important; }
+        .col-vram-n { background: rgba(249,115,22,0.1) !important; } .col-vram-s { background: rgba(234,88,12,0.1) !important; }
+        .col-ra { background: rgba(168,85,247,0.1) !important; } .col-tam { background: rgba(107,114,128,0.1) !important; } .col-status { background: rgba(16,185,129,0.1) !important; }
+        input, select { background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; padding: 8px 12px; border-radius: 4px; }
+        input:focus, select:focus { outline: none; border-color: #0891b2; box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .overridden { box-shadow: inset 0 0 0 2px #7c3aed; }
         @media print { .no-print { display: none !important; } }
     </style>
 </head>
@@ -83,7 +85,33 @@
         "color_ra_vph_red": 5,
         "color_scan_quality_red": 98
     },
-    "user": {"default_name": ""}
+    "user": {"default_name": ""},
+    "columnMappings": {
+        "vram": {
+            "siteName": ["Site Name", "Site", "SiteName"],
+            "scanDate": ["Last Scan Date", "Scan Date"],
+            "assets": ["Valid Assets", "Assets"],
+            "raVph": ["RA VPH", "VPH"],
+            "scanIntegrity": ["Scan Integrity", "Integrity"],
+            "scanPercent": ["Percent Scanned", "Scanned"],
+            "raCrit": ["RA Crit", "Crit"],
+            "raHigh": ["RA High", "High"],
+            "scanExempt": ["Scan Exempt"]
+        },
+        "ess": {
+            "shipName": ["Ships", "Ship", "Boat"],
+            "isic": ["ISICs", "ISIC"],
+            "productCompliance": ["Product Compliance", "Compliance"],
+            "policyEnforced": ["Policy Enforced", "Enforced"],
+            "breakfix": ["Assets in Breakfix", "Breakfix"],
+            "assets": ["Asset Count", "Assets"]
+        },
+        "tam": {
+            "boatName": ["Boat", "Ship"],
+            "pastDue": ["# Past Due", "Past Due", "Overdue"],
+            "extensions": ["# Extensions", "Extensions"]
+        }
+    }
 }
 </script>
 
@@ -92,6 +120,15 @@
 const normalizeBoatName = (name) => { if (!name) return ''; const upper = name.toUpperCase().trim(); const match = upper.match(/\b(SSN|SSBN|SSGN)\s*[-]?\s*(\d+)\b/); return match ? `${match[1]}-${match[2]}` : upper; };
 const parseNumber = (val) => { if (val === null || val === undefined || val === '') return null; if (typeof val === 'number') return val; const num = parseFloat(String(val).replace(/[%,]/g, '')); return isNaN(num) ? null : num; };
 const parsePercent = (val) => { if (val === null || val === undefined || val === '') return null; const num = parseFloat(String(val).replace('%', '')); return isNaN(num) ? null : num; };
+
+// Column mapping helper - finds first matching column from list of possible names
+const getColValue = (row, possibleNames) => {
+    if (!Array.isArray(possibleNames)) possibleNames = [possibleNames];
+    for (const name of possibleNames) {
+        if (row[name] !== undefined) return row[name];
+    }
+    return undefined;
+};
 
 // Settings Manager
 const SettingsManager = {
@@ -115,38 +152,41 @@ const createBoatData = (name, fullName, isic, tycom) => ({
     tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: ''
 });
 
-// Parsers
-const parseVRAM = (data) => {
+// Parsers - use column mappings from settings
+const parseVRAM = (data, colMap) => {
+    const m = colMap || { siteName: ['Site Name', 'Site', 'SiteName'], scanDate: ['Last Scan Date', 'Scan Date'], assets: ['Valid Assets', 'Assets'], raVph: ['RA VPH', 'VPH'], scanIntegrity: ['Scan Integrity', 'Integrity'], scanPercent: ['Percent Scanned', 'Scanned'], raCrit: ['RA Crit', 'Crit'], raHigh: ['RA High', 'High'], scanExempt: ['Scan Exempt'] };
     const wb = XLSX.read(data, { type: 'array', cellDates: true }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
-        const site = row['Site Name'] || row['Site'] || row['SiteName']; if (!site) continue;
+        const site = getColValue(row, m.siteName); if (!site) continue;
         const name = normalizeBoatName(site); if (!name) continue;
-        let scanDate = null; const rawDate = row['Last Scan Date'] || row['Scan Date'];
+        let scanDate = null; const rawDate = getColValue(row, m.scanDate);
         if (rawDate) { scanDate = rawDate instanceof Date ? rawDate : new Date(rawDate); if (isNaN(scanDate)) scanDate = null; }
-        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row['Valid Assets'] || row['Assets']), raVph: parseNumber(row['RA VPH'] || row['VPH']), scanIntegrity: parseNumber(row['Scan Integrity'] || row['Integrity']), scanPercent: parseNumber(row['Percent Scanned'] || row['Scanned']), raCrit: parseNumber(row['RA Crit'] || row['Crit']), raHigh: parseNumber(row['RA High'] || row['High']), scanExempt: String(row['Scan Exempt']).toLowerCase() === 'true' };
+        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(getColValue(row, m.assets)), raVph: parseNumber(getColValue(row, m.raVph)), scanIntegrity: parseNumber(getColValue(row, m.scanIntegrity)), scanPercent: parseNumber(getColValue(row, m.scanPercent)), raCrit: parseNumber(getColValue(row, m.raCrit)), raHigh: parseNumber(getColValue(row, m.raHigh)), scanExempt: String(getColValue(row, m.scanExempt)).toLowerCase() === 'true' };
     }
     return { parsed, raw: rows };
 };
 
-const parseESS = (data) => {
+const parseESS = (data, colMap) => {
+    const m = colMap || { shipName: ['Ships', 'Ship', 'Boat'], isic: ['ISICs', 'ISIC'], productCompliance: ['Product Compliance', 'Compliance'], policyEnforced: ['Policy Enforced', 'Enforced'], breakfix: ['Assets in Breakfix', 'Breakfix'], assets: ['Asset Count', 'Assets'] };
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {}; const isicMap = {};
     for (const row of rows) {
-        const ship = row['Ships'] || row['Ship'] || row['Boat']; if (!ship) continue;
+        const ship = getColValue(row, m.shipName); if (!ship) continue;
         const name = normalizeBoatName(ship); if (!name) continue;
-        const isic = row['ISICs'] || row['ISIC']; if (isic) isicMap[name] = isic.trim();
-        const prodComp = parsePercent(row['Product Compliance'] || row['Compliance']); const polEnf = parsePercent(row['Policy Enforced'] || row['Enforced']);
+        const isic = getColValue(row, m.isic); if (isic) isicMap[name] = isic.trim();
+        const prodComp = parsePercent(getColValue(row, m.productCompliance)); const polEnf = parsePercent(getColValue(row, m.policyEnforced));
         const truePolicy = (prodComp && polEnf && prodComp > 0) ? polEnf * (100 / prodComp) : null;
-        parsed[name] = { assets: parseNumber(row['Asset Count'] || row['Assets']), breakfix: parseNumber(row['Assets in Breakfix'] || row['Breakfix']), productCompliance: prodComp, truePolicy };
+        parsed[name] = { assets: parseNumber(getColValue(row, m.assets)), breakfix: parseNumber(getColValue(row, m.breakfix)), productCompliance: prodComp, truePolicy };
     }
     return { parsed, isicMap, raw: rows };
 };
 
-const parseTAM = (data) => {
+const parseTAM = (data, colMap) => {
+    const m = colMap || { boatName: ['Boat', 'Ship'], pastDue: ['# Past Due', 'Past Due', 'Overdue'], extensions: ['# Extensions', 'Extensions'] };
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
-        const boat = row['Boat'] || row['Ship']; if (!boat) continue;
+        const boat = getColValue(row, m.boatName); if (!boat) continue;
         const name = normalizeBoatName(boat); if (!name) continue;
-        parsed[name] = { pastDue: parseNumber(row['# Past Due'] || row['Past Due'] || row['Overdue']), extensions: parseNumber(row['# Extensions'] || row['Extensions']) };
+        parsed[name] = { pastDue: parseNumber(getColValue(row, m.pastDue)), extensions: parseNumber(getColValue(row, m.extensions)) };
     }
     return { parsed, raw: rows };
 };
@@ -157,7 +197,7 @@ const mergeData = (sources, settings) => {
     const boats = []; const unregistered = new Set(); const registry = {};
     for (const b of settings.boats) if (b.active !== false) registry[b.boat_name] = b;
     const allNames = new Set([...Object.keys(vramNipr?.parsed||{}), ...Object.keys(vramSipr?.parsed||{}), ...Object.keys(essNipr?.parsed||{}), ...Object.keys(essSipr?.parsed||{}), ...Object.keys(tam?.parsed||{})]);
-    
+
     for (const name of Object.keys(registry)) {
         const reg = registry[name]; const boat = createBoatData(reg.boat_name, reg.boat_full_name, reg.isic, reg.tycom);
         const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; }
@@ -176,27 +216,27 @@ const calculateRisk = (boat, thresholds) => {
     const reasons = []; let level = 'LOW';
     const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : Infinity;
     const nAge = scanAge(boat.vramNiprScanDate); const sAge = scanAge(boat.vramSiprScanDate);
-    
+
     if ((boat.essNiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`NIPR BF: ${boat.essNiprBreakfix}`); }
     if ((boat.essSiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`SIPR BF: ${boat.essSiprBreakfix}`); }
     if (nAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
     if (sAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`SIPR Scan: ${sAge}d`); }
     if (boat.vramNiprScanIntegrity !== null && boat.vramNiprScanIntegrity < thresholds.auto_high_scan_integrity) { level = 'HIGH'; reasons.push(`NIPR Int: ${boat.vramNiprScanIntegrity}%`); }
     if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.auto_high_ra_vph) { level = 'HIGH'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
-    
+
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.high_ess_compliance) { level = 'HIGH'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
         if ((boat.tamPastDue||0) > thresholds.high_tam_past_due) { level = 'HIGH'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
         if (nAge > thresholds.high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
     }
-    
+
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.med_ess_compliance) { level = 'MED'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
         if (nAge > thresholds.med_scan_age_days) { level = 'MED'; reasons.push(`NIPR Scan: ${nAge}d`); }
         if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.med_ra_vph) { level = 'MED'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
         if ((boat.tamPastDue||0) > thresholds.med_tam_past_due) { level = 'MED'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
     }
-    
+
     if (level === 'HIGH' && (boat.vramNiprScanExempt || boat.vramSiprScanExempt)) {
         const scanKW = ['Scan:', 'Int:']; if (reasons.every(r => scanKW.some(k => r.includes(k)))) { level = 'MED'; reasons.push('Scan Exempt'); }
     }
@@ -265,14 +305,14 @@ const generateTestData = (settings, setSettings) => {
         { name: 'SSGN-726', full: 'USS OHIO (SSGN 726)', isic: 'COMSUBRON 19', tycom: 'CSP' },
         { name: 'SSGN-727', full: 'USS MICHIGAN (SSGN 727)', isic: 'COMSUBRON 19', tycom: 'CSP' },
     ];
-    
+
     const vramData = testBoats.map(b => { const d = new Date(); d.setDate(d.getDate() - Math.floor(Math.random() * 100)); return { 'Site Name': b.full, 'Last Scan Date': d.toISOString().slice(0,10), 'Valid Assets': Math.floor(Math.random()*40)+15, 'RA VPH': (Math.random()*8).toFixed(2), 'Scan Integrity': (85+Math.random()*15).toFixed(1), 'Percent Scanned': (82+Math.random()*18).toFixed(1), 'RA Crit': Math.floor(Math.random()*25), 'RA High': Math.floor(Math.random()*150), 'Scan Exempt': Math.random()>0.85?'True':'False' }; });
     const essData = testBoats.map(b => ({ 'ISICs': b.isic, 'Ships': b.name, 'Product Compliance': (91+Math.random()*9).toFixed(1)+'%', 'Policy Enforced': (93+Math.random()*7).toFixed(1)+'%', 'Assets in Breakfix': Math.random()>0.75?Math.floor(Math.random()*3):0, 'Asset Count': Math.floor(Math.random()*45)+20 }));
     const tamData = testBoats.map(b => ({ 'ISIC': b.isic, 'Boat': b.name, '# Past Due': Math.random()>0.65?Math.floor(Math.random()*4):0, '# Extensions': Math.floor(Math.random()*2) }));
-    
+
     const dl = (data, name) => { const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Sheet1'); XLSX.writeFile(wb, name); };
     dl(vramData, 'test-vram-nipr.xlsx'); dl(vramData, 'test-vram-sipr.xlsx'); dl(essData, 'test-ess-nipr.xlsx'); dl(essData, 'test-ess-sipr.xlsx'); dl(tamData, 'test-tam.xlsx');
-    
+
     setSettings(prev => ({ ...prev, boats: testBoats.map(b => ({ boat_name: b.name, boat_full_name: b.full, isic: b.isic, tycom: b.tycom, active: true })) }));
 };
 
@@ -282,20 +322,30 @@ const generateReportHTML = (reportData, settings) => {
     const groupByISIC = (list) => { const g = {}; for (const b of list) { if (!g[b.isic]) g[b.isic] = []; g[b.isic].push(b); } return g; };
     const cslByISIC = groupByISIC(boats.filter(b => b.tycom === 'CSL')); const cspByISIC = groupByISIC(boats.filter(b => b.tycom === 'CSP'));
     const embedded = compressAndEncode({ reportData, settingsSnapshot: settings, generatedAt: new Date().toISOString() });
-    
+
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
-    
-    const boatRow = (b) => `<tr><td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td></tr>`;
-    
-    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="2" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">Ast</th><th class="col-ess-n">BF</th><th class="col-ess-n">Prd%</th><th class="col-ess-n">TPol%</th><th class="col-ess-s">Ast</th><th class="col-ess-s">BF</th><th class="col-ess-s">Prd%</th><th class="col-ess-s">TPol%</th><th class="col-vram-n">Ast</th><th class="col-vram-n">Scan</th><th class="col-vram-n">VPH</th><th class="col-vram-n">Int%</th><th class="col-vram-n">Pct%</th><th class="col-vram-s">Ast</th><th class="col-vram-s">Scan</th><th class="col-vram-s">VPH</th><th class="col-vram-s">Int%</th><th class="col-vram-s">Pct%</th><th class="col-ra">Crit</th><th class="col-ra">High</th><th class="col-tam">Due</th><th class="col-tam">Ext</th><th class="col-status">Risk</th><th class="col-status">SEx</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
-    
+
+    const boatRow = (b) => `<tr><td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td></tr>`;
+
+    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">Ast</th><th class="col-ess-n">BF</th><th class="col-ess-n">Prd%</th><th class="col-ess-n">TPol%</th><th class="col-ess-s">Ast</th><th class="col-ess-s">BF</th><th class="col-ess-s">Prd%</th><th class="col-ess-s">TPol%</th><th class="col-vram-n">Ast</th><th class="col-vram-n">Scan</th><th class="col-vram-n">VPH</th><th class="col-vram-n">Int%</th><th class="col-vram-n">Pct%</th><th class="col-vram-s">Ast</th><th class="col-vram-s">Scan</th><th class="col-vram-s">VPH</th><th class="col-vram-s">Int%</th><th class="col-vram-s">Pct%</th><th class="col-ra">Crit</th><th class="col-ra">High</th><th class="col-tam">Due</th><th class="col-tam">Ext</th><th class="col-status">Risk</th><th class="col-status">SEx</th><th class="col-status">Note</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
+
+    // Build change log content
+    const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
+    const thresholdChanges = reportData.thresholdChanges || [];
+    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0;
+
+    const changeLogHTML = hasChanges ? `<div id="change-log" style="display:none;" class="page"><div class="page-header"><h1>Change Log</h1><div style="font-size:10px;color:#666;">Report v${reportData.version}</div></div>${thresholdChanges.length > 0 ? `<div style="margin-bottom:24px;"><h2 style="font-size:12pt;margin-bottom:8px;color:#b45309;">Threshold Adjustments (from defaults)</h2><table class="summary-table"><thead><tr><th style="text-align:left">Threshold</th><th>Default</th><th>Used</th><th>By</th><th>Time</th></tr></thead><tbody>${thresholdChanges.map(t => `<tr><td style="text-align:left">${t.field.replace(/_/g, ' ')}</td><td>${t.defaultValue}</td><td style="font-weight:bold;color:#b45309;">${t.newValue}</td><td>${t.user}</td><td>${new Date(t.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : ''}${allOverrides.length > 0 ? `<div><h2 style="font-size:12pt;margin-bottom:8px;color:#7c3aed;">Value Overrides</h2><table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th style="text-align:left">Field</th><th>Original</th><th>New Value</th><th style="text-align:left">Reason</th><th>By</th><th>Time</th></tr></thead><tbody>${allOverrides.map(o => `<tr><td style="text-align:left;font-family:monospace;">${o.boatName}</td><td style="text-align:left">${o.field}</td><td>${o.originalValue}</td><td style="font-weight:bold;color:#7c3aed;">${o.overrideValue}</td><td style="text-align:left">${o.reason}</td><td>${o.user}</td><td>${new Date(o.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>` : '';
+
     const summaryPage = (title, byISIC, prefix) => `<div class="page" id="${prefix}-page"><div class="page-header"><h1>${title}</h1><div class="no-print"><select id="${prefix}-filter" onchange="filterISIC('${prefix}',this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="">All Squadrons</option>${Object.keys(byISIC).map(i=>`<option value="${i}">${i}</option>`).join('')}</select></div><div style="font-size:10px;color:#666;">v${reportData.version} | ${new Date().toLocaleDateString()}</div></div><div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-amber"></span>Warning</span><span><span class="legend-box alert-blue"></span>Exempt</span></div><div id="${prefix}-content">${Object.entries(byISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div></div>`;
-    
+
     const hqTable = (list) => list.length === 0 ? '<p>No data</p>' : `<table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR ESS %</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr></tbody></table>`;
 
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script><style>@page{size:landscape;margin:0.25in}@media print{.no-print{display:none!important}.page-break{page-break-before:always}body{font-size:7pt}}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:8pt;line-height:1.2;background:#f5f5f5}.toolbar{position:sticky;top:0;background:#1e293b;color:white;padding:8px 16px;display:flex;gap:12px;align-items:center;z-index:100}.toolbar button{background:#3b82f6;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer}.toolbar-info{margin-left:auto;font-size:8pt;opacity:0.8}.page{background:white;margin:16px auto;padding:16px;max-width:1500px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}@media print{.page{margin:0;padding:8px;max-width:none;box-shadow:none}}.page-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:12px}.page-header h1{font-size:14pt;font-weight:bold}.legend{display:flex;gap:16px;margin-bottom:12px;font-size:7pt;flex-wrap:wrap}.legend span{display:flex;align-items:center;gap:4px}.legend-box{width:14px;height:14px;border:1px solid #333;display:inline-block}.summary-table{width:100%;border-collapse:collapse;font-size:7pt}.summary-table th{background:#475569;color:white;font-weight:600;font-size:6.5pt;padding:4px 3px;text-align:center;border:1px solid #666}.summary-table td{padding:3px;text-align:center;border:1px solid #ccc}.summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}.col-ess-n{background:rgba(59,130,246,0.3)!important}.col-ess-s{background:rgba(99,102,241,0.3)!important}.col-vram-n{background:rgba(249,115,22,0.3)!important}.col-vram-s{background:rgba(234,88,12,0.3)!important}.col-ra{background:rgba(168,85,247,0.3)!important}.col-tam{background:rgba(107,114,128,0.3)!important}.col-status{background:rgba(16,185,129,0.3)!important}.risk-high{background:#fee2e2!important;color:#991b1b;font-weight:bold}.risk-med{background:#fef3c7!important;color:#92400e;font-weight:bold}.risk-low{background:#d1fae5!important;color:#065f46}.alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}.page-break{height:1px;margin:32px 0;border:none;border-top:2px dashed #ccc}@media print{.page-break{margin:0;border:none}}.hq-table th:first-child,.hq-table td:first-child{text-align:left}.focused-view .summary-table{font-size:9pt}.focused-view .summary-table th,.focused-view .summary-table td{padding:6px}</style></head><body><div class="no-print toolbar"><button onclick="window.print()">🖨️ Print</button><button onclick="exportToExcel()">📊 Export Excel</button><span class="toolbar-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy}</span></div>${summaryPage('CSL CYBER SUMMARY',cslByISIC,'csl')}<div class="page-break"></div>${summaryPage('CSP CYBER SUMMARY',cspByISIC,'csp')}<div class="page-break"></div><div class="page" id="hq-page"><div class="page-header"><h1>HQ CYBER STATUS</h1><div style="font-size:10px;color:#666;">v${reportData.version} | ${new Date().toLocaleDateString()}</div></div><h2 style="font-size:12pt;margin:16px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px;">CSL STATUS</h2>${hqTable(aggs.csl)}<h2 style="font-size:12pt;margin:24px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px;">CSP STATUS</h2>${hqTable(aggs.csp)}</div><script type="application/x-dashboard-report">${embedded}<\/script><script>function filterISIC(p,v){const c=document.getElementById(p+'-content');const s=c.querySelectorAll('.isic-section');if(!v){s.forEach(x=>x.style.display='');c.classList.remove('focused-view');}else{s.forEach(x=>x.style.display=x.dataset.isic===v?'':'none');c.classList.add('focused-view');}}function exportToExcel(){const m=document.querySelector('script[type="application/x-dashboard-report"]');if(!m){alert('No data');return;}try{const[h,b64]=m.textContent.trim().split(':');const d=JSON.parse(decodeURIComponent(escape(atob(b64))));const wb=XLSX.utils.book_new();if(d.reportData.sourceData.vramNipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.vramNipr.raw),'VRAM NIPR');if(d.reportData.sourceData.vramSipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.vramSipr.raw),'VRAM SIPR');if(d.reportData.sourceData.essNipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.essNipr.raw),'ESS NIPR');if(d.reportData.sourceData.essSipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.essSipr.raw),'ESS SIPR');if(d.reportData.sourceData.tam?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.tam.raw),'TAM');const calc=d.reportData.boats.map(b=>({Boat:b.boatName,ISIC:b.isic,TYCOM:b.tycom,Risk:b.riskLevel,Reasons:b.riskReasons.join('; ')}));XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(calc),'Calculated');XLSX.writeFile(wb,'cyber-export-'+new Date().toISOString().slice(0,10)+'.xlsx');}catch(e){alert('Export failed: '+e.message);}}<\/script></body></html>`;
+    const changeCount = allOverrides.length + thresholdChanges.length;
+    const changeLogBtn = hasChanges ? `<button onclick="toggleChangeLog()" style="background:#7c3aed;">View Change Log (${changeCount})</button>` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script><style>@page{size:landscape;margin:0.25in}@media print{.no-print{display:none!important}.page-break{page-break-before:always}body{font-size:7pt}}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:8pt;line-height:1.2;background:#f5f5f5}.toolbar{position:sticky;top:0;background:#1e293b;color:white;padding:8px 16px;display:flex;gap:12px;align-items:center;z-index:100}.toolbar button{background:#3b82f6;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer}.toolbar button:hover{opacity:0.9}.toolbar-info{margin-left:auto;font-size:8pt;opacity:0.8}.page{background:white;margin:16px auto;padding:16px;max-width:1500px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}@media print{.page{margin:0;padding:8px;max-width:none;box-shadow:none}}.page-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:12px}.page-header h1{font-size:14pt;font-weight:bold}.legend{display:flex;gap:16px;margin-bottom:12px;font-size:7pt;flex-wrap:wrap}.legend span{display:flex;align-items:center;gap:4px}.legend-box{width:14px;height:14px;border:1px solid #333;display:inline-block}.summary-table{width:100%;border-collapse:collapse;font-size:7pt}.summary-table th{background:#475569;color:white;font-weight:600;font-size:6.5pt;padding:4px 3px;text-align:center;border:1px solid #666}.summary-table td{padding:3px;text-align:center;border:1px solid #ccc}.summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}.col-ess-n{background:rgba(59,130,246,0.3)!important}.col-ess-s{background:rgba(99,102,241,0.3)!important}.col-vram-n{background:rgba(249,115,22,0.3)!important}.col-vram-s{background:rgba(234,88,12,0.3)!important}.col-ra{background:rgba(168,85,247,0.3)!important}.col-tam{background:rgba(107,114,128,0.3)!important}.col-status{background:rgba(16,185,129,0.3)!important}.risk-high{background:#fee2e2!important;color:#991b1b;font-weight:bold}.risk-med{background:#fef3c7!important;color:#92400e;font-weight:bold}.risk-low{background:#d1fae5!important;color:#065f46}.alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}.page-break{height:1px;margin:32px 0;border:none;border-top:2px dashed #ccc}@media print{.page-break{margin:0;border:none}}.hq-table th:first-child,.hq-table td:first-child{text-align:left}.focused-view .summary-table{font-size:9pt}.focused-view .summary-table th,.focused-view .summary-table td{padding:6px}</style></head><body><div class="no-print toolbar"><button onclick="window.print()">Print</button><button onclick="exportToExcel()">Export Excel</button>${changeLogBtn}<span class="toolbar-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'}</span></div>${changeLogHTML}${summaryPage('CSL CYBER SUMMARY',cslByISIC,'csl')}<div class="page-break"></div>${summaryPage('CSP CYBER SUMMARY',cspByISIC,'csp')}<div class="page-break"></div><div class="page" id="hq-page"><div class="page-header"><h1>HQ CYBER STATUS</h1><div style="font-size:10px;color:#666;">v${reportData.version} | ${new Date().toLocaleDateString()}</div></div><h2 style="font-size:12pt;margin:16px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px;">CSL STATUS</h2>${hqTable(aggs.csl)}<h2 style="font-size:12pt;margin:24px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px;">CSP STATUS</h2>${hqTable(aggs.csp)}</div><script type="application/x-dashboard-report">${embedded}<\/script><script>function toggleChangeLog(){const cl=document.getElementById('change-log');if(cl){cl.style.display=cl.style.display==='none'?'block':'none';}}function filterISIC(p,v){const c=document.getElementById(p+'-content');const s=c.querySelectorAll('.isic-section');if(!v){s.forEach(x=>x.style.display='');c.classList.remove('focused-view');}else{s.forEach(x=>x.style.display=x.dataset.isic===v?'':'none');c.classList.add('focused-view');}}function exportToExcel(){const m=document.querySelector('script[type="application/x-dashboard-report"]');if(!m){alert('No data');return;}try{const[h,b64]=m.textContent.trim().split(':');const d=JSON.parse(decodeURIComponent(escape(atob(b64))));const wb=XLSX.utils.book_new();if(d.reportData.sourceData.vramNipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.vramNipr.raw),'VRAM NIPR');if(d.reportData.sourceData.vramSipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.vramSipr.raw),'VRAM SIPR');if(d.reportData.sourceData.essNipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.essNipr.raw),'ESS NIPR');if(d.reportData.sourceData.essSipr?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.essSipr.raw),'ESS SIPR');if(d.reportData.sourceData.tam?.raw)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(d.reportData.sourceData.tam.raw),'TAM');const calc=d.reportData.boats.map(b=>({Boat:b.boatName,ISIC:b.isic,TYCOM:b.tycom,Risk:b.riskLevel,Reasons:b.riskReasons.join('; '),Notes:b.notes||''}));XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(calc),'Calculated');XLSX.writeFile(wb,'cyber-export-'+new Date().toISOString().slice(0,10)+'.xlsx');}catch(e){alert('Export failed: '+e.message);}}<\/script></body></html>`;
 };
 
 // Components
@@ -306,14 +356,14 @@ const DragDropZone = ({ label, file, onDrop, onClear }) => {
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
             onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files[0]) onDrop(e.dataTransfer.files[0]); }}
             onClick={() => document.getElementById('file-' + label).click()}>
-            <div className="font-medium text-slate-300 mb-2">{label}</div>
-            {file ? <div className="flex items-center justify-center gap-2"><span className="text-emerald-400">✓ {file.name}</span><button onClick={(e) => { e.stopPropagation(); onClear(); }} className="text-red-400 ml-2">×</button></div> : <div className="text-slate-500 text-sm">Drag & drop or click</div>}
+            <div className="font-medium text-slate-600 mb-2">{label}</div>
+            {file ? <div className="flex items-center justify-center gap-2"><span className="text-emerald-600">[OK] {file.name}</span><button onClick={(e) => { e.stopPropagation(); onClear(); }} className="text-red-500 ml-2">x</button></div> : <div className="text-slate-400 text-sm">Drag & drop or click</div>}
             <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { if (e.target.files[0]) onDrop(e.target.files[0]); }} className="hidden" id={'file-' + label} />
         </div>
     );
 };
 
-const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, userName, onProcess, onAlert, onReportImport }) => {
+const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onProcess, onAlert, onReportImport }) => {
     const [reportDrag, setReportDrag] = React.useState(false);
     const handleDrop = (key) => (file) => { const r = new FileReader(); r.onload = (e) => setImportedFiles(p => ({...p, [key]: { name: file.name, data: new Uint8Array(e.target.result) }})); r.readAsArrayBuffer(file); };
 
@@ -329,10 +379,17 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, use
 
     const process = () => {
         try {
-            const sources = { vramNipr: importedFiles.vramNipr ? parseVRAM(importedFiles.vramNipr.data) : null, vramSipr: importedFiles.vramSipr ? parseVRAM(importedFiles.vramSipr.data) : null, essNipr: importedFiles.essNipr ? parseESS(importedFiles.essNipr.data) : null, essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data) : null, tam: importedFiles.tam ? parseTAM(importedFiles.tam.data) : null };
+            const colMaps = settings.columnMappings || {};
+            const sources = {
+                vramNipr: importedFiles.vramNipr ? parseVRAM(importedFiles.vramNipr.data, colMaps.vram) : null,
+                vramSipr: importedFiles.vramSipr ? parseVRAM(importedFiles.vramSipr.data, colMaps.vram) : null,
+                essNipr: importedFiles.essNipr ? parseESS(importedFiles.essNipr.data, colMaps.ess) : null,
+                essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data, colMaps.ess) : null,
+                tam: importedFiles.tam ? parseTAM(importedFiles.tam.data, colMaps.tam) : null
+            };
             const { boats, unregistered } = mergeData(sources, settings);
             calculateAllRisks(boats, settings.thresholds);
-            const report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: sources, createdAt: new Date().toISOString(), createdBy: userName, lastModifiedAt: new Date().toISOString(), lastModifiedBy: userName, version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name } };
+            const report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: sources, createdAt: new Date().toISOString(), createdBy: '', lastModifiedAt: new Date().toISOString(), lastModifiedBy: '', version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name } };
             if (unregistered.length > 0) onAlert({ type: 'warning', msg: `Unregistered: ${unregistered.slice(0,5).join(', ')}${unregistered.length>5?'...':''} - Add in Settings` });
             onProcess(report);
         } catch (err) { onAlert({ type: 'error', msg: err.message }); }
@@ -344,37 +401,49 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, use
         <div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold mb-4" style={{color:'#22d3ee'}}>Import Data Files</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-slate-800">Import Data Files</h2>
                     <div className="grid grid-cols-2 gap-3">{slots.map(s => <DragDropZone key={s.key} label={s.label} file={importedFiles[s.key]} onDrop={handleDrop(s.key)} onClear={() => setImportedFiles(p => ({...p, [s.key]: null}))} />)}</div>
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold mb-4" style={{color:'#a78bfa'}}>Re-Edit Previous Report</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-purple-700">Re-Edit Previous Report</h2>
                     <div className={`drag-zone p-8 text-center cursor-pointer h-full min-h-[200px] flex flex-col items-center justify-center ${reportDrag ? 'drag-active' : ''}`}
-                        style={{borderColor: reportDrag ? '#a78bfa' : '#243552', background: reportDrag ? 'rgba(167,139,250,0.1)' : 'rgba(17,29,50,0.5)'}}
+                        style={{borderColor: reportDrag ? '#7c3aed' : '#cbd5e1', background: reportDrag ? '#f5f3ff' : '#ffffff'}}
                         onDragOver={(e) => { e.preventDefault(); setReportDrag(true); }} onDragLeave={() => setReportDrag(false)} onDrop={handleReportDrop} onClick={handleReportClick}>
-                        <div className="text-4xl mb-3" style={{color:'#a78bfa'}}>↻</div>
-                        <div className="font-medium text-slate-300 mb-2">Drop Generated Report HTML</div>
-                        <div className="text-slate-500 text-sm">Re-edit with original settings & data</div>
+                        <div className="text-2xl mb-3 text-purple-600 font-bold">[RE-EDIT]</div>
+                        <div className="font-medium text-slate-600 mb-2">Drop Generated Report HTML</div>
+                        <div className="text-slate-400 text-sm">Re-edit with original settings & data</div>
                         <input type="file" accept=".html" onChange={handleReportFileChange} className="hidden" id="report-file-input" />
                     </div>
                 </div>
             </div>
             <div className="flex gap-4 flex-wrap">
-                <button onClick={process} disabled={!Object.values(importedFiles).some(f=>f)} className="btn-primary">Process & Preview →</button>
+                <button onClick={process} disabled={!Object.values(importedFiles).some(f=>f)} className="btn-primary">Process & Preview</button>
                 <button onClick={() => setImportedFiles({vramNipr:null,vramSipr:null,essNipr:null,essSipr:null,tam:null})} className="btn-secondary">Clear All</button>
-                <button onClick={() => generateTestData(settings, setSettings)} className="btn-secondary ml-auto" style={{background:'#7c3aed'}}>Generate Test Data</button>
+                <button onClick={() => generateTestData(settings, setSettings)} className="btn-secondary ml-auto" style={{background:'#7c3aed', color:'white'}}>Generate Test Data</button>
             </div>
         </div>
     );
 };
 
-const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
+const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [subTab, setSubTab] = React.useState('csl');
     const [selectedISIC, setSelectedISIC] = React.useState('');
     const [overrideModal, setOverrideModal] = React.useState(null);
     const [showOverrideLog, setShowOverrideLog] = React.useState(false);
+    const [showThresholds, setShowThresholds] = React.useState(false);
+    const [previewThresholds, setPreviewThresholds] = React.useState(null);
 
-    if (!reportData) return <div className="text-center py-12 text-slate-500">No data loaded. Import files or drop a report.</div>;
+    // Initialize preview thresholds from settings if not set
+    React.useEffect(() => {
+        if (reportData && !previewThresholds) {
+            setPreviewThresholds({ ...settings.thresholds });
+        }
+    }, [reportData, settings.thresholds]);
+
+    if (!reportData) return <div className="text-center py-12 text-slate-400">No data loaded. Import files or drop a report.</div>;
+
+    const activeThresholds = previewThresholds || settings.thresholds;
+    const thresholdChanges = previewThresholds ? Object.keys(settings.thresholds).filter(k => settings.thresholds[k] !== previewThresholds[k]) : [];
 
     const { boats } = reportData; const aggs = aggregateByISIC(boats, settings);
     const current = subTab === 'csl' ? boats.filter(b => b.tycom === 'CSL') : subTab === 'csp' ? boats.filter(b => b.tycom === 'CSP') : [];
@@ -385,9 +454,30 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
 
     const generate = () => {
-        const html = generateReportHTML(reportData, settings);
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `cyber-report-${new Date().toISOString().slice(0,10)}.html`; a.click();
+        onRequestName((name) => {
+            // Build threshold change log if thresholds were modified
+            const thresholdLog = thresholdChanges.map(k => ({
+                field: k,
+                defaultValue: settings.thresholds[k],
+                newValue: previewThresholds[k],
+                reason: 'Adjusted for this report',
+                timestamp: new Date().toISOString(),
+                user: name || 'Unknown'
+            }));
+            const updatedReport = {
+                ...reportData,
+                createdBy: name || reportData.createdBy || 'Unknown',
+                lastModifiedBy: name || 'Unknown',
+                thresholdChanges: thresholdLog,
+                usedThresholds: previewThresholds || settings.thresholds
+            };
+            const html = generateReportHTML(updatedReport, settings);
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `cyber-report-${new Date().toISOString().slice(0,10)}.html`; a.click();
+        });
     };
+
+    // Update the current user name for overrides
+    const [currentUserName, setCurrentUserName] = React.useState('');
 
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
@@ -398,7 +488,31 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
         essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprTruePolicy: 'ESS SIPR True Policy',
         vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
         vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
-        vramNiprRaCrit: 'NIPR RA Critical', vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level', notes: 'Notes'
+        vramNiprRaCrit: 'NIPR RA Critical', vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level', notes: 'Notes',
+        vramNiprScanExempt: 'NIPR Scan Exempt', vramSiprScanExempt: 'SIPR Scan Exempt'
+    };
+
+    // Recalculate risks with current thresholds when thresholds change
+    const recalculateWithThresholds = (newThresholds) => {
+        setPreviewThresholds(newThresholds);
+        setReportData(prev => {
+            const updatedBoats = prev.boats.map(b => {
+                const { level, reasons } = calculateRisk(b, newThresholds);
+                return { ...b, riskLevel: level, riskReasons: reasons };
+            });
+            return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString() };
+        });
+    };
+
+    const resetThresholds = () => {
+        setPreviewThresholds({ ...settings.thresholds });
+        setReportData(prev => {
+            const updatedBoats = prev.boats.map(b => {
+                const { level, reasons } = calculateRisk(b, settings.thresholds);
+                return { ...b, riskLevel: level, riskReasons: reasons };
+            });
+            return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString() };
+        });
     };
 
     const openOverride = (boatName, field, currentValue) => {
@@ -414,15 +528,22 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
             const updatedBoats = prev.boats.map(b => {
                 if (b.boatName !== boatName) return b;
                 const overrides = (b.overrides || []).filter(o => o.field !== field);
-                const parsedValue = field === 'riskLevel' ? newValue : (field === 'notes' ? newValue : parseFloat(newValue));
+                let parsedValue;
+                if (field === 'riskLevel' || field === 'notes') {
+                    parsedValue = newValue;
+                } else if (field === 'vramNiprScanExempt' || field === 'vramSiprScanExempt') {
+                    parsedValue = newValue === 'true' || newValue === true;
+                } else {
+                    parsedValue = parseFloat(newValue);
+                }
                 if (String(parsedValue) !== String(originalValue)) {
-                    overrides.push({ field, originalValue, overrideValue: parsedValue, reason: reason || 'Manual override', timestamp: new Date().toISOString(), user: userName });
+                    overrides.push({ field, originalValue, overrideValue: parsedValue, reason: reason || 'Manual override', timestamp: new Date().toISOString(), user: 'User' });
                 }
                 const updated = { ...b, [field]: parsedValue, overrides };
-                if (field !== 'riskLevel' && field !== 'notes') { const { level, reasons } = calculateRisk(updated, settings.thresholds); updated.riskLevel = level; updated.riskReasons = reasons; }
+                if (field !== 'riskLevel' && field !== 'notes') { const { level, reasons } = calculateRisk(updated, activeThresholds); updated.riskLevel = level; updated.riskReasons = reasons; }
                 return updated;
             });
-            return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString(), lastModifiedBy: userName };
+            return { ...prev, boats: updatedBoats, lastModifiedAt: new Date().toISOString() };
         });
         setOverrideModal(null);
     };
@@ -431,14 +552,15 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
 
     const Cell = ({ boat, field, value, format = 'num', className = '' }) => {
         const overridden = isOverridden(boat, field);
-        return <td className={`${className} ${overridden ? 'overridden' : ''} cursor-pointer hover:bg-cyan-900/30`} onClick={() => openOverride(boat.boatName, field, boat[field])} title={overridden ? 'Overridden - click to edit' : 'Click to override'}>{format === 'pct' ? fmtPct(value) : format === 'date' ? fmtDate(value) : format === 'num2' ? fmt(value, 2) : value ?? '-'}</td>;
+        return <td className={`${className} ${overridden ? 'overridden' : ''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(boat.boatName, field, boat[field])} title={overridden ? 'Overridden - click to edit' : 'Click to override'}>{format === 'pct' ? fmtPct(value) : format === 'date' ? fmtDate(value) : format === 'num2' ? fmt(value, 2) : value ?? '-'}</td>;
     };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{color:'#22d3ee'}}>Preview Report</h2>
+                <h2 className="text-2xl font-bold text-slate-800">Preview Report</h2>
                 <div className="flex gap-2">
+                    <button onClick={() => setShowThresholds(!showThresholds)} className={`btn-secondary text-sm ${thresholdChanges.length > 0 ? 'ring-2 ring-amber-400' : ''}`}>{showThresholds ? 'Hide' : 'Adjust'} Thresholds{thresholdChanges.length > 0 ? ` (${thresholdChanges.length})` : ''}</button>
                     {allOverrides.length > 0 && <button onClick={() => setShowOverrideLog(!showOverrideLog)} className="btn-secondary text-sm">{showOverrideLog ? 'Hide' : 'Show'} Override Log ({allOverrides.length})</button>}
                     <button onClick={generate} className="btn-success">Generate HTML Report</button>
                 </div>
@@ -446,33 +568,57 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
 
             {showOverrideLog && allOverrides.length > 0 && (
                 <div className="card p-4 mb-6">
-                    <h3 className="text-lg font-bold mb-3" style={{color:'#a78bfa'}}>Override Log</h3>
+                    <h3 className="text-lg font-bold mb-3 text-purple-700">Override Log</h3>
                     <div className="overflow-x-auto"><table className="data-table text-xs"><thead><tr><th>Boat</th><th>Field</th><th>Original</th><th>New</th><th>Reason</th><th>By</th><th>Time</th></tr></thead>
-                    <tbody>{allOverrides.map((o, i) => <tr key={i}><td className="boat-name">{o.boatName}</td><td>{fieldLabels[o.field] || o.field}</td><td>{o.originalValue}</td><td>{o.overrideValue}</td><td>{o.reason}</td><td>{o.user}</td><td>{new Date(o.timestamp).toLocaleString()}</td></tr>)}</tbody></table></div>
+                    <tbody>{allOverrides.map((o, i) => <tr key={i}><td className="boat-name">{o.boatName}</td><td>{fieldLabels[o.field] || o.field}</td><td>{String(o.originalValue)}</td><td>{String(o.overrideValue)}</td><td>{o.reason}</td><td>{o.user}</td><td>{new Date(o.timestamp).toLocaleString()}</td></tr>)}</tbody></table></div>
+                </div>
+            )}
+
+            {showThresholds && previewThresholds && (
+                <div className="card p-4 mb-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-amber-700">Temporary Threshold Adjustments</h3>
+                        <div className="flex gap-2">
+                            {thresholdChanges.length > 0 && <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded">{thresholdChanges.length} changed</span>}
+                            <button onClick={resetThresholds} className="btn-secondary text-sm">Reset to Defaults</button>
+                        </div>
+                    </div>
+                    <p className="text-sm text-slate-500 mb-4">These adjustments only apply to this preview session and will be logged in the generated report.</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {Object.entries(previewThresholds).map(([k, v]) => (
+                            <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
+                                <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
+                                <div className="flex items-center gap-1">
+                                    <input type="number" step="any" value={v} onChange={(e) => recalculateWithThresholds({...previewThresholds, [k]: parseFloat(e.target.value) || 0})} className="w-full text-right text-sm" />
+                                    {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
             <div className="flex gap-2 mb-4">
-                {['csl', 'csp', 'hq'].map(t => <button key={t} onClick={() => { setSubTab(t); setSelectedISIC(''); }} className={`px-4 py-2 rounded font-medium uppercase text-sm ${subTab === t ? 'text-white' : 'text-slate-300'}`} style={{background: subTab === t ? '#06b6d4' : '#243552'}}>{t === 'hq' ? 'HQ Status' : `${t} Summary`}</button>)}
+                {['csl', 'csp', 'hq'].map(t => <button key={t} onClick={() => { setSubTab(t); setSelectedISIC(''); }} className={`px-4 py-2 rounded font-medium uppercase text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'hq' ? 'HQ Status' : `${t} Summary`}</button>)}
             </div>
             {(subTab === 'csl' || subTab === 'csp') && <div className="mb-4"><select value={selectedISIC} onChange={(e) => setSelectedISIC(e.target.value)} className="px-4 py-2 rounded"><option value="">All Squadrons</option>{isics.map(i => <option key={i} value={i}>{i}</option>)}</select><span className="ml-4 text-sm text-slate-500">Click any cell to override</span></div>}
 
             {subTab === 'hq' ? (
                 <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>CSL Status</h3>
+                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
                     <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
-                    <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>CSP Status</h3>
+                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
                     <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
                 </div>
             ) : (
                 <div className="card p-4 overflow-x-auto">
                     {Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) => (
                         <div key={isic} className="mb-6">
-                            <h3 className="text-sm font-bold mb-2 px-3 py-2 rounded" style={{color:'#22d3ee', background:'#1a2942'}}>{isic}</h3>
+                            <h3 className="text-sm font-bold mb-2 px-3 py-2 rounded bg-slate-100 text-slate-700">{isic}</h3>
                             <table className="data-table">
                                 <thead>
-                                    <tr><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="2" className="col-status">STATUS</th></tr>
-                                    <tr><th className="col-ess-n">Ast</th><th className="col-ess-n">BF</th><th className="col-ess-n">Prd%</th><th className="col-ess-n">TPol%</th><th className="col-ess-s">Ast</th><th className="col-ess-s">BF</th><th className="col-ess-s">Prd%</th><th className="col-ess-s">TPol%</th><th className="col-vram-n">Ast</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Int%</th><th className="col-vram-n">Pct%</th><th className="col-vram-s">Ast</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Int%</th><th className="col-vram-s">Pct%</th><th className="col-ra">Crit</th><th className="col-ra">High</th><th className="col-tam">Due</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">SEx</th></tr>
+                                    <tr><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
+                                    <tr><th className="col-ess-n">Ast</th><th className="col-ess-n">BF</th><th className="col-ess-n">Prd%</th><th className="col-ess-n">TPol%</th><th className="col-ess-s">Ast</th><th className="col-ess-s">BF</th><th className="col-ess-s">Prd%</th><th className="col-ess-s">TPol%</th><th className="col-vram-n">Ast</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Int%</th><th className="col-vram-n">Pct%</th><th className="col-vram-s">Ast</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Int%</th><th className="col-vram-s">Pct%</th><th className="col-ra">Crit</th><th className="col-ra">High</th><th className="col-tam">Due</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">SEx</th><th className="col-status" title="Notes">Note</th></tr>
                                 </thead>
                                 <tbody>{isicBoats.map(b => <tr key={b.boatName}>
                                     <td className="boat-name">{b.boatName}</td>
@@ -498,8 +644,9 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
                                     <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
                                     <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
                                     <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
-                                    <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-900/30`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
-                                    <td className={(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}>{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                    <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
+                                    <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                    <Cell boat={b} field="notes" value={b.notes || '-'} className="text-xs max-w-[60px] truncate" />
                                 </tr>)}</tbody>
                             </table>
                         </div>
@@ -510,23 +657,29 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
             {overrideModal && (
                 <div className="modal-overlay" onClick={() => setOverrideModal(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold mb-4" style={{color:'#a78bfa'}}>Override Value</h3>
+                        <h3 className="text-lg font-bold mb-4 text-purple-700">Override Value</h3>
                         <div className="space-y-4">
-                            <div className="text-sm text-slate-400">Boat: <span className="text-cyan-400 font-mono">{overrideModal.boatName}</span></div>
-                            <div className="text-sm text-slate-400">Field: <span className="text-white">{fieldLabels[overrideModal.field] || overrideModal.field}</span></div>
-                            <div className="text-sm text-slate-400">Original: <span className="text-slate-300">{overrideModal.originalValue ?? 'null'}</span></div>
+                            <div className="text-sm text-slate-500">Boat: <span className="text-cyan-600 font-mono">{overrideModal.boatName}</span></div>
+                            <div className="text-sm text-slate-500">Field: <span className="text-slate-800">{fieldLabels[overrideModal.field] || overrideModal.field}</span></div>
+                            <div className="text-sm text-slate-500">Original: <span className="text-slate-600">{overrideModal.originalValue ?? 'null'}</span></div>
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">New Value</label>
+                                <label className="block text-sm text-slate-500 mb-1">New Value</label>
                                 {overrideModal.field === 'riskLevel' ? (
                                     <select value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full">
                                         <option value="LOW">LOW</option><option value="MED">MED</option><option value="HIGH">HIGH</option>
                                     </select>
+                                ) : (overrideModal.field === 'vramNiprScanExempt' || overrideModal.field === 'vramSiprScanExempt') ? (
+                                    <select value={String(overrideModal.newValue)} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full">
+                                        <option value="false">No (N)</option><option value="true">Yes (Y)</option>
+                                    </select>
+                                ) : overrideModal.field === 'notes' ? (
+                                    <input type="text" maxLength={30} value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" placeholder="Short note (3-5 words)" />
                                 ) : (
-                                    <input type={overrideModal.field === 'notes' ? 'text' : 'number'} step="any" value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" />
+                                    <input type="number" step="any" value={overrideModal.newValue} onChange={(e) => setOverrideModal({...overrideModal, newValue: e.target.value})} className="w-full" />
                                 )}
                             </div>
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Reason for Override</label>
+                                <label className="block text-sm text-slate-500 mb-1">Reason for Override</label>
                                 <input value={overrideModal.reason} onChange={(e) => setOverrideModal({...overrideModal, reason: e.target.value})} placeholder="Why is this being overridden?" className="w-full" />
                             </div>
                         </div>
@@ -541,10 +694,10 @@ const PreviewTab = ({ reportData, setReportData, settings, userName }) => {
     );
 };
 
-const SettingsTab = ({ settings, setSettings, userName, setUserName }) => {
+const SettingsTab = ({ settings, setSettings, onRequestName }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
-    
+
     const saveBoat = () => {
         if (!editingBoat.boat_name) return;
         const isic = settings.isics.find(i => i.isic_name === editingBoat.isic);
@@ -552,61 +705,135 @@ const SettingsTab = ({ settings, setSettings, userName, setUserName }) => {
         setSettings(prev => ({ ...prev, boats: editingBoat.isNew ? [...prev.boats, boat] : prev.boats.map(b => b.boat_name === boat.boat_name ? boat : b) }));
         setEditingBoat(null);
     };
-    
+
+    const handleSaveApp = () => {
+        onRequestName((name) => {
+            const updatedSettings = { ...settings, user: { ...settings.user, default_name: name || '' } };
+            SettingsManager.saveApplication(updatedSettings);
+        });
+    };
+
+    // Column mapping helpers
+    const colMaps = settings.columnMappings || { vram: {}, ess: {}, tam: {} };
+    const updateColMap = (type, field, value) => {
+        const newMappings = { ...colMaps, [type]: { ...colMaps[type], [field]: value.split(',').map(s => s.trim()).filter(s => s) } };
+        setSettings(prev => ({ ...prev, columnMappings: newMappings }));
+    };
+
+    const colLabels = {
+        vram: { siteName: 'Site/Boat Name', scanDate: 'Last Scan Date', assets: 'Asset Count', raVph: 'RA VPH', scanIntegrity: 'Scan Integrity %', scanPercent: 'Percent Scanned', raCrit: 'RA Critical Count', raHigh: 'RA High Count', scanExempt: 'Scan Exempt' },
+        ess: { shipName: 'Ship/Boat Name', isic: 'ISIC Column', productCompliance: 'Product Compliance %', policyEnforced: 'Policy Enforced %', breakfix: 'Breakfix Count', assets: 'Asset Count' },
+        tam: { boatName: 'Boat Name', pastDue: 'Past Due Count', extensions: 'Extensions Count' }
+    };
+
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6" style={{color:'#22d3ee'}}>Settings</h2>
-            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'user'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'text-white' : 'text-slate-300'}`} style={{background: subTab === t ? '#06b6d4' : '#243552'}}>{t}</button>)}</div>
-            
+            <h2 className="text-2xl font-bold mb-6 text-slate-800">Settings</h2>
+            <div className="flex gap-2 mb-6">{['registry', 'thresholds', 'columns'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'Column Mappings' : t}</button>)}</div>
+
             {subTab === 'registry' && (
                 <div className="space-y-6">
                     <div className="card p-4">
-                        <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>Boats ({settings.boats.length})</h3>
-                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm" style={{color:'#22d3ee'}}>Edit</button></td></tr>)}</tbody></table></div>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Boats ({settings.boats.length})</h3>
+                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600">Edit</button></td></tr>)}</tbody></table></div>
                         <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
                     </div>
                     <div className="card p-4">
-                        <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>ISICs</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">ISICs</h3>
                         <table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th>Short</th><th>TYCOM</th></tr></thead><tbody>{settings.isics.map(i => <tr key={i.isic_name}><td style={{textAlign:'left'}}>{i.isic_name}</td><td>{i.isic_short}</td><td>{i.tycom}</td></tr>)}</tbody></table>
                     </div>
                 </div>
             )}
-            
+
             {subTab === 'thresholds' && (
                 <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>Risk Thresholds</h3>
-                    <div className="grid grid-cols-2 gap-4">{Object.entries(settings.thresholds).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-400 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}</div>
+                    <h3 className="text-lg font-bold mb-4 text-slate-700">Risk Thresholds</h3>
+                    <div className="grid grid-cols-2 gap-4">{Object.entries(settings.thresholds).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}</div>
                 </div>
             )}
 
-            {subTab === 'user' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>User Settings</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-slate-400 mb-1">Your Name (for report attribution)</label>
-                            <input value={userName} onChange={(e) => { setUserName(e.target.value); setSettings(p => ({ ...p, user: { ...p.user, default_name: e.target.value } })); }} placeholder="Enter your name" className="w-full max-w-md" />
-                            <p className="text-xs text-slate-500 mt-1">This name will appear in the "Created By" field of generated reports.</p>
+            {subTab === 'columns' && (
+                <div className="space-y-6">
+                    <div className="card p-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-700">Excel Column Mappings</h3>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-4">Configure which column headers to look for in each Excel file type. Enter multiple possible names separated by commas. The first matching column will be used.</p>
+
+                        <div className="space-y-6">
+                            <div className="border-b border-slate-200 pb-4">
+                                <h4 className="font-bold text-cyan-700 mb-3">VRAM Files</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {Object.entries(colLabels.vram).map(([field, label]) => (
+                                        <div key={field} className="flex flex-col">
+                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
+                                            <input value={(colMaps.vram?.[field] || []).join(', ')} onChange={(e) => updateColMap('vram', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="border-b border-slate-200 pb-4">
+                                <h4 className="font-bold text-indigo-700 mb-3">ESS Files</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {Object.entries(colLabels.ess).map(([field, label]) => (
+                                        <div key={field} className="flex flex-col">
+                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
+                                            <input value={(colMaps.ess?.[field] || []).join(', ')} onChange={(e) => updateColMap('ess', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-bold text-orange-700 mb-3">TAM Files</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {Object.entries(colLabels.tam).map(([field, label]) => (
+                                        <div key={field} className="flex flex-col">
+                                            <label className="text-xs text-slate-500 mb-1">{label}</label>
+                                            <input value={(colMaps.tam?.[field] || []).join(', ')} onChange={(e) => updateColMap('tam', field, e.target.value)} className="text-sm" placeholder="Column name(s)" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
-            
+
             {editingBoat && (
                 <div className="modal-overlay" onClick={() => setEditingBoat(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold mb-4" style={{color:'#22d3ee'}}>{editingBoat.isNew ? 'Add Boat' : 'Edit Boat'}</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">{editingBoat.isNew ? 'Add Boat' : 'Edit Boat'}</h3>
                         <div className="space-y-4">
-                            <div><label className="block text-sm text-slate-400 mb-1">Boat Name (e.g. SSN-21)</label><input value={editingBoat.boat_name} onChange={(e) => setEditingBoat({...editingBoat, boat_name: e.target.value})} className="w-full" disabled={!editingBoat.isNew} /></div>
-                            <div><label className="block text-sm text-slate-400 mb-1">Full Name</label><input value={editingBoat.boat_full_name} onChange={(e) => setEditingBoat({...editingBoat, boat_full_name: e.target.value})} className="w-full" /></div>
-                            <div><label className="block text-sm text-slate-400 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">Boat Name (e.g. SSN-21)</label><input value={editingBoat.boat_name} onChange={(e) => setEditingBoat({...editingBoat, boat_name: e.target.value})} className="w-full" disabled={!editingBoat.isNew} /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">Full Name</label><input value={editingBoat.boat_full_name} onChange={(e) => setEditingBoat({...editingBoat, boat_full_name: e.target.value})} className="w-full" /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
                     </div>
                 </div>
             )}
-            
-            <div className="mt-8 pt-4" style={{borderTop:'1px solid #243552'}}><button onClick={() => SettingsManager.saveApplication(settings)} className="btn-success">💾 Save Application (Download Updated HTML)</button></div>
+
+            <div className="mt-8 pt-4 border-t border-slate-200"><button onClick={handleSaveApp} className="btn-success">Save Application (Download Updated HTML)</button></div>
+        </div>
+    );
+};
+
+// Name Prompt Modal
+const NamePromptModal = ({ onSubmit, onCancel }) => {
+    const [name, setName] = React.useState('');
+    return (
+        <div className="modal-overlay" onClick={onCancel}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold mb-4 text-slate-700">Enter Your Name</h3>
+                <p className="text-sm text-slate-500 mb-4">This will be recorded in the report for attribution.</p>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="w-full mb-4" autoFocus onKeyDown={(e) => e.key === 'Enter' && onSubmit(name)} />
+                <div className="flex gap-2">
+                    <button onClick={() => onSubmit(name)} className="btn-primary">Continue</button>
+                    <button onClick={onCancel} className="btn-secondary">Cancel</button>
+                </div>
+            </div>
         </div>
     );
 };
@@ -617,16 +844,14 @@ function App() {
     const [currentTab, setCurrentTab] = React.useState('import');
     const [importedFiles, setImportedFiles] = React.useState({ vramNipr: null, vramSipr: null, essNipr: null, essSipr: null, tam: null });
     const [reportData, setReportData] = React.useState(null);
-    const [userName, setUserName] = React.useState(settings.user.default_name || '');
     const [alerts, setAlerts] = React.useState([]);
-    
-    
+    const [namePrompt, setNamePrompt] = React.useState(null);
+
     const handleReportImport = async (file) => {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
             setSettings(result.settings);
-            result.reportData.lastModifiedBy = userName;
             setReportData(result.reportData);
             setCurrentTab('preview');
             setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
@@ -639,30 +864,40 @@ function App() {
         const file = e.dataTransfer?.files?.[0];
         if (file?.name.endsWith('.html')) { handleReportImport(file); }
     };
-    
+
+    const requestName = (callback) => {
+        setNamePrompt({ callback });
+    };
+
+    const handleNameSubmit = (name) => {
+        if (namePrompt?.callback) namePrompt.callback(name);
+        setNamePrompt(null);
+    };
+
     return (
         <div className="min-h-screen" onDragOver={(e) => e.preventDefault()} onDrop={handleGlobalDrop}>
-            <header style={{background:'#0a1628',borderBottom:'1px solid #1a2942'}} className="px-6 py-4">
+            <header className="bg-white border-b border-slate-200 px-6 py-4">
                 <div className="flex justify-between items-center max-w-7xl mx-auto">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{background:'linear-gradient(135deg, #22d3ee, #06b6d4)', color:'#0a1628'}}>CD</div>
-                        <div><h1 className="text-xl font-bold text-white">Cyber Dashboard Generator</h1><p className="text-xs text-slate-500">Drop Excel files or a report HTML to begin</p></div>
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">CD</div>
+                        <div><h1 className="text-xl font-bold text-slate-800">Cyber Dashboard Generator</h1><p className="text-xs text-slate-500">Drop Excel files or a report HTML to begin</p></div>
                     </div>
-                    <span className="text-sm text-slate-400">User: <span style={{color:'#22d3ee'}}>{userName || 'Not set'}</span></span>
                 </div>
             </header>
-            
-            {alerts.length > 0 && <div className="max-w-7xl mx-auto px-6 pt-4">{alerts.map((a, i) => <div key={i} className={`p-3 rounded mb-2 flex justify-between items-center ${a.type === 'error' ? 'bg-red-900/50 text-red-300' : a.type === 'warning' ? 'bg-amber-900/50 text-amber-300' : 'bg-blue-900/50 text-blue-300'}`}><span>{a.msg}</span><button onClick={() => setAlerts(alerts.filter((_, j) => j !== i))} className="text-white/50 hover:text-white">×</button></div>)}</div>}
-            
-            <nav style={{borderBottom:'1px solid #1a2942'}} className="px-6"><div className="flex gap-1 max-w-7xl mx-auto">{['import', 'preview', 'settings'].map(tab => <button key={tab} onClick={() => setCurrentTab(tab)} className={`tab-btn ${currentTab === tab ? 'active' : ''}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}</div></nav>
-            
+
+            {alerts.length > 0 && <div className="max-w-7xl mx-auto px-6 pt-4">{alerts.map((a, i) => <div key={i} className={`p-3 rounded mb-2 flex justify-between items-center ${a.type === 'error' ? 'bg-red-100 text-red-700' : a.type === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}><span>{a.msg}</span><button onClick={() => setAlerts(alerts.filter((_, j) => j !== i))} className="text-current opacity-50 hover:opacity-100">×</button></div>)}</div>}
+
+            <nav className="border-b border-slate-200 px-6 bg-white"><div className="flex gap-1 max-w-7xl mx-auto">{['import', 'preview', 'settings'].map(tab => <button key={tab} onClick={() => setCurrentTab(tab)} className={`tab-btn ${currentTab === tab ? 'active' : ''}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}</div></nav>
+
             <main className="max-w-7xl mx-auto p-6">
-                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} userName={userName} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
-                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} userName={userName} />}
-                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} userName={userName} setUserName={setUserName} />}
+                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
+                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
+                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onRequestName={requestName} />}
             </main>
-            
-            <footer className="text-center py-6 text-slate-600 text-sm">Cyber Dashboard Generator v1.0 • Settings and registry are embedded in this HTML file</footer>
+
+            <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
+
+            {namePrompt && <NamePromptModal onSubmit={handleNameSubmit} onCancel={() => setNamePrompt(null)} />}
         </div>
     );
 }
