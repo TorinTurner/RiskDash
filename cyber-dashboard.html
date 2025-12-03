@@ -130,10 +130,45 @@ const getColValue = (row, possibleNames) => {
     return undefined;
 };
 
+// Default column mappings
+const defaultColumnMappings = {
+    vram: {
+        siteName: ['Site Name', 'Site', 'SiteName'],
+        scanDate: ['Last Scan Date', 'Scan Date'],
+        assets: ['Valid Assets', 'Assets'],
+        raVph: ['RA VPH', 'VPH'],
+        scanIntegrity: ['Scan Integrity', 'Integrity'],
+        scanPercent: ['Percent Scanned', 'Scanned'],
+        raCrit: ['RA Crit', 'Crit'],
+        raHigh: ['RA High', 'High'],
+        scanExempt: ['Scan Exempt']
+    },
+    ess: {
+        shipName: ['Ships', 'Ship', 'Boat'],
+        isic: ['ISICs', 'ISIC'],
+        productCompliance: ['Product Compliance', 'Compliance'],
+        policyEnforced: ['Policy Enforced', 'Enforced'],
+        breakfix: ['Assets in Breakfix', 'Breakfix'],
+        assets: ['Asset Count', 'Assets']
+    },
+    tam: {
+        boatName: ['Boat', 'Ship'],
+        pastDue: ['# Past Due', 'Past Due', 'Overdue'],
+        extensions: ['# Extensions', 'Extensions']
+    }
+};
+
 // Settings Manager
 const SettingsManager = {
-    load() { try { return JSON.parse(document.getElementById('app-settings').textContent); } catch { return this.getDefaults(); } },
-    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' } }; },
+    load() {
+        try {
+            const settings = JSON.parse(document.getElementById('app-settings').textContent);
+            // Ensure columnMappings exists with defaults
+            if (!settings.columnMappings) settings.columnMappings = defaultColumnMappings;
+            return settings;
+        } catch { return this.getDefaults(); }
+    },
+    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, columnMappings: defaultColumnMappings }; },
     saveApplication(settings) {
         const html = document.documentElement.outerHTML;
         const updated = '<!DOCTYPE html>\n' + html.replace(/(<script type="application\/json" id="app-settings">)([\s\S]*?)(<\/script>)/, `$1\n${JSON.stringify(settings, null, 4)}\n$3`);
@@ -152,9 +187,9 @@ const createBoatData = (name, fullName, isic, tycom) => ({
     tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: ''
 });
 
-// Parsers - use column mappings from settings
+// Parsers - use column mappings from settings, fall back to defaults
 const parseVRAM = (data, colMap) => {
-    const m = colMap || { siteName: ['Site Name', 'Site', 'SiteName'], scanDate: ['Last Scan Date', 'Scan Date'], assets: ['Valid Assets', 'Assets'], raVph: ['RA VPH', 'VPH'], scanIntegrity: ['Scan Integrity', 'Integrity'], scanPercent: ['Percent Scanned', 'Scanned'], raCrit: ['RA Crit', 'Crit'], raHigh: ['RA High', 'High'], scanExempt: ['Scan Exempt'] };
+    const m = { ...defaultColumnMappings.vram, ...colMap };
     const wb = XLSX.read(data, { type: 'array', cellDates: true }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const site = getColValue(row, m.siteName); if (!site) continue;
@@ -167,7 +202,7 @@ const parseVRAM = (data, colMap) => {
 };
 
 const parseESS = (data, colMap) => {
-    const m = colMap || { shipName: ['Ships', 'Ship', 'Boat'], isic: ['ISICs', 'ISIC'], productCompliance: ['Product Compliance', 'Compliance'], policyEnforced: ['Policy Enforced', 'Enforced'], breakfix: ['Assets in Breakfix', 'Breakfix'], assets: ['Asset Count', 'Assets'] };
+    const m = { ...defaultColumnMappings.ess, ...colMap };
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {}; const isicMap = {};
     for (const row of rows) {
         const ship = getColValue(row, m.shipName); if (!ship) continue;
@@ -181,7 +216,7 @@ const parseESS = (data, colMap) => {
 };
 
 const parseTAM = (data, colMap) => {
-    const m = colMap || { boatName: ['Boat', 'Ship'], pastDue: ['# Past Due', 'Past Due', 'Overdue'], extensions: ['# Extensions', 'Extensions'] };
+    const m = { ...defaultColumnMappings.tam, ...colMap };
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const boat = getColValue(row, m.boatName); if (!boat) continue;
@@ -456,6 +491,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
 
     const generate = () => {
         onRequestName((name) => {
+            const userName = name || 'Unknown';
             // Build threshold change log if thresholds were modified
             const thresholdLog = thresholdChanges.map(k => ({
                 field: k,
@@ -463,12 +499,21 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                 newValue: previewThresholds[k],
                 reason: 'Adjusted for this report',
                 timestamp: new Date().toISOString(),
-                user: name || 'Unknown'
+                user: userName
+            }));
+            // Update boats with user name in overrides (replace "User" placeholder)
+            const updatedBoats = reportData.boats.map(b => ({
+                ...b,
+                overrides: (b.overrides || []).map(o => ({
+                    ...o,
+                    user: o.user === 'User' ? userName : o.user
+                }))
             }));
             const updatedReport = {
                 ...reportData,
-                createdBy: name || reportData.createdBy || 'Unknown',
-                lastModifiedBy: name || 'Unknown',
+                boats: updatedBoats,
+                createdBy: userName,
+                lastModifiedBy: userName,
                 thresholdChanges: thresholdLog,
                 usedThresholds: previewThresholds || settings.thresholds
             };
@@ -740,10 +785,20 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
         });
     };
 
-    // Column mapping helpers
-    const colMaps = settings.columnMappings || { vram: {}, ess: {}, tam: {} };
+    // Column mapping helpers - merge with defaults to ensure all fields are shown
+    const colMaps = {
+        vram: { ...defaultColumnMappings.vram, ...(settings.columnMappings?.vram || {}) },
+        ess: { ...defaultColumnMappings.ess, ...(settings.columnMappings?.ess || {}) },
+        tam: { ...defaultColumnMappings.tam, ...(settings.columnMappings?.tam || {}) }
+    };
     const updateColMap = (type, field, value) => {
-        const newMappings = { ...colMaps, [type]: { ...colMaps[type], [field]: value.split(',').map(s => s.trim()).filter(s => s) } };
+        const parsed = value.split(',').map(s => s.trim()).filter(s => s);
+        const newMappings = {
+            vram: { ...colMaps.vram },
+            ess: { ...colMaps.ess },
+            tam: { ...colMaps.tam },
+            [type]: { ...colMaps[type], [field]: parsed.length > 0 ? parsed : defaultColumnMappings[type][field] }
+        };
         setSettings(prev => ({ ...prev, columnMappings: newMappings }));
     };
 
