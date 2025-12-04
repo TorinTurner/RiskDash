@@ -229,6 +229,33 @@ const defaultThresholds = {
     high_scan_age_days: 30
 };
 
+// Default help modal text (? button content) - editable in settings
+const defaultHelpModalText = {
+    highItems: [
+        'Breakfix > 0 - Any asset in either enclave in breakfix',
+        'No VRAM Scan Data - Unable to assess risk without scan data',
+        'Product Compliance < {high_product_compliance}% - Critical ESS compliance failure'
+    ],
+    medItems: [
+        'VPH > {med_ra_vph} - Vulnerabilities per host above threshold',
+        'Product/Policy Compliance < {med_ess_compliance}% - ESS compliance below threshold',
+        'Scan Age > {med_scan_age_days} days - VRAM scan older than threshold',
+        'TAM Past Due > {med_tam_past_due} - Too many overdue TAMs'
+    ],
+    lowItems: [
+        'VPH < {low_vph} - Low vulnerabilities per host',
+        'Scans within {low_scan_age_days} days - Recent scan data',
+        'Compliance > {low_ess_compliance}% - High product and policy compliance',
+        'No HIGH risk triggers present'
+    ],
+    calcItems: [
+        'Scan Age = Days since last VRAM scan date',
+        'VPH = Vulnerabilities Per Host (from VRAM RA VPH column)',
+        'True Policy % = PolicyEnforced × ProductCompliance / 100'
+    ],
+    scanExempt: 'If a boat is marked Scan Exempt, HIGH risk is downgraded to MED only when HIGH is due to "No VRAM Scan Data". Breakfix-related HIGH risk is NOT affected by Scan Exempt status.'
+};
+
 // Settings Manager with localStorage
 const SETTINGS_STORAGE_KEY = 'cyberDashboard_settings';
 const SETTINGS_VERSION = '1.0';
@@ -247,6 +274,7 @@ const SettingsManager = {
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
+        if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
         // Ensure thresholds are populated with defaults if empty or missing
         if (!settings.thresholds || Object.keys(settings.thresholds).length === 0) {
             settings.thresholds = JSON.parse(JSON.stringify(defaultThresholds));
@@ -422,7 +450,8 @@ const SettingsManager = {
             schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)),
             tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}],
             analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)),
-            legendText: JSON.parse(JSON.stringify(defaultLegendText))
+            legendText: JSON.parse(JSON.stringify(defaultLegendText)),
+            helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))
         };
     }
 };
@@ -798,6 +827,15 @@ const generateReportHTML = (reportData, settings) => {
         return text.replace(/\{(\w+)\}/g, (match, key) => {
             return settings.thresholds[key] !== undefined ? settings.thresholds[key] : match;
         }).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
+    // Help modal text (? button content)
+    const helpModalText = settings.helpModalText || defaultHelpModalText;
+    const formatHelpText = (text) => {
+        if (!text) return '';
+        return text.replace(/\{(\w+)\}/g, (match, key) => {
+            return settings.thresholds[key] !== undefined ? settings.thresholds[key] : match;
+        });
     };
 
     // Stats for analytics
@@ -1470,40 +1508,30 @@ function hideHelpModal() { document.getElementById('help-modal').style.display =
 <div style="margin-bottom:16px;">
 <h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Breakfix > 0</strong> - Any asset in either enclave in breakfix</li>
-<li><strong>No VRAM Scan Data</strong> - Unable to assess risk without scan data</li>
-<li><strong>Product Compliance < ${settings.thresholds.high_product_compliance}%</strong> - Critical ESS compliance failure</li>
+${(helpModalText.highItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div style="margin-bottom:16px;">
 <h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk (2 or more of the following)</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong> - Vulnerabilities per host above threshold</li>
-<li><strong>Product/Policy Compliance < ${settings.thresholds.med_ess_compliance}%</strong> - ESS compliance below threshold</li>
-<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong> - VRAM scan older than threshold</li>
-<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong> - Too many overdue TAMs</li>
+${(helpModalText.medItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div style="margin-bottom:16px;">
 <h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>VPH < ${settings.thresholds.low_vph}</strong> - Low vulnerabilities per host</li>
-<li><strong>Scans within ${settings.thresholds.low_scan_age_days} days</strong> - Recent scan data</li>
-<li><strong>Compliance > ${settings.thresholds.low_ess_compliance}%</strong> - High product and policy compliance</li>
-<li>No HIGH risk triggers present</li>
+${(helpModalText.lowItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div style="margin-bottom:16px;">
 <h4 style="font-weight:bold;color:#334155;margin-bottom:6px;">Key Calculations</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
-<li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-<li><strong>True Policy %</strong> = PolicyEnforced × ProductCompliance / 100</li>
+${(helpModalText.calcItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div>
 <h4 style="font-weight:bold;color:#0ea5e9;margin-bottom:6px;">Scan Exempt</h4>
-<p style="color:#475569;">If a boat is marked Scan Exempt, HIGH risk is downgraded to MED <strong>only</strong> when HIGH is due to "No VRAM Scan Data". Breakfix-related HIGH risk is NOT affected by Scan Exempt status.</p>
+<p style="color:#475569;">${formatHelpText(helpModalText.scanExempt || '')}</p>
 </div>
 </div>
 <div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
@@ -2451,6 +2479,32 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
         setSettings(prev => ({ ...prev, legendText: { ...prev.legendText, [key]: value } }));
     };
 
+    // Help modal text helpers (? button content)
+    const helpModal = settings.helpModalText || JSON.parse(JSON.stringify(defaultHelpModalText));
+    const updateHelpModal = (key, value) => {
+        setSettings(prev => ({ ...prev, helpModalText: { ...prev.helpModalText, [key]: value } }));
+    };
+    const updateHelpModalItem = (key, index, value) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key])];
+            items[index] = value;
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+    const addHelpModalItem = (key) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key]), ''];
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+    const removeHelpModalItem = (key, index) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key])];
+            items.splice(index, 1);
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+
     // Schema config helpers
     const schema = settings.schemaConfig || JSON.parse(JSON.stringify(defaultSchemaConfig));
     const [newFieldModal, setNewFieldModal] = React.useState(null);
@@ -2548,30 +2602,91 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
             )}
 
             {subTab === 'legend' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Legend Text</h3>
-                    <p className="text-sm text-slate-500 mb-4">Customize the legend text shown on CSL/CSP summary pages. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values (e.g., <code className="bg-slate-100 px-1 rounded">{'{auto_high_scan_age_days}'}</code> becomes the actual value).</p>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Criteria</label>
-                            <textarea value={legend.high} onChange={(e) => updateLegend('high', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Breakfix > 0, Scan > {auto_high_scan_age_days}d" />
+                <div className="space-y-6">
+                    <div className="card p-4">
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Legend Text (Table)</h3>
+                        <p className="text-sm text-slate-500 mb-4">Customize the legend text shown on CSL/CSP summary pages. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Criteria</label>
+                                <textarea value={legend.high} onChange={(e) => updateLegend('high', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Breakfix > 0, Scan > {auto_high_scan_age_days}d" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Criteria</label>
+                                <textarea value={legend.med} onChange={(e) => updateLegend('med', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Scan > {med_scan_age_days}d, VPH > {med_ra_vph}" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Criteria</label>
+                                <textarea value={legend.low} onChange={(e) => updateLegend('low', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., No criteria met" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Criteria</label>
-                            <textarea value={legend.med} onChange={(e) => updateLegend('med', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Scan > {med_scan_age_days}d, VPH > {med_ra_vph}" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Criteria</label>
-                            <textarea value={legend.low} onChange={(e) => updateLegend('low', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., No criteria met" />
-                        </div>
+                        <button onClick={() => setSettings(p => ({...p, legendText: JSON.parse(JSON.stringify(defaultLegendText))}))} className="btn-secondary mt-4 text-sm">Reset Table Legend</button>
                     </div>
-                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
+
+                    <div className="card p-4">
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Help Modal Content (? Button)</h3>
+                        <p className="text-sm text-slate-500 mb-4">Customize the content shown when clicking the ? button. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values. Each item becomes a bullet point.</p>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Items</label>
+                                {(helpModal.highItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('highItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., Breakfix > 0 - Any asset in breakfix" />
+                                        <button onClick={() => removeHelpModalItem('highItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('highItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Items (2+ triggers MED)</label>
+                                {(helpModal.medItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('medItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH > {med_ra_vph} - Vulnerabilities per host" />
+                                        <button onClick={() => removeHelpModalItem('medItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('medItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Items</label>
+                                {(helpModal.lowItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('lowItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH < {low_vph} - Low vulnerabilities" />
+                                        <button onClick={() => removeHelpModalItem('lowItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('lowItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Key Calculations</label>
+                                {(helpModal.calcItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('calcItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH = Vulnerabilities Per Host" />
+                                        <button onClick={() => removeHelpModalItem('calcItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('calcItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Scan Exempt Explanation</label>
+                                <textarea value={helpModal.scanExempt || ''} onChange={(e) => updateHelpModal('scanExempt', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={3} placeholder="Explain when Scan Exempt applies..." />
+                            </div>
+                        </div>
+
+                        <button onClick={() => setSettings(p => ({...p, helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))}))} className="btn-secondary mt-4 text-sm">Reset Help Modal</button>
+                    </div>
+
+                    <div className="card p-4">
                         <h4 className="text-sm font-semibold text-slate-600 mb-2">Available Threshold Variables:</h4>
                         <div className="text-xs text-slate-500 font-mono flex flex-wrap gap-2">
                             {Object.keys(settings.thresholds).map(k => <span key={k} className="bg-slate-200 px-2 py-1 rounded">{`{${k}}`}</span>)}
                         </div>
                     </div>
-                    <button onClick={() => setSettings(p => ({...p, legendText: JSON.parse(JSON.stringify(defaultLegendText))}))} className="btn-secondary mt-4 text-sm">Reset to Default</button>
                 </div>
             )}
 
