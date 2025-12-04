@@ -1729,10 +1729,10 @@ const FirstTimeSetupModal = ({ onImportSettings, onImportReport, onDismiss }) =>
                     onDrop={handleDrop}
                 >
                     <div className="text-4xl mb-3">📂</div>
-                    <p className="text-slate-600 font-medium mb-2">Drop a file here</p>
+                    <p className="text-slate-600 font-medium mb-2">Drop a file here to import settings</p>
                     <p className="text-sm text-slate-500">
-                        Drop a previously generated <strong>report.html</strong> to extract its settings<br/>
-                        or drop a <strong>settings.json</strong> backup file
+                        Drop a previously generated <strong>report.html</strong> (settings will be extracted and saved)<br/>
+                        or drop a <strong>settings.json</strong> file (will be saved automatically)
                     </p>
                 </div>
 
@@ -1788,7 +1788,7 @@ function App() {
                 SettingsManager.save(result.settings);
                 setSettings(result.settings);
                 setShowFirstTimeSetup(false);
-                setAlerts([{ type: 'info', msg: `Settings imported from report (${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs)` }]);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
             } else {
                 // Normal import: use for session only
                 setIsUsingImportedSettings(true);
@@ -1808,7 +1808,7 @@ function App() {
             SettingsManager.save(imported);
             setSettings(imported);
             setShowFirstTimeSetup(false);
-            setAlerts([{ type: 'info', msg: `Settings imported (${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs)` }]);
+            setAlerts([{ type: 'info', msg: `✓ Settings saved! ${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs configured` }]);
         } else {
             // Open file picker
             const result = await SettingsManager.importSettings();
@@ -1816,7 +1816,7 @@ function App() {
                 SettingsManager.save(result.settings);
                 setSettings(result.settings);
                 setShowFirstTimeSetup(false);
-                setAlerts([{ type: 'info', msg: `Settings imported (${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs)` }]);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs configured` }]);
             }
         }
     };
@@ -1824,7 +1824,31 @@ function App() {
     const handleGlobalDrop = async (e) => {
         e.preventDefault();
         const file = e.dataTransfer?.files?.[0];
-        if (file?.name.endsWith('.html')) { handleReportImport(file); }
+        if (!file) return;
+
+        if (file.name.endsWith('.json')) {
+            // JSON file: import settings only
+            try {
+                const text = await file.text();
+                const settings = JSON.parse(text);
+                const imported = SettingsManager.ensureDefaults(settings);
+                SettingsManager.save(imported);
+                setSettings(imported);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! ${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs configured` }]);
+            } catch (err) {
+                setAlerts([{ type: 'error', msg: 'Failed to parse settings file: ' + err.message }]);
+            }
+        } else if (file.name.endsWith('.html')) {
+            // HTML report: extract and save settings only (discard report data)
+            const result = await importReportHTML(file);
+            if (result.error) {
+                setAlerts([{ type: 'error', msg: result.error }]);
+            } else {
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
+            }
+        }
     };
 
     const requestName = (callback) => {
