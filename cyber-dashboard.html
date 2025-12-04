@@ -524,6 +524,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .legend{display:flex;gap:16px;margin-bottom:12px;font-size:8pt;flex-wrap:wrap}
 .legend span{display:flex;align-items:center;gap:4px}
 .legend-box{width:14px;height:14px;border:1px solid #333;display:inline-block}
+.risk-criteria{font-size:7pt;color:#475569;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:4px;border:1px solid #e2e8f0}
+.risk-criteria span{padding:2px 6px;border-radius:3px;font-weight:600}
 .summary-table{width:100%;border-collapse:collapse;font-size:8pt}
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
@@ -575,6 +577,14 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 </div>
 </div>
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
+<div class="risk-criteria">
+<strong>Risk Criteria:</strong>
+<span class="risk-high">HIGH</span> = Breakfix &gt; 0, Scan &gt; ${settings.thresholds.auto_high_scan_age_days}d, VPH &gt; ${settings.thresholds.auto_high_ra_vph}, Integrity &lt; ${settings.thresholds.auto_high_scan_integrity}%, Policy &lt; ${settings.thresholds.high_ess_compliance}%, TAM &gt; ${settings.thresholds.high_tam_past_due}
+&nbsp;|&nbsp;
+<span class="risk-med">MED</span> = Scan &gt; ${settings.thresholds.med_scan_age_days}d, VPH &gt; ${settings.thresholds.med_ra_vph}, Policy &lt; ${settings.thresholds.med_ess_compliance}%, TAM &gt; ${settings.thresholds.med_tam_past_due}
+&nbsp;|&nbsp;
+<span class="risk-low">LOW</span> = No criteria met
+</div>
 <div id="csl-content">${Object.entries(cslByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
 </div>
 </div>` : ''}
@@ -592,6 +602,14 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 </div>
 </div>
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
+<div class="risk-criteria">
+<strong>Risk Criteria:</strong>
+<span class="risk-high">HIGH</span> = Breakfix &gt; 0, Scan &gt; ${settings.thresholds.auto_high_scan_age_days}d, VPH &gt; ${settings.thresholds.auto_high_ra_vph}, Integrity &lt; ${settings.thresholds.auto_high_scan_integrity}%, Policy &lt; ${settings.thresholds.high_ess_compliance}%, TAM &gt; ${settings.thresholds.high_tam_past_due}
+&nbsp;|&nbsp;
+<span class="risk-med">MED</span> = Scan &gt; ${settings.thresholds.med_scan_age_days}d, VPH &gt; ${settings.thresholds.med_ra_vph}, Policy &lt; ${settings.thresholds.med_ess_compliance}%, TAM &gt; ${settings.thresholds.med_tam_past_due}
+&nbsp;|&nbsp;
+<span class="risk-low">LOW</span> = No criteria met
+</div>
 <div id="csp-content">${Object.entries(cspByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
 </div>
 </div>` : ''}
