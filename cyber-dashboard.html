@@ -390,7 +390,7 @@ const parseESS = (data, schemaArr) => {
         const name = normalizeBoatName(ship); if (!name) continue;
         const isic = row[m.isic]; if (isic) isicMap[name] = String(isic).trim();
         const prodComp = parsePercent(row[m.productCompliance]); const polEnf = parsePercent(row[m.policyEnforced]);
-        const truePolicy = (prodComp && polEnf && prodComp > 0) ? Math.min(100, polEnf * (100 / prodComp)) : null;
+        const truePolicy = (prodComp !== null && polEnf !== null) ? (polEnf * prodComp / 100) : null;
         const custom = {};
         for (const cf of customFieldDefs) {
             if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
@@ -1158,7 +1158,7 @@ function hideHelpModal() { document.getElementById('help-modal').style.display =
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
 <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
 <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-<li><strong>ESS Policy %</strong> = Policy Enforced adjusted by Product Compliance: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">min(100, PolicyEnforced × (100 / ProductCompliance))</code></li>
+<li><strong>ESS Policy %</strong> = True policy rate against all assets: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">PolicyEnforced × ProductCompliance / 100</code></li>
 <li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
 </ul>
 </div>
@@ -1664,7 +1664,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 <ul className="list-disc ml-5 text-slate-600 space-y-1">
                                     <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
                                     <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-                                    <li><strong>ESS Policy %</strong> = Policy Enforced adjusted by Product Compliance: <code className="bg-slate-100 px-1 rounded">min(100, PolicyEnforced × (100 / ProductCompliance))</code></li>
+                                    <li><strong>ESS Policy %</strong> = True policy rate against all assets: <code className="bg-slate-100 px-1 rounded">PolicyEnforced × ProductCompliance / 100</code></li>
                                     <li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
                                 </ul>
                             </div>
