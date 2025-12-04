@@ -410,7 +410,13 @@ const mergeData = (sources, settings) => {
 // Risk Calculator
 const calculateRisk = (boat, thresholds) => {
     const reasons = []; let level = 'LOW';
-    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : null;
+    const scanAge = (d) => {
+        if (!d) return null;
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return null;
+        const age = Math.floor((new Date() - date) / 86400000);
+        return (isFinite(age) && age >= 0) ? age : null;
+    };
     const nAge = scanAge(boat.vramNiprScanDate); const sAge = scanAge(boat.vramSiprScanDate);
 
     if ((boat.essNiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`NIPR BF: ${boat.essNiprBreakfix}`); }
@@ -707,7 +713,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}
-.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:8px 4px;font-size:9pt;width:28px;min-width:28px;max-width:28px}
+.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:4px 2px;font-size:7pt;width:20px;min-width:20px;max-width:20px}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
@@ -724,10 +730,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:20px;margin-bottom:24px}
 .chart-box{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .chart-box h3{font-size:11pt;color:#1e293b;margin-bottom:16px;border-bottom:1px solid #e2e8f0;padding-bottom:8px}
-.rankings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px}
-.ranking-box{background:white;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #e2e8f0}
+.rankings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;width:100%}
+.ranking-box{background:white;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #e2e8f0;overflow:hidden}
 .ranking-box.wide{grid-column:1/-1}
 .ranking-box h4{font-size:10pt;color:#0891b2;margin:0 0 12px 0;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+.ranking-box .mini-table{width:100%;table-layout:fixed}
+.ranking-box .mini-table td,.ranking-box .mini-table th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini-table{width:100%;border-collapse:collapse;font-size:9pt}
 .mini-table th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
@@ -752,14 +760,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .chart-box{padding:10px!important;page-break-inside:avoid;max-height:220px!important;max-width:100%!important;overflow:hidden!important}
     .chart-box h3{font-size:9pt!important;margin-bottom:8px!important}
     .chart-box canvas{max-height:160px!important;max-width:100%!important;width:auto!important;height:auto!important;object-fit:contain!important}
-    .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
-    .ranking-box{padding:8px!important;page-break-inside:avoid;max-height:none!important;overflow:hidden!important;box-sizing:border-box!important}
-    .ranking-box h4{font-size:8pt!important;margin-bottom:6px!important}
+    .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
+    .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:hidden!important;box-sizing:border-box!important}
+    .ranking-box h4{font-size:7pt!important;margin-bottom:4px!important}
     .mini-table{font-size:6pt!important;width:100%!important;table-layout:fixed!important}
-    .mini-table th,.mini-table td{padding:3px 4px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .mini-table th,.mini-table td{padding:2px 3px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
     .summary-table{font-size:6pt!important;width:100%!important;table-layout:fixed!important}
     .summary-table th{padding:2px 1px!important;font-size:5pt!important;overflow:hidden!important;text-overflow:ellipsis!important}
     .summary-table td{padding:2px 1px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .summary-table .isic-header,.summary-table .isic-cell{font-size:5pt!important;width:16px!important;min-width:16px!important;max-width:16px!important;padding:2px 1px!important}
     h2{font-size:12pt!important}
     h3{font-size:10pt!important}
 }
