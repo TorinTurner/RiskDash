@@ -390,7 +390,7 @@ const parseESS = (data, schemaArr) => {
         const name = normalizeBoatName(ship); if (!name) continue;
         const isic = row[m.isic]; if (isic) isicMap[name] = String(isic).trim();
         const prodComp = parsePercent(row[m.productCompliance]); const polEnf = parsePercent(row[m.policyEnforced]);
-        const truePolicy = (prodComp && polEnf && prodComp > 0) ? polEnf * (100 / prodComp) : null;
+        const truePolicy = (prodComp && polEnf && prodComp > 0) ? Math.min(100, polEnf * (100 / prodComp)) : null;
         const custom = {};
         for (const cf of customFieldDefs) {
             if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
@@ -777,7 +777,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .risk-low{background:#d1fae5!important;color:#065f46!important}
 .alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}
 .hq-table th:first-child,.hq-table td:first-child{text-align:left}
-.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-cards{display:grid;gap:16px;margin-bottom:24px;width:100%}
 .stat-card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .stat-card h3{font-size:10pt;color:#64748b;margin-bottom:8px}
 .stat-card .value{font-size:28pt;font-weight:700;color:#1e293b}
@@ -807,7 +807,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .tab-content.print-active{display:block!important}
     .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:none;padding:10px;overflow:hidden!important}
     .isic-section{page-break-inside:avoid}
-    .stat-cards{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+    .stat-cards{display:grid!important;gap:8px!important}
     .stat-card{padding:8px!important;page-break-inside:avoid;overflow:hidden!important}
     .stat-card h3{font-size:8pt!important;margin-bottom:4px!important}
     .stat-card .value{font-size:16pt!important}
@@ -916,7 +916,7 @@ ${isTabVisible('analytics') ? (() => {
     const isColVisible = (id) => ac.summaryColumns?.find(c => c.id === id)?.visible !== false;
     const getRanking = (id) => ac.rankings?.find(r => r.id === id) || {visible: false, count: 5};
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
-    const visibleStats = [
+    const visibleStatsArr = [
         isStatVisible('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
         isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
         isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
@@ -925,7 +925,10 @@ ${isTabVisible('analytics') ? (() => {
         isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
         isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
         isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
-    ].filter(Boolean).join('');
+    ].filter(Boolean);
+    const statCount = visibleStatsArr.length;
+    const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
+    const visibleStats = visibleStatsArr.join('');
     const visibleCharts = [
         isChartVisible('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
         isChartVisible('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
@@ -1012,7 +1015,7 @@ ${isTabVisible('analytics') ? (() => {
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Analytics</h2>
-${visibleStats ? `<div class="stat-cards">${visibleStats}</div>` : ''}
+${visibleStats ? `<div class="stat-cards" style="grid-template-columns:repeat(${statCols},1fr)">${visibleStats}</div>` : ''}
 ${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
 ${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
 ${summaryHeaders ? `<div class="page">
