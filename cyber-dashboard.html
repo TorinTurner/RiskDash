@@ -486,16 +486,22 @@ const aggregateByISIC = (boats, settings) => {
         groups[b.isic].boats.push(b);
     }
     const aggs = Object.values(groups).map(g => {
-        let nSum = 0, nCnt = 0, sSum = 0, sCnt = 0;
-        const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprEssEnforcedAvg: 0, siprEssEnforcedAvg: 0 };
+        let nProdSum = 0, nProdCnt = 0, nPolSum = 0, nPolCnt = 0;
+        let sProdSum = 0, sProdCnt = 0, sPolSum = 0, sPolCnt = 0;
+        const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprProdCompAvg: 0, niprPolEnfAvg: 0, siprProdCompAvg: 0, siprPolEnfAvg: 0 };
         for (const b of g.boats) {
             agg.niprBreakfixSum += b.essNiprBreakfix || 0; agg.siprBreakfixSum += b.essSiprBreakfix || 0;
-            if (b.essNiprTruePolicy !== null) { nSum += b.essNiprTruePolicy; nCnt++; }
-            if (b.essSiprTruePolicy !== null) { sSum += b.essSiprTruePolicy; sCnt++; }
+            if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
+            if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+            if (b.essSiprProductCompliance !== null) { sProdSum += b.essSiprProductCompliance; sProdCnt++; }
+            if (b.essSiprTruePolicy !== null) { sPolSum += b.essSiprTruePolicy; sPolCnt++; }
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
             if (b.vramNiprScanExempt || b.vramSiprScanExempt) agg.scanExemptCount++;
         }
-        agg.niprEssEnforcedAvg = nCnt > 0 ? Math.min(100, nSum / nCnt) : 0; agg.siprEssEnforcedAvg = sCnt > 0 ? Math.min(100, sSum / sCnt) : 0;
+        agg.niprProdCompAvg = nProdCnt > 0 ? Math.min(100, nProdSum / nProdCnt) : 0;
+        agg.niprPolEnfAvg = nPolCnt > 0 ? Math.min(100, nPolSum / nPolCnt) : 0;
+        agg.siprProdCompAvg = sProdCnt > 0 ? Math.min(100, sProdSum / sProdCnt) : 0;
+        agg.siprPolEnfAvg = sPolCnt > 0 ? Math.min(100, sPolSum / sPolCnt) : 0;
         return agg;
     });
     return { csl: aggs.filter(a => a.tycom === 'CSL'), csp: aggs.filter(a => a.tycom === 'CSP') };
@@ -531,6 +537,7 @@ const generateReportHTML = (reportData, settings) => {
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
+    const compClass = (v) => v >= 97.9 ? 'risk-low' : v >= 94.9 ? 'risk-med' : 'risk-high';
 
     // Format legend text by substituting threshold values
     const legendText = settings.legendText || defaultLegendText;
@@ -648,7 +655,7 @@ const generateReportHTML = (reportData, settings) => {
         // Status
         cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
         if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
-        cells += `<td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+        cells += `<td style="font-size:6pt;max-width:80px;max-height:36px;overflow:hidden;word-wrap:break-word;white-space:normal;line-height:1.2;" title="${b.notes||''}">${b.notes||'-'}</td>`;
         return cells;
     };
 
@@ -726,7 +733,7 @@ const generateReportHTML = (reportData, settings) => {
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR ESS Compliance</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR ESS Compliance</td>${list.map(a=>`<td>${a.siprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${compClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${compClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${compClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${compClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -987,7 +994,7 @@ ${isTabVisible('analytics') ? (() => {
     if (r9.visible) {
         const tycomData = {};
         boats.forEach(b => { if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphSum:0,bfSum:0,compSum:0,compCount:0}; const t=tycomData[b.tycom]; t.boats++; if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++; t.vphSum+=(b.vramNiprRaVph||0); t.bfSum+=(b.essNiprBreakfix||0); if(b.essNiprProductCompliance!=null){t.compSum+=b.essNiprProductCompliance;t.compCount++;} });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td>${d.compCount?Math.min(100,d.compSum/d.compCount).toFixed(1)+'%':'-'}</td></tr>`).join('');
+        const rows = Object.entries(tycomData).map(([tycom,d]) => { const comp = d.compCount ? Math.min(100,d.compSum/d.compCount) : null; return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`; }).join('');
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
@@ -1349,6 +1356,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
+    const compClass = (v) => v >= 97.9 ? 'risk-low' : v >= 94.9 ? 'risk-med' : 'risk-high';
 
     const fieldLabels = {
         essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprTruePolicy: 'ESS NIPR True Policy',
@@ -1492,9 +1500,9 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             {subTab === 'hq' ? (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
-                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS Compliance</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR ESS Compliance</td>{aggs.csl.map(a => <td key={a.isicName}>{a.siprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csl.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csl.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS Compliance</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR ESS Compliance</td>{aggs.csp.map(a => <td key={a.isicName}>{a.siprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csp.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csp.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
                 </div>
             ) : (
                 <div className="card p-4 overflow-x-auto">
@@ -1577,7 +1585,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
                                 <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
                                 {showVramExempt && <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>}
-                                <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
+                                <td className="text-xs max-w-[80px] cursor-pointer hover:bg-cyan-50" style={{wordWrap:'break-word',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}} onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
                             </tr>)
                         )}</tbody>
                     </table>
