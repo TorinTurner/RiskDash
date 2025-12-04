@@ -837,7 +837,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 </style></head><body>
 <div class="header no-print">
 <div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
+<div style="display:flex;gap:8px;">
+<button onclick="showHelpModal()" style="background:#64748b;color:white;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;" title="Calculation Help">?</button>
 <button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
+</div>
 </div>
 <div class="print-only print-header">
 <h1>SUBFOR Cyber Risk Dashboard</h1>
@@ -1123,7 +1126,50 @@ function initCharts() {
         options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 }
+function showHelpModal() { document.getElementById('help-modal').style.display = 'flex'; }
+function hideHelpModal() { document.getElementById('help-modal').style.display = 'none'; }
 <\/script>
+<div id="help-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideHelpModal()">
+<div style="background:white;border-radius:12px;padding:24px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Calculation Reference</h3>
+<div style="font-size:10pt;">
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk Triggers</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Breakfix > 0</strong> - Any NIPR or SIPR breakfix issues</li>
+<li><strong>Scan Age > ${settings.thresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
+<li><strong>Scan Integrity < ${settings.thresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
+<li><strong>VPH > ${settings.thresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
+<li><strong>ESS Policy < ${settings.thresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
+<li><strong>TAM Past Due > ${settings.thresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk Triggers</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong></li>
+<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong></li>
+<li><strong>ESS Policy < ${settings.thresholds.med_ess_compliance}%</strong></li>
+<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong></li>
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#334155;margin-bottom:6px;">Key Calculations</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
+<li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
+<li><strong>ESS Policy %</strong> = Policy Enforced adjusted by Product Compliance: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">min(100, PolicyEnforced × (100 / ProductCompliance))</code></li>
+<li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+</ul>
+</div>
+<div>
+<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
+<p style="color:#475569;">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+</div>
+</div>
+<div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
+</div>
+</div>
 </body></html>`;
 };
 
@@ -1211,6 +1257,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [showThresholds, setShowThresholds] = React.useState(false);
     const [previewThresholds, setPreviewThresholds] = React.useState(null);
     const [notesModal, setNotesModal] = React.useState(null);
+    const [showHelp, setShowHelp] = React.useState(false);
 
     // Initialize preview thresholds from settings if not set
     React.useEffect(() => {
@@ -1397,6 +1444,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Preview Report</h2>
                 <div className="flex gap-2">
+                    <button onClick={() => setShowHelp(true)} className="btn-secondary text-sm" title="Calculation Help">?</button>
                     <button onClick={() => setShowThresholds(!showThresholds)} className={`btn-secondary text-sm ${thresholdChanges.length > 0 ? 'ring-2 ring-amber-400' : ''}`}>{showThresholds ? 'Hide' : 'Adjust'} Thresholds{thresholdChanges.length > 0 ? ` (${thresholdChanges.length})` : ''}</button>
                     {allOverrides.length > 0 && <button onClick={() => setShowOverrideLog(!showOverrideLog)} className="btn-secondary text-sm">{showOverrideLog ? 'Hide' : 'Show'} Override Log ({allOverrides.length})</button>}
                     <button onClick={generate} className="btn-success">Generate HTML Report</button>
@@ -1582,6 +1630,50 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                             <button onClick={saveNotes} className="btn-primary">Save</button>
                             <button onClick={() => setNotesModal(null)} className="btn-secondary">Cancel</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showHelp && (
+                <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+                    <div className="modal-content" style={{maxWidth:'600px',maxHeight:'80vh',overflow:'auto'}} onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Calculation Reference</h3>
+                        <div className="text-sm space-y-4">
+                            <div>
+                                <h4 className="font-bold text-red-600 mb-1">HIGH Risk Triggers</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Breakfix &gt; 0</strong> - Any NIPR or SIPR breakfix issues</li>
+                                    <li><strong>Scan Age &gt; {activeThresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
+                                    <li><strong>Scan Integrity &lt; {activeThresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
+                                    <li><strong>VPH &gt; {activeThresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
+                                    <li><strong>ESS Policy &lt; {activeThresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
+                                    <li><strong>TAM Past Due &gt; {activeThresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-amber-600 mb-1">MEDIUM Risk Triggers</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Scan Age &gt; {activeThresholds.med_scan_age_days} days</strong></li>
+                                    <li><strong>VPH &gt; {activeThresholds.med_ra_vph}</strong></li>
+                                    <li><strong>ESS Policy &lt; {activeThresholds.med_ess_compliance}%</strong></li>
+                                    <li><strong>TAM Past Due &gt; {activeThresholds.med_tam_past_due}</strong></li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-700 mb-1">Key Calculations</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
+                                    <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
+                                    <li><strong>ESS Policy %</strong> = Policy Enforced adjusted by Product Compliance: <code className="bg-slate-100 px-1 rounded">min(100, PolicyEnforced × (100 / ProductCompliance))</code></li>
+                                    <li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-green-600 mb-1">LOW Risk</h4>
+                                <p className="text-slate-600">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+                            </div>
+                        </div>
+                        <div className="mt-6"><button onClick={() => setShowHelp(false)} className="btn-primary">Close</button></div>
                     </div>
                 </div>
             )}
