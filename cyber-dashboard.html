@@ -203,7 +203,7 @@ const defaultAnalyticsConfig = {
 
 // Default legend text - updated to match new risk criteria
 const defaultLegendText = {
-    high: 'Any asset in Breakfix, OR no VRAM scan data (unable to assess risk)',
+    high: 'Breakfix, No VRAM scan data, OR Product Compliance &lt;{high_product_compliance}%',
     med: '2+ of: VPH &gt;{med_ra_vph}, Prod/Policy compliance &lt;{med_ess_compliance}%, Scan &gt;{med_scan_age_days}d, TAM Past Due &gt;{med_tam_past_due}',
     low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_ess_compliance}%'
 };
@@ -224,6 +224,7 @@ const defaultThresholds = {
     auto_high_scan_age_days: 30,
     auto_high_scan_integrity: 80,
     high_ess_compliance: 90,
+    high_product_compliance: 50,
     high_tam_past_due: 20,
     high_scan_age_days: 30
 };
@@ -539,7 +540,7 @@ const mergeData = (sources, settings) => {
 
 // Risk Calculator
 // RISK CRITERIA:
-// HIGH: Any asset in breakfix OR no VRAM scan data (can't assess risk)
+// HIGH: Any asset in breakfix, no VRAM scan data, OR Product Compliance <50%
 // MED: 2 or more of: VPH >3.5, Product/Policy compliance <95%, Scan >14 days, TAMs past due >10
 // LOW: VPH <2.5, Scans within 14 days, Policy and Product compliance over 95%, no high triggers
 // NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
@@ -588,6 +589,17 @@ const calculateRisk = (boat, thresholds) => {
         level = 'HIGH';
         reasons.push('No VRAM data');
         highDueToNoScans = true;
+    }
+
+    // 3. ESS Product Compliance < 50% (critical compliance failure) - skip NIPR for NMCI
+    const highProductComplianceThreshold = thresholds.high_product_compliance || 50;
+    if (!isNmci && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < highProductComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
+    }
+    if (boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < highProductComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
     }
 
     // If not already HIGH, check MEDIUM criteria
@@ -653,16 +665,8 @@ const calculateRisk = (boat, thresholds) => {
             // (unless VPH is above the higher threshold)
         }
 
-        // Check for very high VPH (above high threshold) - auto HIGH
-        const highVphThreshold = thresholds.auto_high_ra_vph || 5;
-        if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > highVphThreshold) {
-            level = 'HIGH';
-            reasons.push(`NIPR VPH Critical: ${boat.vramNiprRaVph.toFixed(2)}`);
-        }
-        if (boat.vramSiprRaVph !== null && boat.vramSiprRaVph > highVphThreshold) {
-            level = 'HIGH';
-            reasons.push(`SIPR VPH Critical: ${boat.vramSiprRaVph.toFixed(2)}`);
-        }
+        // Note: Per risk criteria, HIGH is ONLY for breakfix or no VRAM data
+        // VPH conditions only contribute to MED risk threshold calculation
     }
 
     // Check if LOW risk criteria are actually met (for reporting purposes)
@@ -697,10 +701,10 @@ const calculateRisk = (boat, thresholds) => {
         }
     }
 
-    // Scan Exempt: Only downgrades HIGH to MED if HIGH was due to no scans
+    // Scan Exempt: Only downgrades HIGH to MED if HIGH was SOLELY due to no VRAM data
+    // Breakfix or other HIGH reasons are NOT overridden by Scan Exempt
     if (level === 'HIGH' && (boat.vramNiprScanExempt || boat.vramSiprScanExempt)) {
-        // Only override if HIGH is solely due to no scans/scan issues
-        if (highDueToNoScans || reasons.every(r => r.includes('Scan') || r.includes('VRAM data'))) {
+        if (highDueToNoScans && reasons.every(r => r.includes('VRAM data'))) {
             level = 'MED';
             reasons.push('Scan Exempt');
         }
@@ -1461,26 +1465,32 @@ function hideHelpModal() { document.getElementById('help-modal').style.display =
 <\/script>
 <div id="help-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideHelpModal()">
 <div style="background:white;border-radius:12px;padding:24px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
-<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Calculation Reference</h3>
+<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Risk Calculation Reference</h3>
 <div style="font-size:10pt;">
 <div style="margin-bottom:16px;">
-<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk Triggers</h4>
+<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Breakfix > 0</strong> - Any NIPR or SIPR breakfix issues</li>
-<li><strong>Scan Age > ${settings.thresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
-<li><strong>Scan Integrity < ${settings.thresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
-<li><strong>VPH > ${settings.thresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
-<li><strong>ESS Policy < ${settings.thresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
-<li><strong>TAM Past Due > ${settings.thresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+<li><strong>Breakfix > 0</strong> - Any asset in either enclave in breakfix</li>
+<li><strong>No VRAM Scan Data</strong> - Unable to assess risk without scan data</li>
+<li><strong>Product Compliance < ${settings.thresholds.high_product_compliance}%</strong> - Critical ESS compliance failure</li>
 </ul>
 </div>
 <div style="margin-bottom:16px;">
-<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk Triggers</h4>
+<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk (2 or more of the following)</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong></li>
-<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong></li>
-<li><strong>ESS Policy < ${settings.thresholds.med_ess_compliance}%</strong></li>
-<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong></li>
+<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong> - Vulnerabilities per host above threshold</li>
+<li><strong>Product/Policy Compliance < ${settings.thresholds.med_ess_compliance}%</strong> - ESS compliance below threshold</li>
+<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong> - VRAM scan older than threshold</li>
+<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong> - Too many overdue TAMs</li>
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>VPH < ${settings.thresholds.low_vph}</strong> - Low vulnerabilities per host</li>
+<li><strong>Scans within ${settings.thresholds.low_scan_age_days} days</strong> - Recent scan data</li>
+<li><strong>Compliance > ${settings.thresholds.low_ess_compliance}%</strong> - High product and policy compliance</li>
+<li>No HIGH risk triggers present</li>
 </ul>
 </div>
 <div style="margin-bottom:16px;">
@@ -1488,13 +1498,12 @@ function hideHelpModal() { document.getElementById('help-modal').style.display =
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
 <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
 <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-<li><strong>ESS Policy %</strong> = True policy rate against all assets: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">PolicyEnforced × ProductCompliance / 100</code></li>
-<li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+<li><strong>True Policy %</strong> = PolicyEnforced × ProductCompliance / 100</li>
 </ul>
 </div>
 <div>
-<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
-<p style="color:#475569;">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+<h4 style="font-weight:bold;color:#0ea5e9;margin-bottom:6px;">Scan Exempt</h4>
+<p style="color:#475569;">If a boat is marked Scan Exempt, HIGH risk is downgraded to MED <strong>only</strong> when HIGH is due to "No VRAM Scan Data". Breakfix-related HIGH risk is NOT affected by Scan Exempt status.</p>
 </div>
 </div>
 <div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
