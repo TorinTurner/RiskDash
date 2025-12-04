@@ -1604,6 +1604,12 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
         setEditingBoat(null);
     };
 
+    const deleteBoat = (boatName) => {
+        if (confirm(`Delete boat "${boatName}"?`)) {
+            setSettings(prev => ({ ...prev, boats: prev.boats.filter(b => b.boat_name !== boatName) }));
+        }
+    };
+
     const saveISIC = () => {
         if (!editingISIC.isic_name) return;
         const isic = { ...editingISIC }; delete isic.isNew;
@@ -1767,7 +1773,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">Boats ({settings.boats.length})</h3>
-                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600">Edit</button></td></tr>)}</tbody></table></div>
+                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table></div>
                         <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
                     </div>
                     <div className="card p-4">
