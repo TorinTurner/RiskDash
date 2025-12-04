@@ -410,25 +410,25 @@ const mergeData = (sources, settings) => {
 // Risk Calculator
 const calculateRisk = (boat, thresholds) => {
     const reasons = []; let level = 'LOW';
-    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : Infinity;
+    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : null;
     const nAge = scanAge(boat.vramNiprScanDate); const sAge = scanAge(boat.vramSiprScanDate);
 
     if ((boat.essNiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`NIPR BF: ${boat.essNiprBreakfix}`); }
     if ((boat.essSiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`SIPR BF: ${boat.essSiprBreakfix}`); }
-    if (nAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
-    if (sAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`SIPR Scan: ${sAge}d`); }
+    if (nAge !== null && nAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
+    if (sAge !== null && sAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`SIPR Scan: ${sAge}d`); }
     if (boat.vramNiprScanIntegrity !== null && boat.vramNiprScanIntegrity < thresholds.auto_high_scan_integrity) { level = 'HIGH'; reasons.push(`NIPR Int: ${boat.vramNiprScanIntegrity}%`); }
     if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.auto_high_ra_vph) { level = 'HIGH'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
 
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.high_ess_compliance) { level = 'HIGH'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
         if ((boat.tamPastDue||0) > thresholds.high_tam_past_due) { level = 'HIGH'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
-        if (nAge > thresholds.high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
+        if (nAge !== null && nAge > thresholds.high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
     }
 
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.med_ess_compliance) { level = 'MED'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
-        if (nAge > thresholds.med_scan_age_days) { level = 'MED'; reasons.push(`NIPR Scan: ${nAge}d`); }
+        if (nAge !== null && nAge > thresholds.med_scan_age_days) { level = 'MED'; reasons.push(`NIPR Scan: ${nAge}d`); }
         if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.med_ra_vph) { level = 'MED'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
         if ((boat.tamPastDue||0) > thresholds.med_tam_past_due) { level = 'MED'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
     }
