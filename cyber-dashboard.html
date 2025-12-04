@@ -173,6 +173,11 @@
             {"id": "avgVph", "label": "Avg VPH", "visible": true},
             {"id": "breakfix", "label": "Breakfix", "visible": true}
         ]
+    },
+    "legendText": {
+        "high": "Breakfix > 0, Scan > {auto_high_scan_age_days}d, VPH > {auto_high_ra_vph}, Integrity < {auto_high_scan_integrity}%, Policy < {high_ess_compliance}%, TAM > {high_tam_past_due}",
+        "med": "Scan > {med_scan_age_days}d, VPH > {med_ra_vph}, Policy < {med_ess_compliance}%, TAM > {med_tam_past_due}",
+        "low": "No criteria met"
     }
 }
 </script>
@@ -260,27 +265,164 @@ const defaultAnalyticsConfig = {
     ]
 };
 
-// Settings Manager
+// Default legend text
+const defaultLegendText = {
+    high: 'Breakfix > 0, Scan > {auto_high_scan_age_days}d, VPH > {auto_high_ra_vph}, Integrity < {auto_high_scan_integrity}%, Policy < {high_ess_compliance}%, TAM > {high_tam_past_due}',
+    med: 'Scan > {med_scan_age_days}d, VPH > {med_ra_vph}, Policy < {med_ess_compliance}%, TAM > {med_tam_past_due}',
+    low: 'No criteria met'
+};
+
+// Settings Manager with File System Access API
 const SettingsManager = {
-    load() {
+    _fileHandle: null,
+    _settingsCache: null,
+
+    // Get embedded defaults from HTML
+    getEmbeddedDefaults() {
         try {
-            const settings = JSON.parse(document.getElementById('app-settings').textContent);
-            // Migrate old columnMappings to new schemaConfig format
-            if (settings.columnMappings && !settings.schemaConfig) {
-                settings.schemaConfig = this.migrateColumnMappings(settings.columnMappings);
-                delete settings.columnMappings;
-            }
-            // Ensure schemaConfig exists with defaults
-            if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
-            // Ensure tabConfig exists with defaults
-            if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
-            // Ensure analyticsConfig exists with defaults
-            if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
-            return settings;
-        } catch { return this.getDefaults(); }
+            return JSON.parse(document.getElementById('app-settings').textContent);
+        } catch { return null; }
     },
+
+    // Ensure settings have all required fields
+    ensureDefaults(settings) {
+        if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
+        if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
+        if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
+        if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
+        // Migrate old columnMappings
+        if (settings.columnMappings && !settings.schemaConfig) {
+            settings.schemaConfig = this.migrateColumnMappings(settings.columnMappings);
+            delete settings.columnMappings;
+        }
+        return settings;
+    },
+
+    // Try to load settings.json from same directory using File System Access API
+    async tryAutoLoad() {
+        // Check if File System Access API is available
+        if (!('showOpenFilePicker' in window)) {
+            console.log('File System Access API not available');
+            return null;
+        }
+        // Can't auto-load without user interaction, return null
+        return null;
+    },
+
+    // Prompt user to select settings.json file
+    async promptLoadSettings() {
+        if (!('showOpenFilePicker' in window)) {
+            // Fallback to file input
+            return new Promise((resolve) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const text = await file.text();
+                            const settings = JSON.parse(text);
+                            this._settingsCache = this.ensureDefaults(settings);
+                            resolve(this._settingsCache);
+                        } catch (err) {
+                            console.error('Failed to parse settings:', err);
+                            resolve(null);
+                        }
+                    } else {
+                        resolve(null);
+                    }
+                };
+                input.click();
+            });
+        }
+
+        try {
+            const [handle] = await window.showOpenFilePicker({
+                types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }],
+                multiple: false
+            });
+            this._fileHandle = handle;
+            const file = await handle.getFile();
+            const text = await file.text();
+            const settings = JSON.parse(text);
+            this._settingsCache = this.ensureDefaults(settings);
+            return this._settingsCache;
+        } catch (err) {
+            if (err.name !== 'AbortError') console.error('Failed to load settings:', err);
+            return null;
+        }
+    },
+
+    // Save settings to JSON file
+    async saveSettings(settings) {
+        const jsonStr = JSON.stringify(settings, null, 2);
+
+        // Try to use existing file handle first
+        if (this._fileHandle) {
+            try {
+                const writable = await this._fileHandle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                this._settingsCache = settings;
+                return { success: true, method: 'fileHandle' };
+            } catch (err) {
+                console.log('Could not write to existing handle, will prompt for save location');
+            }
+        }
+
+        // Use File System Access API to save
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: 'settings.json',
+                    types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }]
+                });
+                this._fileHandle = handle;
+                const writable = await handle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                this._settingsCache = settings;
+                return { success: true, method: 'filePicker' };
+            } catch (err) {
+                if (err.name === 'AbortError') return { success: false, cancelled: true };
+                console.error('Save failed:', err);
+            }
+        }
+
+        // Fallback: download the file
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'settings.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        this._settingsCache = settings;
+        return { success: true, method: 'download' };
+    },
+
+    // Export settings as JSON download
+    exportSettings(settings) {
+        const jsonStr = JSON.stringify(settings, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'settings.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    },
+
+    // Load settings (sync for initial render, uses embedded defaults)
+    load() {
+        // Start with embedded defaults
+        const embedded = this.getEmbeddedDefaults();
+        if (embedded) {
+            return this.ensureDefaults(embedded);
+        }
+        return this.getDefaults();
+    },
+
     migrateColumnMappings(old) {
-        // Convert old array-based columnMappings to new schemaConfig format
         const labels = {
             vram: {siteName:'Site/Boat Name',scanDate:'Last Scan Date',assets:'Asset Count',raVph:'RA VPH',scanIntegrity:'Scan Integrity %',scanPercent:'Percent Scanned',raCrit:'RA Critical',raHigh:'RA High',scanExempt:'Scan Exempt'},
             ess: {shipName:'Ship/Boat Name',isic:'ISIC Column',productCompliance:'Product Compliance %',policyEnforced:'Policy Enforced %',breakfix:'Breakfix Count',assets:'Asset Count'},
@@ -298,12 +440,21 @@ const SettingsManager = {
         }
         return result;
     },
-    getDefaults() { return { _version: 1, tycoms: ['CSL', 'CSP'], isics: [], boats: [], thresholds: {}, display: {}, user: { default_name: '' }, schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)), tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}], analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)) }; },
-    saveApplication(settings) {
-        const html = document.documentElement.outerHTML;
-        const updated = '<!DOCTYPE html>\n' + html.replace(/(<script type="application\/json" id="app-settings">)([\s\S]*?)(<\/script>)/, `$1\n${JSON.stringify(settings, null, 4)}\n$3`);
-        const blob = new Blob([updated], { type: 'text/html' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cyber-dashboard.html'; a.click();
+
+    getDefaults() {
+        return {
+            _version: 1,
+            tycoms: ['CSL', 'CSP'],
+            isics: [],
+            boats: [],
+            thresholds: {},
+            display: {},
+            user: { default_name: '' },
+            schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)),
+            tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}],
+            analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)),
+            legendText: JSON.parse(JSON.stringify(defaultLegendText))
+        };
     }
 };
 
@@ -464,6 +615,14 @@ const generateReportHTML = (reportData, settings) => {
     const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
 
+    // Format legend text by substituting threshold values
+    const legendText = settings.legendText || defaultLegendText;
+    const formatLegend = (text) => {
+        return text.replace(/\{(\w+)\}/g, (match, key) => {
+            return settings.thresholds[key] !== undefined ? settings.thresholds[key] : match;
+        }).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
     // Stats for analytics
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
     const cslRiskCounts = { HIGH: cslBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cslBoats.filter(b => b.riskLevel === 'MED').length, LOW: cslBoats.filter(b => b.riskLevel === 'LOW').length };
@@ -554,7 +713,34 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .mini-table th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 .mini-table tr:last-child td{border-bottom:none}
-@media print{.no-print{display:none!important}body{background:white}.tab-content{display:block!important;padding:10px}.page{box-shadow:none;margin:0;page-break-inside:avoid}}
+@media print{
+    .no-print{display:none!important}
+    body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .tab-content{display:none!important;padding:10px}
+    .tab-content.print-active{display:block!important}
+    .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:1px solid #e2e8f0}
+    .isic-section{page-break-inside:avoid}
+    .stat-cards{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+    .stat-card{padding:10px!important;page-break-inside:avoid}
+    .stat-card .value{font-size:18pt!important}
+    .chart-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+    .chart-box{padding:10px!important;page-break-inside:avoid;max-height:280px!important}
+    .chart-box canvas{max-height:200px!important}
+    .rankings-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+    .ranking-box{padding:8px!important;page-break-inside:avoid}
+    .ranking-box h4{font-size:8pt!important;margin-bottom:6px!important}
+    .mini-table{font-size:7pt!important}
+    .summary-table{font-size:7pt!important}
+    .summary-table th{padding:3px 2px!important;font-size:6pt!important}
+    .summary-table td{padding:2px!important}
+    h2{font-size:12pt!important}
+    h3{font-size:10pt!important}
+}
+@media print and (orientation:landscape){
+    .chart-grid{grid-template-columns:repeat(2,1fr)!important}
+    .stat-cards{grid-template-columns:repeat(4,1fr)!important}
+}
+@page{margin:0.5in;size:landscape}
 </style></head><body>
 <div class="header no-print">
 <h1>Cyber Status Report</h1>
@@ -579,11 +765,11 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
-<span class="risk-high">HIGH</span> = Breakfix &gt; 0, Scan &gt; ${settings.thresholds.auto_high_scan_age_days}d, VPH &gt; ${settings.thresholds.auto_high_ra_vph}, Integrity &lt; ${settings.thresholds.auto_high_scan_integrity}%, Policy &lt; ${settings.thresholds.high_ess_compliance}%, TAM &gt; ${settings.thresholds.high_tam_past_due}
+<span class="risk-high">HIGH</span> = ${formatLegend(legendText.high)}
 &nbsp;|&nbsp;
-<span class="risk-med">MED</span> = Scan &gt; ${settings.thresholds.med_scan_age_days}d, VPH &gt; ${settings.thresholds.med_ra_vph}, Policy &lt; ${settings.thresholds.med_ess_compliance}%, TAM &gt; ${settings.thresholds.med_tam_past_due}
+<span class="risk-med">MED</span> = ${formatLegend(legendText.med)}
 &nbsp;|&nbsp;
-<span class="risk-low">LOW</span> = No criteria met
+<span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
 <div id="csl-content">${Object.entries(cslByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
 </div>
@@ -604,11 +790,11 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
-<span class="risk-high">HIGH</span> = Breakfix &gt; 0, Scan &gt; ${settings.thresholds.auto_high_scan_age_days}d, VPH &gt; ${settings.thresholds.auto_high_ra_vph}, Integrity &lt; ${settings.thresholds.auto_high_scan_integrity}%, Policy &lt; ${settings.thresholds.high_ess_compliance}%, TAM &gt; ${settings.thresholds.high_tam_past_due}
+<span class="risk-high">HIGH</span> = ${formatLegend(legendText.high)}
 &nbsp;|&nbsp;
-<span class="risk-med">MED</span> = Scan &gt; ${settings.thresholds.med_scan_age_days}d, VPH &gt; ${settings.thresholds.med_ra_vph}, Policy &lt; ${settings.thresholds.med_ess_compliance}%, TAM &gt; ${settings.thresholds.med_tam_past_due}
+<span class="risk-med">MED</span> = ${formatLegend(legendText.med)}
 &nbsp;|&nbsp;
-<span class="risk-low">LOW</span> = No criteria met
+<span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
 <div id="csp-content">${Object.entries(cspByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
 </div>
@@ -764,11 +950,12 @@ function showTab(id) {
     if (id === 'analytics' && !window.chartsInit) { initCharts(); window.chartsInit = true; }
 }
 function printTab(id) {
-    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-    document.getElementById('tab-' + id).style.display = 'block';
+    // Add print-active class to the tab we want to print
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('print-active'));
+    document.getElementById('tab-' + id).classList.add('print-active');
     window.print();
-    document.querySelectorAll('.tab-content').forEach(t => t.style.display = '');
-    document.querySelector('.tab-content.active').style.display = 'block';
+    // Remove print-active class after printing
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('print-active'));
 }
 function filterISIC(p, v) {
     const c = document.getElementById(p + '-content');
@@ -1208,9 +1395,10 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     );
 };
 
-const SettingsTab = ({ settings, setSettings, onRequestName }) => {
+const SettingsTab = ({ settings, setSettings, onAlert }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
+    const [saveStatus, setSaveStatus] = React.useState(null);
 
     const saveBoat = () => {
         if (!editingBoat.boat_name) return;
@@ -1220,11 +1408,38 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
         setEditingBoat(null);
     };
 
-    const handleSaveApp = () => {
-        onRequestName((name) => {
-            const updatedSettings = { ...settings, user: { ...settings.user, default_name: name || '' } };
-            SettingsManager.saveApplication(updatedSettings);
-        });
+    const handleLoadSettings = async () => {
+        const loaded = await SettingsManager.promptLoadSettings();
+        if (loaded) {
+            setSettings(loaded);
+            onAlert && onAlert({ type: 'info', msg: 'Settings loaded successfully' });
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        setSaveStatus('saving');
+        const result = await SettingsManager.saveSettings(settings);
+        if (result.success) {
+            setSaveStatus('saved');
+            onAlert && onAlert({ type: 'info', msg: result.method === 'download' ? 'Settings downloaded as settings.json' : 'Settings saved successfully' });
+            setTimeout(() => setSaveStatus(null), 2000);
+        } else if (!result.cancelled) {
+            setSaveStatus(null);
+            onAlert && onAlert({ type: 'error', msg: 'Failed to save settings' });
+        } else {
+            setSaveStatus(null);
+        }
+    };
+
+    const handleExportSettings = () => {
+        SettingsManager.exportSettings(settings);
+        onAlert && onAlert({ type: 'info', msg: 'Settings exported as settings.json' });
+    };
+
+    // Legend text helpers
+    const legend = settings.legendText || JSON.parse(JSON.stringify(defaultLegendText));
+    const updateLegend = (key, value) => {
+        setSettings(prev => ({ ...prev, legendText: { ...prev.legendText, [key]: value } }));
     };
 
     // Schema config helpers
@@ -1270,8 +1485,17 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6 text-slate-800">Settings</h2>
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'columns', 'analytics', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t === 'analytics' ? 'Analytics' : t}</button>)}</div>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
+                <div className="flex gap-2">
+                    <button onClick={handleLoadSettings} className="btn-secondary text-sm">Load Settings</button>
+                    <button onClick={handleSaveSettings} className={`btn-success text-sm ${saveStatus === 'saving' ? 'opacity-50' : ''}`} disabled={saveStatus === 'saving'}>
+                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save Settings'}
+                    </button>
+                    <button onClick={handleExportSettings} className="btn-secondary text-sm">Export</button>
+                </div>
+            </div>
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -1291,6 +1515,34 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4 text-slate-700">Risk Thresholds</h3>
                     <div className="grid grid-cols-2 gap-4">{Object.entries(settings.thresholds).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}</div>
+                </div>
+            )}
+
+            {subTab === 'legend' && (
+                <div className="card p-4">
+                    <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Legend Text</h3>
+                    <p className="text-sm text-slate-500 mb-4">Customize the legend text shown on CSL/CSP summary pages. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values (e.g., <code className="bg-slate-100 px-1 rounded">{'{auto_high_scan_age_days}'}</code> becomes the actual value).</p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Criteria</label>
+                            <textarea value={legend.high} onChange={(e) => updateLegend('high', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Breakfix > 0, Scan > {auto_high_scan_age_days}d" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Criteria</label>
+                            <textarea value={legend.med} onChange={(e) => updateLegend('med', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Scan > {med_scan_age_days}d, VPH > {med_ra_vph}" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Criteria</label>
+                            <textarea value={legend.low} onChange={(e) => updateLegend('low', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., No criteria met" />
+                        </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
+                        <h4 className="text-sm font-semibold text-slate-600 mb-2">Available Threshold Variables:</h4>
+                        <div className="text-xs text-slate-500 font-mono flex flex-wrap gap-2">
+                            {Object.keys(settings.thresholds).map(k => <span key={k} className="bg-slate-200 px-2 py-1 rounded">{`{${k}}`}</span>)}
+                        </div>
+                    </div>
+                    <button onClick={() => setSettings(p => ({...p, legendText: JSON.parse(JSON.stringify(defaultLegendText))}))} className="btn-secondary mt-4 text-sm">Reset to Default</button>
                 </div>
             )}
 
@@ -1441,7 +1693,6 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
                 </div>
             )}
 
-            <div className="mt-8 pt-4 border-t border-slate-200"><button onClick={handleSaveApp} className="btn-success">Save Application (Download Updated HTML)</button></div>
         </div>
     );
 };
@@ -1518,7 +1769,7 @@ function App() {
             <main className="max-w-[95vw] mx-auto p-6">
                 {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
                 {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
-                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onRequestName={requestName} />}
+                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} />}
             </main>
 
             <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
