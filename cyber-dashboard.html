@@ -655,7 +655,7 @@ const generateReportHTML = (reportData, settings) => {
         // Status
         cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
         if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
-        cells += `<td style="font-size:6pt;max-width:80px;max-height:36px;overflow:hidden;word-wrap:break-word;white-space:normal;line-height:1.2;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+        cells += `<td class="notes-cell" style="font-size:6pt;max-width:80px;" title="${b.notes||''}">${b.notes||'-'}</td>`;
         return cells;
     };
 
@@ -777,6 +777,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}
 .summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:4px 2px;font-size:7pt;width:20px;min-width:20px;max-width:20px}
+.summary-table td.notes-cell{white-space:normal;word-wrap:break-word;word-break:break-word;max-height:36px;overflow:hidden;line-height:1.2;text-align:left}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
@@ -831,6 +832,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .summary-table{font-size:6pt!important;width:100%!important;table-layout:fixed!important}
     .summary-table th{padding:2px 1px!important;font-size:5pt!important;overflow:hidden!important;text-overflow:ellipsis!important}
     .summary-table td{padding:2px 1px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .summary-table td.notes-cell{white-space:normal!important;word-wrap:break-word!important;word-break:break-word!important;max-height:36px!important;line-height:1.2!important}
     .summary-table .isic-header,.summary-table .isic-cell{font-size:5pt!important;width:16px!important;min-width:16px!important;max-width:16px!important;padding:2px 1px!important}
     h2{font-size:12pt!important}
     h3{font-size:10pt!important}
