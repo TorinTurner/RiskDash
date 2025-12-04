@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SUBFOR Cyber Risk Dashboard</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="libs/react.production.min.js"></script>
+    <script src="libs/react-dom.production.min.js"></script>
+    <script src="libs/babel.min.js"></script>
+    <script src="libs/xlsx.full.min.js"></script>
+    <script src="libs/tailwind.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+        /* Fonts - using system fonts for air-gapped access */
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; min-height: 100vh; color: #1e293b; margin: 0; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f8fafc; min-height: 100vh; color: #1e293b; margin: 0; }
+        .font-mono { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
         ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #e2e8f0; } ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
         .drag-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; background: #ffffff; border-radius: 8px; }
         .drag-zone:hover, .drag-zone.drag-active { border-color: #0891b2; background: #ecfeff; }
@@ -33,7 +33,7 @@
         .data-table th { background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 8px; letter-spacing: 0.3px; padding: 6px 3px; text-align: center; border: 1px solid #e2e8f0; white-space: nowrap; }
         .data-table td { padding: 4px 3px; text-align: center; border: 1px solid #e2e8f0; background: #ffffff; white-space: nowrap; }
         .table-scroll { overflow-x: auto; }
-        .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #0891b2; }
+        .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; color: #0891b2; }
         .data-table .isic-header, .data-table .isic-cell { background: #1e293b; color: white; font-weight: 700; text-align: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); padding: 8px 4px; font-size: 9px; width: 28px; min-width: 28px; max-width: 28px; }
         .data-table .isic-first-row td { border-top: 2px solid #1e293b; }
         .col-ess-n { background: rgba(59,130,246,0.1) !important; } .col-ess-s { background: rgba(99,102,241,0.1) !important; }
@@ -746,8 +746,8 @@ const generateReportHTML = (reportData, settings) => {
     const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) }));
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+<script src="libs/xlsx.full.min.js"><\/script>
+<script src="libs/chart.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;background:#f1f5f9}
