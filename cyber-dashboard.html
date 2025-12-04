@@ -720,9 +720,13 @@ const aggregateByISIC = (boats, settings) => {
         let sProdSum = 0, sProdCnt = 0, sPolSum = 0, sPolCnt = 0;
         const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprProdCompAvg: 0, niprPolEnfAvg: 0, siprProdCompAvg: 0, siprPolEnfAvg: 0 };
         for (const b of g.boats) {
-            agg.niprBreakfixSum += b.essNiprBreakfix || 0; agg.siprBreakfixSum += b.essSiprBreakfix || 0;
-            if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
-            if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+            // Skip NIPR values for NMCI boats
+            if (!b.isNmci) {
+                agg.niprBreakfixSum += b.essNiprBreakfix || 0;
+                if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
+                if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+            }
+            agg.siprBreakfixSum += b.essSiprBreakfix || 0;
             if (b.essSiprProductCompliance !== null) { sProdSum += b.essSiprProductCompliance; sProdCnt++; }
             if (b.essSiprTruePolicy !== null) { sPolSum += b.essSiprTruePolicy; sPolCnt++; }
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
@@ -793,9 +797,24 @@ const generateReportHTML = (reportData, settings) => {
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
     const cslRiskCounts = { HIGH: cslBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cslBoats.filter(b => b.riskLevel === 'MED').length, LOW: cslBoats.filter(b => b.riskLevel === 'LOW').length };
     const cspRiskCounts = { HIGH: cspBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cspBoats.filter(b => b.riskLevel === 'MED').length, LOW: cspBoats.filter(b => b.riskLevel === 'LOW').length };
-    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0) + (b.vramSiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
-    const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
-    const avgCompliance = boats.length > 0 ? Math.min(100, boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
+    // Avg VPH: average of all VPH values (NIPR for non-NMCI, SIPR for all) - only count non-null values
+    const vphValues = boats.flatMap(b => {
+        const vals = [];
+        if (!b.isNmci && b.vramNiprRaVph !== null) vals.push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) vals.push(b.vramSiprRaVph);
+        return vals;
+    });
+    const avgVph = vphValues.length > 0 ? (vphValues.reduce((s, v) => s + v, 0) / vphValues.length).toFixed(2) : 0;
+    // Total breakfix: sum all (NIPR only for non-NMCI boats)
+    const totalBreakfix = boats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
+    // Avg compliance: average of all compliance values (NIPR for non-NMCI, SIPR for all) - only count non-null
+    const compValues = boats.flatMap(b => {
+        const vals = [];
+        if (!b.isNmci && b.essNiprProductCompliance !== null) vals.push(b.essNiprProductCompliance);
+        if (b.essSiprProductCompliance !== null) vals.push(b.essSiprProductCompliance);
+        return vals;
+    });
+    const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : 0;
 
     // Get label and visibility from schema config
     const schema = settings.schemaConfig || defaultSchemaConfig;
@@ -891,9 +910,9 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
         for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
-        // RA (NIPR) - show NMCI for NMCI boats
-        if (showVramCrit) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaCrit)}</td>`;
-        if (showVramHigh) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaHigh)}</td>`;
+        // RA - for NMCI boats show SIPR values, otherwise show NIPR values
+        if (showVramCrit) cells += `<td>${fmt(isNmci ? b.vramSiprRaCrit : b.vramNiprRaCrit)}</td>`;
+        if (showVramHigh) cells += `<td>${fmt(isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>`;
         // TAM - color past due if >10
         if (showTamPastDue) cells += `<td class="${(b.tamPastDue||0)>10?'risk-high':''}">${fmt(b.tamPastDue)}</td>`;
         if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
@@ -970,31 +989,43 @@ const generateReportHTML = (reportData, settings) => {
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
     const settingsHistory = settings._settingsHistory || [];
-    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0;
-    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0);
+    const dataUpdates = reportData.dataUpdates || [];
+    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0 || dataUpdates.length > 0;
+    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0) + dataUpdates.length;
 
     // Tab visibility helpers
     const tabConfig = settings.tabConfig || [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
     const isTabVisible = (id) => { const tab = tabConfig.find(t => t.id === id); return tab ? tab.visible : true; };
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
+    const pageInfo = `<div class="page-info print-only">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div>`;
 
     // HQ page compliance class: >=98% green, 95-97.9% yellow, <95% red
     const hqCompClass = (v) => v === null ? '' : v >= 98 ? 'risk-low' : v >= 95 ? 'risk-med' : 'risk-high';
 
     const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
-    // High risk boats table for analytics
+    // High risk boats table for analytics - show max VPH across enclaves
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
-    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${(b.essNiprBreakfix||0)+(b.essSiprBreakfix||0)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
+    const getBoatVph = (b) => {
+        const nipr = b.isNmci ? null : b.vramNiprRaVph;
+        const sipr = b.vramSiprRaVph;
+        if (nipr !== null && sipr !== null) return Math.max(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td>${fmt(getBoatVph(b),2)}</td><td class="${getBoatBreakfix(b)>0?'alert-red':''}">${getBoatBreakfix(b)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
 
-    // VPH by ISIC for bar chart
+    // VPH by ISIC for bar chart - use both enclaves, handle NMCI
     const isicVph = {};
-    boats.forEach(b => { if (!isicVph[b.isic]) isicVph[b.isic] = []; isicVph[b.isic].push(b.vramNiprRaVph || 0); });
-    const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) }));
+    boats.forEach(b => {
+        if (!isicVph[b.isic]) isicVph[b.isic] = [];
+        if (!b.isNmci && b.vramNiprRaVph !== null) isicVph[b.isic].push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) isicVph[b.isic].push(b.vramSiprRaVph);
+    });
+    const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: vphs.length > 0 ? (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) : '0' }));
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title>
-<script src="libs/xlsx.full.min.js"><\/script>
 <script src="libs/chart.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1055,9 +1086,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 .mini-table tr:last-child td{border-bottom:none}
 .print-only{display:none}
-.print-header{background:#1e293b;color:white;padding:12px 24px;margin-bottom:16px}
-.print-header h1{font-size:14pt;font-weight:600;margin-bottom:4px}
-.print-header .date{font-size:10pt;opacity:0.9}
+.print-header{padding:0;margin-bottom:16px}
+.print-header h1{font-size:14pt;font-weight:600;color:#1e293b;margin-bottom:4px}
+.print-header .date{font-size:9pt;color:#475569}
+.page-info{font-size:9pt;color:#475569;margin-bottom:8px}
 @media print{
     .no-print{display:none!important}
     .print-only{display:block!important}
@@ -1107,14 +1139,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 </style></head><body>
 <div class="header no-print">
 <div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
-<div style="display:flex;gap:8px;">
 <button onclick="showHelpModal()" style="background:#64748b;color:white;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;" title="Calculation Help">?</button>
-<button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
-</div>
-</div>
-<div class="print-only print-header">
-<h1>SUBFOR Cyber Risk Dashboard</h1>
-<div class="date">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | Version ${reportData.version}</div>
 </div>
 <div class="tabs no-print">
 ${tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((t, i) => `<button class="tab-btn${i===0?' active':''}" onclick="showTab('${t.id}')">${t.id === 'changelog' ? `Changes (${changeCount})` : t.label}</button>`).join('')}
@@ -1131,7 +1156,8 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 <button onclick="printTab('csl')">Print CSL</button>
 </div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSL Cyber Summary</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSL Cyber Summary</h2>
+${pageInfo}
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -1156,7 +1182,8 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 <button onclick="printTab('csp')">Print CSP</button>
 </div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSP Cyber Summary</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSP Cyber Summary</h2>
+${pageInfo}
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -1176,7 +1203,8 @@ ${isTabVisible('hq') ? `<div id="tab-hq" class="tab-content${firstVisibleTab==='
 <h2>HQ Cyber Status</h2>
 <div class="toolbar"><button onclick="printTab('hq')">Print HQ Status</button></div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">HQ Cyber Status</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">HQ Cyber Status</h2>
+${pageInfo}
 ${hqTable(aggs.csl, 'CSL Status')}
 ${hqTable(aggs.csp, 'CSP Status')}
 </div>
@@ -1209,29 +1237,50 @@ ${isTabVisible('analytics') ? (() => {
         isChartVisible('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
     ].filter(Boolean).join('');
 
-    // Rankings
+    // Rankings - helper functions to properly handle NMCI boats
+    const getBoatMaxVph = (b) => {
+        const nipr = b.isNmci ? null : b.vramNiprRaVph;
+        const sipr = b.vramSiprRaVph;
+        if (nipr !== null && sipr !== null) return Math.max(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatMinCompliance = (b) => {
+        const nipr = b.isNmci ? null : b.essNiprProductCompliance;
+        const sipr = b.essSiprProductCompliance;
+        if (nipr !== null && sipr !== null) return Math.min(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+
     const rankingTables = [];
     const r1 = getRanking('worstBoatsVph');
     if (r1.visible) {
-        const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (b.vramNiprRaVph||0) - (a.vramNiprRaVph||0)).slice(0, r1.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, r1.count||5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r2 = getRanking('bestBoatsVph');
     if (r2.visible) {
-        const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (a.vramNiprRaVph||0) - (b.vramNiprRaVph||0)).slice(0, r2.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, r2.count||5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r3 = getRanking('worstBoatsCompliance');
     if (r3.visible) {
-        const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (a.essNiprProductCompliance||0) - (b.essNiprProductCompliance||0)).slice(0, r3.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, r3.count||5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r4 = getRanking('bestBoatsCompliance');
     if (r4.visible) {
-        const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (b.essNiprProductCompliance||0) - (a.essNiprProductCompliance||0)).slice(0, r4.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, r4.count||5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => ({isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: ib.reduce((s,b)=>s+(b.vramNiprRaVph||0),0)/ib.length}));
+    // ISIC data: calculate avg VPH considering both enclaves and NMCI
+    const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => {
+        const vphVals = ib.flatMap(b => {
+            const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph);
+            if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v;
+        });
+        return {isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0};
+    });
     const r5 = getRanking('worstIsicsRisk');
     if (r5.visible) {
         const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, r5.count||3);
@@ -1249,14 +1298,27 @@ ${isTabVisible('analytics') ? (() => {
     }
     const r8 = getRanking('boatsWithBreakfix');
     if (r8.visible) {
-        const sorted = [...boats].filter(b => (b.essNiprBreakfix||0) > 0).sort((a,b) => (b.essNiprBreakfix||0) - (a.essNiprBreakfix||0)).slice(0, r8.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${b.essNiprBreakfix||0}</td></tr>`).join('')}</tbody></table></div>`);
+        const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, r8.count||5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r9 = getRanking('tycomComparison');
     if (r9.visible) {
         const tycomData = {};
-        boats.forEach(b => { if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphSum:0,bfSum:0,compSum:0,compCount:0}; const t=tycomData[b.tycom]; t.boats++; if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++; t.vphSum+=(b.vramNiprRaVph||0); t.bfSum+=(b.essNiprBreakfix||0); if(b.essNiprProductCompliance!=null){t.compSum+=b.essNiprProductCompliance;t.compCount++;} });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => { const comp = d.compCount ? Math.min(100,d.compSum/d.compCount) : null; return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`; }).join('');
+        boats.forEach(b => {
+            if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
+            const t=tycomData[b.tycom]; t.boats++;
+            if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
+            if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
+            if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
+            t.bfSum += getBoatTotalBreakfix(b);
+            if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
+            if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
+        });
+        const rows = Object.entries(tycomData).map(([tycom,d]) => {
+            const avgVph = d.vphVals.length > 0 ? d.vphVals.reduce((s,v)=>s+v,0)/d.vphVals.length : 0;
+            const comp = d.compVals.length > 0 ? Math.min(100, d.compVals.reduce((s,v)=>s+v,0)/d.compVals.length) : null;
+            return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${avgVph.toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`;
+        }).join('');
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
@@ -1273,8 +1335,11 @@ ${isTabVisible('analytics') ? (() => {
         const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
         const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
         const l = isicBoats.filter(b => b.riskLevel === 'LOW').length;
-        const vph = (isicBoats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / isicBoats.length).toFixed(2);
-        const bf = isicBoats.reduce((s, b) => s + (b.essNiprBreakfix || 0), 0);
+        // VPH: avg of all values (NIPR for non-NMCI, SIPR for all)
+        const vphVals = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+        const vph = vphVals.length > 0 ? (vphVals.reduce((s,v)=>s+v,0)/vphVals.length).toFixed(2) : '0.00';
+        // Breakfix: sum NIPR (for non-NMCI) + SIPR
+        const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
         return `<tr>${[
             isColVisible('isic') ? `<td style="text-align:left;font-weight:600">${isic}</td>` : '',
             isColVisible('boats') ? `<td>${isicBoats.length}</td>` : '',
@@ -1287,7 +1352,8 @@ ${isTabVisible('analytics') ? (() => {
     }).join('');
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Analytics</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
+${pageInfo}
 ${visibleStats ? `<div class="stat-cards" style="grid-template-columns:repeat(${statCols},1fr)">${visibleStats}</div>` : ''}
 ${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
 ${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
@@ -1302,7 +1368,8 @@ ${summaryHeaders ? `<div class="page">
 ${(hasChanges && isTabVisible('changelog')) ? `<div id="tab-changelog" class="tab-content${firstVisibleTab==='changelog'?' active':''}">
 <div class="page">
 <div class="page-header no-print"><h2>Change Log</h2><div class="toolbar"><button onclick="printTab('changelog')">Print Changes</button></div></div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Change Log</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Change Log</h2>
+${pageInfo}
 
 <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
 <h4 style="font-size:10pt;color:#0369a1;margin:0 0 8px;">Current Settings</h4>
@@ -1320,6 +1387,10 @@ ${thresholdChanges.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;col
 ${allOverrides.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#7c3aed;">Value Overrides</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th style="text-align:left">Field</th><th>Original</th><th>New</th><th style="text-align:left">Reason</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${allOverrides.map(o => `<tr><td style="text-align:left;font-family:monospace;">${o.boatName}</td><td style="text-align:left">${o.field}</td><td>${o.originalValue}</td><td style="font-weight:bold;color:#7c3aed;">${o.overrideValue}</td><td style="text-align:left">${o.reason}</td><td>${o.user}</td><td>${new Date(o.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
+${dataUpdates.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#0891b2;">Data Source Updates</h3>
+<table class="summary-table"><thead><tr><th>Update</th><th style="text-align:left">Sources</th><th style="text-align:left">Files</th><th>By</th><th>Time</th></tr></thead>
+<tbody>${dataUpdates.map((u, i) => `<tr><td style="font-weight:bold;">#${i + 1}</td><td style="text-align:left">${u.sources.join(', ')}</td><td style="text-align:left;font-size:7pt;">${u.files.join(', ')}</td><td>${u.user}</td><td>${new Date(u.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
 </div>
 </div>` : ''}
 
@@ -1354,23 +1425,6 @@ function filterISIC(p, v) {
         if (isicCell) currentISIC = isicCell.textContent;
         row.style.display = !v || currentISIC === v ? '' : 'none';
     });
-}
-function exportToExcel() {
-    const m = document.querySelector('script[type="application/x-dashboard-report"]');
-    if (!m) { alert('No data'); return; }
-    try {
-        const [h, b64] = m.textContent.trim().split(':');
-        const d = JSON.parse(decodeURIComponent(escape(atob(b64))));
-        const wb = XLSX.utils.book_new();
-        if (d.reportData.sourceData.vramNipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.vramNipr.raw), 'VRAM NIPR');
-        if (d.reportData.sourceData.vramSipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.vramSipr.raw), 'VRAM SIPR');
-        if (d.reportData.sourceData.essNipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essNipr.raw), 'ESS NIPR');
-        if (d.reportData.sourceData.essSipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essSipr.raw), 'ESS SIPR');
-        if (d.reportData.sourceData.tam?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.tam.raw), 'TAM');
-        const calc = d.reportData.boats.map(b => ({ Boat: b.boatFullName || b.boatName, ISIC: b.isic, TYCOM: b.tycom, Risk: b.riskLevel, Reasons: b.riskReasons.join('; '), Notes: b.notes || '' }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(calc), 'Summary');
-        XLSX.writeFile(wb, 'cyber-export-' + new Date().toISOString().slice(0, 10) + '.xlsx');
-    } catch (e) { alert('Export failed: ' + e.message); }
 }
 function initCharts() {
     const el1 = document.getElementById('chart-risk-all');
@@ -1458,7 +1512,7 @@ const DragDropZone = ({ label, file, onDrop, onClear }) => {
     );
 };
 
-const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onProcess, onAlert, onReportImport }) => {
+const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, reportData, onProcess, onAlert, onReportImport }) => {
     const [reportDrag, setReportDrag] = React.useState(false);
     const handleDrop = (key) => (file) => { const r = new FileReader(); r.onload = (e) => setImportedFiles(p => ({...p, [key]: { name: file.name, data: new Uint8Array(e.target.result) }})); r.readAsArrayBuffer(file); };
 
@@ -1482,21 +1536,74 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onP
                 essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data, schema.ess) : null,
                 tam: importedFiles.tam ? parseTAM(importedFiles.tam.data, schema.tam) : null
             };
-            const { boats, unregistered } = mergeData(sources, settings);
-            calculateAllRisks(boats, settings.thresholds);
-            const report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: sources, createdAt: new Date().toISOString(), createdBy: '', lastModifiedAt: new Date().toISOString(), lastModifiedBy: '', version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name } };
-            if (unregistered.length > 0) onAlert({ type: 'warning', msg: `Unregistered: ${unregistered.slice(0,5).join(', ')}${unregistered.length>5?'...':''} - Add in Settings` });
+
+            // Check if this is an update to existing report
+            const isUpdate = reportData && reportData.boats && reportData.boats.length > 0;
+            const updatedSources = Object.entries(sources).filter(([k, v]) => v !== null).map(([k]) => k);
+
+            // Strip raw data from sources to reduce file size (only keep parsed data needed for merging)
+            const stripRaw = (src) => src ? { parsed: src.parsed, customFieldDefs: src.customFieldDefs, isicMap: src.isicMap } : null;
+
+            let boats, report;
+            if (isUpdate && updatedSources.length > 0) {
+                // Merge new sources with existing source data
+                const mergedSources = { ...reportData.sourceData };
+                Object.entries(sources).forEach(([key, val]) => { if (val !== null) mergedSources[key] = stripRaw(val); });
+                const result = mergeData(mergedSources, settings);
+                boats = result.boats;
+
+                // Preserve overrides from existing boats
+                boats.forEach(newBoat => {
+                    const oldBoat = reportData.boats.find(b => b.boatName === newBoat.boatName);
+                    if (oldBoat?.overrides?.length) newBoat.overrides = [...oldBoat.overrides];
+                    if (oldBoat?.notes) newBoat.notes = oldBoat.notes;
+                });
+
+                calculateAllRisks(boats, settings.thresholds);
+
+                // Build update changelog entry
+                const sourceLabels = { vramNipr: 'VRAM NIPR', vramSipr: 'VRAM SIPR', essNipr: 'ESS NIPR', essSipr: 'ESS SIPR', tam: 'TAM' };
+                const updateEntry = { type: 'dataUpdate', sources: updatedSources.map(k => sourceLabels[k] || k), files: updatedSources.map(k => importedFiles[k]?.name).filter(Boolean), timestamp: new Date().toISOString(), user: 'User' };
+
+                report = {
+                    ...reportData,
+                    boats,
+                    sourceData: mergedSources,
+                    lastModifiedAt: new Date().toISOString(),
+                    version: (reportData.version || 1) + 1,
+                    sourceFiles: { ...reportData.sourceFiles, ...Object.fromEntries(updatedSources.map(k => [k, importedFiles[k]?.name])) },
+                    dataUpdates: [...(reportData.dataUpdates || []), updateEntry]
+                };
+                onAlert({ type: 'info', msg: `Updated ${updatedSources.map(k => sourceLabels[k]).join(', ')} - preserved ${boats.filter(b => b.overrides?.length).length} overrides` });
+            } else {
+                // Fresh report - strip raw data to reduce file size
+                const result = mergeData(sources, settings);
+                boats = result.boats;
+                calculateAllRisks(boats, settings.thresholds);
+                const strippedSources = { vramNipr: stripRaw(sources.vramNipr), vramSipr: stripRaw(sources.vramSipr), essNipr: stripRaw(sources.essNipr), essSipr: stripRaw(sources.essSipr), tam: stripRaw(sources.tam) };
+                report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: strippedSources, createdAt: new Date().toISOString(), createdBy: '', lastModifiedAt: new Date().toISOString(), lastModifiedBy: '', version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name }, dataUpdates: [] };
+                if (result.unregistered.length > 0) onAlert({ type: 'warning', msg: `Unregistered: ${result.unregistered.slice(0,5).join(', ')}${result.unregistered.length>5?'...':''} - Add in Settings` });
+            }
             onProcess(report);
         } catch (err) { onAlert({ type: 'error', msg: err.message }); }
     };
 
     const slots = [{ key: 'vramNipr', label: 'VRAM NIPR' }, { key: 'vramSipr', label: 'VRAM SIPR' }, { key: 'essNipr', label: 'ESS NIPR' }, { key: 'essSipr', label: 'ESS SIPR' }, { key: 'tam', label: 'TAM Overdue' }];
+    const hasExistingReport = reportData && reportData.boats && reportData.boats.length > 0;
+    const hasNewFiles = Object.values(importedFiles).some(f => f);
 
     return (
         <div>
+            {hasExistingReport && (
+                <div className="mb-4 p-3 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center gap-3">
+                    <span className="text-cyan-700 font-medium">Active Report: v{reportData.version || 1}</span>
+                    <span className="text-cyan-600 text-sm">({reportData.boats.length} boats)</span>
+                    <span className="text-cyan-500 text-sm">• Drop new files below to update specific data sources while preserving overrides</span>
+                </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold mb-4 text-slate-800">Import Data Files</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-slate-800">{hasExistingReport ? 'Update Data Sources' : 'Import Data Files'}</h2>
                     <div className="grid grid-cols-2 gap-3">{slots.map(s => <DragDropZone key={s.key} label={s.label} file={importedFiles[s.key]} onDrop={handleDrop(s.key)} onClear={() => setImportedFiles(p => ({...p, [s.key]: null}))} />)}</div>
                 </div>
                 <div>
@@ -1512,7 +1619,7 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onP
                 </div>
             </div>
             <div className="flex gap-4 flex-wrap">
-                <button onClick={process} disabled={!Object.values(importedFiles).some(f=>f)} className="btn-primary">Process & Preview</button>
+                <button onClick={process} disabled={!hasNewFiles} className="btn-primary">{hasExistingReport && hasNewFiles ? 'Update & Preview' : 'Process & Preview'}</button>
                 <button onClick={() => setImportedFiles({vramNipr:null,vramSipr:null,essNipr:null,essSipr:null,tam:null})} className="btn-secondary">Clear All</button>
             </div>
         </div>
@@ -1860,8 +1967,8 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {showVramIntegrity && <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />}
                                 {vramCustomFields.map(cf => <td key={`vrams-${cf.field}`}>{fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>)}
-                                {showVramCrit && <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />}
-                                {showVramHigh && <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />}
+                                {showVramCrit && <td>{fmt(b.isNmci ? b.vramSiprRaCrit : b.vramNiprRaCrit)}</td>}
+                                {showVramHigh && <td>{fmt(b.isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>}
                                 {showTamPastDue && <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} className={(b.tamPastDue||0)>10?'risk-high':''} />}
                                 {showTamExtensions && <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />}
                                 {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
@@ -2611,7 +2718,7 @@ function App() {
             <nav className="border-b border-slate-200 px-6 bg-white"><div className="flex gap-1 max-w-[95vw] mx-auto">{['import', 'preview', 'settings'].map(tab => <button key={tab} onClick={() => setCurrentTab(tab)} className={`tab-btn ${currentTab === tab ? 'active' : ''}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}</div></nav>
 
             <main className="max-w-[95vw] mx-auto p-6">
-                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
+                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} reportData={reportData} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
                 {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
                 {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
