@@ -986,7 +986,7 @@ ${isTabVisible('analytics') ? (() => {
     if (r9.visible) {
         const tycomData = {};
         boats.forEach(b => { if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphSum:0,bfSum:0,compSum:0,compCount:0}; const t=tycomData[b.tycom]; t.boats++; if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++; t.vphSum+=(b.vramNiprRaVph||0); t.bfSum+=(b.essNiprBreakfix||0); if(b.essNiprProductCompliance!=null){t.compSum+=b.essNiprProductCompliance;t.compCount++;} });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td>${d.compCount?(d.compSum/d.compCount).toFixed(1)+'%':'-'}</td></tr>`).join('');
+        const rows = Object.entries(tycomData).map(([tycom,d]) => `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td>${d.compCount?Math.min(100,d.compSum/d.compCount).toFixed(1)+'%':'-'}</td></tr>`).join('');
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
