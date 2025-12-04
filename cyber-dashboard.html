@@ -52,133 +52,11 @@
 {
     "_version": 1,
     "tycoms": ["CSL", "CSP"],
-    "isics": [
-        {"isic_name": "COMSUBDEVRON 5", "isic_short": "CSDS5", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 4", "isic_short": "CSS4", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 6", "isic_short": "CSS6", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 8", "isic_short": "CSS8", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 17", "isic_short": "CSS17", "tycom": "CSP", "active": true},
-        {"isic_name": "COMSUBRON 19", "isic_short": "CSS19", "tycom": "CSP", "active": true},
-        {"isic_name": "COMSUBRON 20", "isic_short": "CSS20", "tycom": "CSP", "active": true}
-    ],
-    "boats": [
-        {"boat_name": "SSN-21", "boat_full_name": "USS SEAWOLF", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-22", "boat_full_name": "USS CONNECTICUT", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-23", "boat_full_name": "USS JIMMY CARTER", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-774", "boat_full_name": "USS VIRGINIA", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-775", "boat_full_name": "USS TEXAS", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-776", "boat_full_name": "USS HAWAII", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-777", "boat_full_name": "USS NORTH CAROLINA", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-778", "boat_full_name": "USS NEW HAMPSHIRE", "isic": "COMSUBRON 8", "tycom": "CSL", "active": true},
-        {"boat_name": "SSBN-730", "boat_full_name": "USS HENRY M JACKSON", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-731", "boat_full_name": "USS ALABAMA", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-732", "boat_full_name": "USS ALASKA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-733", "boat_full_name": "USS NEVADA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-726", "boat_full_name": "USS OHIO", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-727", "boat_full_name": "USS MICHIGAN", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-728", "boat_full_name": "USS FLORIDA", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true}
-    ],
-    "thresholds": {
-        "auto_high_scan_age_days": 90,
-        "auto_high_scan_integrity": 80,
-        "auto_high_scan_percent": 80,
-        "auto_high_ra_vph": 10,
-        "auto_high_ra_crit": 50,
-        "high_scan_age_days": 60,
-        "high_scan_integrity": 90,
-        "high_ra_vph": 5,
-        "high_ra_crit": 20,
-        "high_ess_compliance": 85,
-        "high_tam_past_due": 5,
-        "med_scan_age_days": 30,
-        "med_ra_vph": 2.5,
-        "med_ess_compliance": 95,
-        "med_tam_past_due": 1
-    },
-    "display": {
-        "color_scan_age_amber_days": 30,
-        "color_scan_age_red_days": 90,
-        "color_ra_vph_amber": 2.5,
-        "color_ra_vph_red": 5,
-        "color_scan_quality_red": 98
-    },
-    "user": {"default_name": ""},
-    "schemaConfig": {
-        "vram": [
-            {"field": "siteName", "label": "Site/Boat Name", "column": "Site Name", "visible": true},
-            {"field": "scanDate", "label": "Last Scan Date", "column": "Last Scan Date", "visible": true},
-            {"field": "assets", "label": "Asset Count", "column": "Valid Assets", "visible": true},
-            {"field": "raVph", "label": "RA VPH", "column": "RA VPH", "visible": true},
-            {"field": "scanIntegrity", "label": "Scan Integrity %", "column": "Scan Integrity", "visible": true},
-            {"field": "scanPercent", "label": "Percent Scanned", "column": "Percent Scanned", "visible": true},
-            {"field": "raCrit", "label": "RA Critical", "column": "RA Crit", "visible": true},
-            {"field": "raHigh", "label": "RA High", "column": "RA High", "visible": true},
-            {"field": "scanExempt", "label": "Scan Exempt", "column": "Scan Exempt", "visible": true}
-        ],
-        "ess": [
-            {"field": "shipName", "label": "Ship/Boat Name", "column": "Ships", "visible": true},
-            {"field": "isic", "label": "ISIC Column", "column": "ISICs", "visible": true},
-            {"field": "productCompliance", "label": "Product Compliance %", "column": "Product Compliance", "visible": true},
-            {"field": "policyEnforced", "label": "Policy Enforced %", "column": "Policy Enforced", "visible": true},
-            {"field": "breakfix", "label": "Breakfix Count", "column": "Assets in Breakfix", "visible": true},
-            {"field": "assets", "label": "Asset Count", "column": "Asset Count", "visible": true}
-        ],
-        "tam": [
-            {"field": "boatName", "label": "Boat Name", "column": "Boat", "visible": true},
-            {"field": "pastDue", "label": "Past Due Count", "column": "# Past Due", "visible": true},
-            {"field": "extensions", "label": "Extensions Count", "column": "# Extensions", "visible": true}
-        ]
-    },
-    "tabConfig": [
-        {"id": "csl", "label": "CSL Summary", "visible": true},
-        {"id": "csp", "label": "CSP Summary", "visible": true},
-        {"id": "hq", "label": "HQ Status", "visible": true},
-        {"id": "analytics", "label": "Analytics", "visible": true},
-        {"id": "changelog", "label": "Changes", "visible": true}
-    ],
-    "analyticsConfig": {
-        "statCards": [
-            {"id": "totalBoats", "label": "Total Boats", "visible": true},
-            {"id": "highRisk", "label": "High Risk", "visible": true},
-            {"id": "medRisk", "label": "Medium Risk", "visible": true},
-            {"id": "lowRisk", "label": "Low Risk", "visible": true},
-            {"id": "avgVph", "label": "Avg NIPR VPH", "visible": true},
-            {"id": "totalBreakfix", "label": "Total Breakfix", "visible": true},
-            {"id": "avgCompliance", "label": "Avg ESS Compliance", "visible": true},
-            {"id": "scanExempt", "label": "Scan Exempt", "visible": true}
-        ],
-        "charts": [
-            {"id": "riskDistribution", "label": "Risk Distribution - All", "visible": true},
-            {"id": "riskByTycom", "label": "Risk by TYCOM", "visible": true},
-            {"id": "vphByIsic", "label": "Average VPH by ISIC", "visible": true},
-            {"id": "highRiskTable", "label": "High Risk Boats Table", "visible": true}
-        ],
-        "rankings": [
-            {"id": "worstBoatsVph", "label": "Worst Boats by VPH", "visible": true, "count": 5},
-            {"id": "bestBoatsVph", "label": "Best Boats by VPH", "visible": false, "count": 5},
-            {"id": "worstBoatsCompliance", "label": "Worst Boats by Compliance", "visible": true, "count": 5},
-            {"id": "bestBoatsCompliance", "label": "Best Boats by Compliance", "visible": false, "count": 5},
-            {"id": "worstIsicsRisk", "label": "Worst ISICs by High Risk Count", "visible": true, "count": 3},
-            {"id": "bestIsicsRisk", "label": "Best ISICs by Low Risk %", "visible": false, "count": 3},
-            {"id": "worstIsicsVph", "label": "Worst ISICs by Avg VPH", "visible": false, "count": 3},
-            {"id": "boatsWithBreakfix", "label": "Boats with Breakfix Issues", "visible": true, "count": 5},
-            {"id": "tycomComparison", "label": "TYCOM vs TYCOM Comparison", "visible": true, "count": 0}
-        ],
-        "summaryColumns": [
-            {"id": "isic", "label": "ISIC", "visible": true},
-            {"id": "boats", "label": "Boats", "visible": true},
-            {"id": "high", "label": "High", "visible": true},
-            {"id": "med", "label": "Med", "visible": true},
-            {"id": "low", "label": "Low", "visible": true},
-            {"id": "avgVph", "label": "Avg VPH", "visible": true},
-            {"id": "breakfix", "label": "Breakfix", "visible": true}
-        ]
-    },
-    "legendText": {
-        "high": "Breakfix > 0, Scan > {auto_high_scan_age_days}d, VPH > {auto_high_ra_vph}, Integrity < {auto_high_scan_integrity}%, Policy < {high_ess_compliance}%, TAM > {high_tam_past_due}",
-        "med": "Scan > {med_scan_age_days}d, VPH > {med_ra_vph}, Policy < {med_ess_compliance}%, TAM > {med_tam_past_due}",
-        "low": "No criteria met"
-    }
+    "isics": [],
+    "boats": [],
+    "thresholds": {},
+    "display": {},
+    "user": {"default_name": ""}
 }
 </script>
 
@@ -1799,6 +1677,83 @@ const NamePromptModal = ({ onSubmit, onCancel }) => {
     );
 };
 
+// First Time Setup Modal
+const FirstTimeSetupModal = ({ onImportSettings, onImportReport, onDismiss }) => {
+    const [isDragging, setIsDragging] = React.useState(false);
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (file) {
+            if (file.name.endsWith('.html')) {
+                onImportReport(file);
+            } else if (file.name.endsWith('.json')) {
+                try {
+                    const text = await file.text();
+                    const settings = JSON.parse(text);
+                    onImportSettings(settings);
+                } catch (err) {
+                    alert('Failed to parse settings file: ' + err.message);
+                }
+            } else {
+                alert('Please drop a .html report file or a .json settings file');
+            }
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '550px' }} onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2 text-slate-800">Welcome to Cyber Dashboard</h3>
+                <p className="text-sm text-slate-600 mb-6">No settings configured yet. Import your settings to get started.</p>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                        <span className="text-amber-500 text-lg">⚠</span>
+                        <div className="text-sm text-amber-800">
+                            <strong>Important:</strong> Once imported, your settings are saved in this browser's local storage. They will persist until you clear your browser cache/data, use a different browser, or use incognito/private mode.
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    className={`drag-zone p-8 text-center mb-4 ${isDragging ? 'drag-active' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                >
+                    <div className="text-4xl mb-3">📂</div>
+                    <p className="text-slate-600 font-medium mb-2">Drop a file here</p>
+                    <p className="text-sm text-slate-500">
+                        Drop a previously generated <strong>report.html</strong> to extract its settings<br/>
+                        or drop a <strong>settings.json</strong> backup file
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex-1 border-t border-slate-200"></div>
+                    <span className="text-sm text-slate-400">or</span>
+                    <div className="flex-1 border-t border-slate-200"></div>
+                </div>
+
+                <div className="flex gap-3 justify-center">
+                    <button onClick={onImportSettings} className="btn-primary">
+                        Import settings.json
+                    </button>
+                    <button onClick={onDismiss} className="btn-secondary">
+                        Start Fresh
+                    </button>
+                </div>
+
+                <p className="text-xs text-slate-400 mt-4 text-center">
+                    Starting fresh? You can configure boats, ISICs, and thresholds in the Settings tab.
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Main App
 function App() {
     const [settings, setSettings] = React.useState(() => SettingsManager.load());
@@ -1808,18 +1763,56 @@ function App() {
     const [alerts, setAlerts] = React.useState([]);
     const [namePrompt, setNamePrompt] = React.useState(null);
     const [isUsingImportedSettings, setIsUsingImportedSettings] = React.useState(false);
+    const [showFirstTimeSetup, setShowFirstTimeSetup] = React.useState(false);
 
-    const handleReportImport = async (file) => {
+    // Check if settings are blank on first load
+    React.useEffect(() => {
+        const isBlank = !settings.boats?.length && !settings.isics?.length && !Object.keys(settings.thresholds || {}).length;
+        const hasStoredSettings = SettingsManager.hasSavedSettings();
+        if (isBlank && !hasStoredSettings) {
+            setShowFirstTimeSetup(true);
+        }
+    }, []);
+
+    const handleReportImport = async (file, fromSetup = false) => {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
-            // Use the imported report's settings for this session (don't save to localStorage)
-            setIsUsingImportedSettings(true);
-            setSettings(result.settings);
-            setReportData(result.reportData);
-            setCurrentTab('preview');
-            setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
-            if (!result.valid) setAlerts(p => [...p, { type: 'warning', msg: 'Report hash invalid - data may have been modified' }]);
+            if (fromSetup) {
+                // From first-time setup: save settings to localStorage permanently
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setShowFirstTimeSetup(false);
+                setAlerts([{ type: 'info', msg: `Settings imported from report (${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs)` }]);
+            } else {
+                // Normal import: use for session only
+                setIsUsingImportedSettings(true);
+                setSettings(result.settings);
+                setReportData(result.reportData);
+                setCurrentTab('preview');
+                setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
+                if (!result.valid) setAlerts(p => [...p, { type: 'warning', msg: 'Report hash invalid - data may have been modified' }]);
+            }
+        }
+    };
+
+    const handleFirstTimeImportSettings = async (settingsOrNull) => {
+        if (settingsOrNull) {
+            // Settings object passed directly from drag/drop
+            const imported = SettingsManager.ensureDefaults(settingsOrNull);
+            SettingsManager.save(imported);
+            setSettings(imported);
+            setShowFirstTimeSetup(false);
+            setAlerts([{ type: 'info', msg: `Settings imported (${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs)` }]);
+        } else {
+            // Open file picker
+            const result = await SettingsManager.importSettings();
+            if (result.success) {
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setShowFirstTimeSetup(false);
+                setAlerts([{ type: 'info', msg: `Settings imported (${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs)` }]);
+            }
         }
     };
 
@@ -1862,6 +1855,14 @@ function App() {
             <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
 
             {namePrompt && <NamePromptModal onSubmit={handleNameSubmit} onCancel={() => setNamePrompt(null)} />}
+
+            {showFirstTimeSetup && (
+                <FirstTimeSetupModal
+                    onImportSettings={handleFirstTimeImportSettings}
+                    onImportReport={(file) => handleReportImport(file, true)}
+                    onDismiss={() => setShowFirstTimeSetup(false)}
+                />
+            )}
         </div>
     );
 }
