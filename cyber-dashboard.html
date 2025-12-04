@@ -420,8 +420,8 @@ const SettingsManager = {
 };
 
 // Data Models
-const createBoatData = (name, fullName, isic, tycom) => ({
-    boatName: name, boatFullName: fullName, isic, tycom,
+const createBoatData = (name, fullName, isic, tycom, isNmci = false) => ({
+    boatName: name, boatFullName: fullName, isic, tycom, isNmci,
     essNiprAssets: null, essNiprBreakfix: null, essNiprProductCompliance: null, essNiprTruePolicy: null,
     essSiprAssets: null, essSiprBreakfix: null, essSiprProductCompliance: null, essSiprTruePolicy: null,
     vramNiprAssets: null, vramNiprScanDate: null, vramNiprRaVph: null, vramNiprScanIntegrity: null, vramNiprScanPercent: null, vramNiprRaCrit: null, vramNiprRaHigh: null, vramNiprScanExempt: false,
@@ -514,11 +514,14 @@ const mergeData = (sources, settings) => {
     const allNames = new Set([...Object.keys(vramNipr?.parsed||{}), ...Object.keys(vramSipr?.parsed||{}), ...Object.keys(essNipr?.parsed||{}), ...Object.keys(essSipr?.parsed||{}), ...Object.keys(tam?.parsed||{})]);
 
     for (const name of Object.keys(registry)) {
-        const reg = registry[name]; const boat = createBoatData(reg.boat_name, reg.boat_full_name, reg.isic, reg.tycom);
+        const reg = registry[name]; const boat = createBoatData(reg.boat_name, reg.boat_full_name, reg.isic, reg.tycom, reg.nmci === true);
         boat.customFields = { vramNipr: {}, vramSipr: {}, essNipr: {}, essSipr: {}, tam: {} };
-        const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; if (vn.custom) boat.customFields.vramNipr = vn.custom; }
+        // For NMCI boats, skip NIPR data entirely - mark columns as NMCI
+        if (!boat.isNmci) {
+            const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; if (vn.custom) boat.customFields.vramNipr = vn.custom; }
+            const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
+        }
         const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaCrit = vs.raCrit; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; if (vs.custom) boat.customFields.vramSipr = vs.custom; }
-        const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
         const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; if (es.custom) boat.customFields.essSipr = es.custom; }
         const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; if (t.custom) boat.customFields.tam = t.custom; }
         boats.push(boat);
@@ -532,10 +535,12 @@ const mergeData = (sources, settings) => {
 // HIGH: Any asset in breakfix OR no VRAM scan data (can't assess risk)
 // MED: 2 or more of: VPH >3.5, Product/Policy compliance <95%, Scan >14 days, TAMs past due >10
 // LOW: VPH <2.5, Scans within 14 days, Policy and Product compliance over 95%, no high triggers
+// NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
 const calculateRisk = (boat, thresholds) => {
     const reasons = [];
     let level = 'LOW';
     let highDueToNoScans = false;
+    const isNmci = boat.isNmci === true;
 
     const scanAge = (d) => {
         if (!d) return null;
@@ -545,22 +550,24 @@ const calculateRisk = (boat, thresholds) => {
         return (isFinite(age) && age >= 0) ? age : null;
     };
 
-    const nAge = scanAge(boat.vramNiprScanDate);
+    const nAge = isNmci ? null : scanAge(boat.vramNiprScanDate);
     const sAge = scanAge(boat.vramSiprScanDate);
 
     // Check if we have VRAM data - if no VRAM data at all, it's HIGH risk (can't assess)
-    const hasNiprVramData = boat.vramNiprScanDate !== null || boat.vramNiprRaVph !== null || boat.vramNiprAssets !== null;
+    // For NMCI boats, only check SIPR data (NIPR is on NMCI network)
+    const hasNiprVramData = isNmci ? true : (boat.vramNiprScanDate !== null || boat.vramNiprRaVph !== null || boat.vramNiprAssets !== null);
     const hasSiprVramData = boat.vramSiprScanDate !== null || boat.vramSiprRaVph !== null || boat.vramSiprAssets !== null;
     const hasAnyVramData = hasNiprVramData || hasSiprVramData;
 
     // Check if we have ESS data
-    const hasNiprEssData = boat.essNiprProductCompliance !== null || boat.essNiprBreakfix !== null || boat.essNiprAssets !== null;
+    // For NMCI boats, only check SIPR data
+    const hasNiprEssData = isNmci ? true : (boat.essNiprProductCompliance !== null || boat.essNiprBreakfix !== null || boat.essNiprAssets !== null);
     const hasSiprEssData = boat.essSiprProductCompliance !== null || boat.essSiprBreakfix !== null || boat.essSiprAssets !== null;
     const hasAnyEssData = hasNiprEssData || hasSiprEssData;
 
     // HIGH RISK TRIGGERS
-    // 1. Any asset in breakfix (either enclave)
-    if ((boat.essNiprBreakfix || 0) > 0) {
+    // 1. Any asset in breakfix (either enclave) - skip NIPR for NMCI boats
+    if (!isNmci && (boat.essNiprBreakfix || 0) > 0) {
         level = 'HIGH';
         reasons.push(`NIPR Breakfix: ${boat.essNiprBreakfix}`);
     }
@@ -569,8 +576,8 @@ const calculateRisk = (boat, thresholds) => {
         reasons.push(`SIPR Breakfix: ${boat.essSiprBreakfix}`);
     }
 
-    // 2. No VRAM scan data (can't assess risk)
-    if (!hasAnyVramData) {
+    // 2. No VRAM scan data (can't assess risk) - for NMCI, only require SIPR
+    if (!hasAnyVramData || (isNmci && !hasSiprVramData)) {
         level = 'HIGH';
         reasons.push('No VRAM data');
         highDueToNoScans = true;
@@ -582,9 +589,9 @@ const calculateRisk = (boat, thresholds) => {
         let medConditionCount = 0;
         const medReasons = [];
 
-        // Condition 1: Any enclave VPH > 3.5 (or threshold med_ra_vph)
+        // Condition 1: Any enclave VPH > 3.5 (or threshold med_ra_vph) - skip NIPR for NMCI
         const vphThreshold = thresholds.med_ra_vph || 3.5;
-        if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > vphThreshold) {
+        if (!isNmci && boat.vramNiprRaVph !== null && boat.vramNiprRaVph > vphThreshold) {
             medConditionCount++;
             medReasons.push(`NIPR VPH: ${boat.vramNiprRaVph.toFixed(2)}`);
         }
@@ -593,13 +600,13 @@ const calculateRisk = (boat, thresholds) => {
             medReasons.push(`SIPR VPH: ${boat.vramSiprRaVph.toFixed(2)}`);
         }
 
-        // Condition 2: Any enclave Product or Policy compliance < 95% (or threshold med_ess_compliance)
+        // Condition 2: Any enclave Product or Policy compliance < 95% - skip NIPR for NMCI
         const complianceThreshold = thresholds.med_ess_compliance || 95;
-        if (boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < complianceThreshold) {
+        if (!isNmci && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < complianceThreshold) {
             medConditionCount++;
             medReasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
         }
-        if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < complianceThreshold) {
+        if (!isNmci && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < complianceThreshold) {
             medConditionCount++;
             medReasons.push(`NIPR Policy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
         }
@@ -612,9 +619,9 @@ const calculateRisk = (boat, thresholds) => {
             medReasons.push(`SIPR Policy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
         }
 
-        // Condition 3: Any enclave with scan greater than 14 days (or threshold med_scan_age_days)
+        // Condition 3: Any enclave with scan greater than 14 days - skip NIPR for NMCI
         const scanThreshold = thresholds.med_scan_age_days || 14;
-        if (nAge !== null && nAge > scanThreshold) {
+        if (!isNmci && nAge !== null && nAge > scanThreshold) {
             medConditionCount++;
             medReasons.push(`NIPR Scan: ${nAge}d`);
         }
@@ -848,27 +855,31 @@ const generateReportHTML = (reportData, settings) => {
     // Helper to format custom field value
     const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
 
+    // Helper for NMCI cell display in generated reports
+    const nmciCell = `<td class="nmci-cell" style="background:#dbeafe;color:#1d4ed8;font-size:7pt;font-weight:600;">NMCI</td>`;
+
     const boatCells = (b) => {
+        const isNmci = b.isNmci === true;
         let cells = `<td class="boat-name">${b.boatFullName || b.boatName}</td>`;
-        // ESS NIPR - with compliance coloring
-        if (showEssAssets) cells += `<td>${fmt(b.essNiprAssets)}</td>`;
-        if (showEssBreakfix) cells += `<td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td>`;
-        if (showEssProdComp) cells += `<td class="${compClass(b.essNiprProductCompliance)}">${fmtPct(b.essNiprProductCompliance)}</td>`;
-        if (showEssPolicy) cells += `<td class="${compClass(b.essNiprTruePolicy)}">${fmtPct(b.essNiprTruePolicy)}</td>`;
-        for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>`;
+        // ESS NIPR - with compliance coloring (show NMCI for NMCI boats)
+        if (showEssAssets) cells += isNmci ? nmciCell : `<td>${fmt(b.essNiprAssets)}</td>`;
+        if (showEssBreakfix) cells += isNmci ? nmciCell : `<td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td>`;
+        if (showEssProdComp) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprProductCompliance)}">${fmtPct(b.essNiprProductCompliance)}</td>`;
+        if (showEssPolicy) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprTruePolicy)}">${fmtPct(b.essNiprTruePolicy)}</td>`;
+        for (const cf of essCustomFields) cells += isNmci ? nmciCell : `<td>${fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>`;
         // ESS SIPR - with compliance coloring
         if (showEssAssets) cells += `<td>${fmt(b.essSiprAssets)}</td>`;
         if (showEssBreakfix) cells += `<td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td>`;
         if (showEssProdComp) cells += `<td class="${compClass(b.essSiprProductCompliance)}">${fmtPct(b.essSiprProductCompliance)}</td>`;
         if (showEssPolicy) cells += `<td class="${compClass(b.essSiprTruePolicy)}">${fmtPct(b.essSiprTruePolicy)}</td>`;
         for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>`;
-        // VRAM NIPR - with VPH and scan age coloring
-        if (showVramAssets) cells += `<td>${fmt(b.vramNiprAssets)}</td>`;
-        if (showVramScan) cells += `<td class="${scanAgeClass(b.vramNiprScanDate)}">${fmtDate(b.vramNiprScanDate)}</td>`;
-        if (showVramVph) cells += `<td class="${vphClass(b.vramNiprRaVph)}">${fmt(b.vramNiprRaVph,2)}</td>`;
-        if (showVramIntegrity) cells += `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`;
-        if (showVramScanned) cells += `<td>${fmtPct(b.vramNiprScanPercent)}</td>`;
-        for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>`;
+        // VRAM NIPR - with VPH and scan age coloring (show NMCI for NMCI boats)
+        if (showVramAssets) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprAssets)}</td>`;
+        if (showVramScan) cells += isNmci ? nmciCell : `<td class="${scanAgeClass(b.vramNiprScanDate)}">${fmtDate(b.vramNiprScanDate)}</td>`;
+        if (showVramVph) cells += isNmci ? nmciCell : `<td class="${vphClass(b.vramNiprRaVph)}">${fmt(b.vramNiprRaVph,2)}</td>`;
+        if (showVramIntegrity) cells += isNmci ? nmciCell : `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`;
+        if (showVramScanned) cells += isNmci ? nmciCell : `<td>${fmtPct(b.vramNiprScanPercent)}</td>`;
+        for (const cf of vramCustomFields) cells += isNmci ? nmciCell : `<td>${fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>`;
         // VRAM SIPR - with VPH and scan age coloring
         if (showVramAssets) cells += `<td>${fmt(b.vramSiprAssets)}</td>`;
         if (showVramScan) cells += `<td class="${scanAgeClass(b.vramSiprScanDate)}">${fmtDate(b.vramSiprScanDate)}</td>`;
@@ -876,9 +887,9 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
         for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
-        // RA
-        if (showVramCrit) cells += `<td>${fmt(b.vramNiprRaCrit)}</td>`;
-        if (showVramHigh) cells += `<td>${fmt(b.vramNiprRaHigh)}</td>`;
+        // RA (NIPR) - show NMCI for NMCI boats
+        if (showVramCrit) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaCrit)}</td>`;
+        if (showVramHigh) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaHigh)}</td>`;
         // TAM - color past due if >10
         if (showTamPastDue) cells += `<td class="${(b.tamPastDue||0)>10?'risk-high':''}">${fmt(b.tamPastDue)}</td>`;
         if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
@@ -964,7 +975,10 @@ const generateReportHTML = (reportData, settings) => {
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${compClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${compClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${compClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${compClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
+    // HQ page compliance class: >=98% green, 95-97.9% yellow, <95% red
+    const hqCompClass = (v) => v === null ? '' : v >= 98 ? 'risk-low' : v >= 95 ? 'risk-med' : 'risk-high';
+
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -1700,8 +1714,15 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
         setNotesModal(null);
     };
 
+    // Check if field is a NIPR field (for NMCI display)
+    const isNiprField = (field) => field && (field.includes('Nipr') || field.includes('nipr'));
+
     const Cell = ({ boat, field, value, format = 'num', className = '' }) => {
         const overridden = isOverridden(boat, field);
+        // For NMCI boats, show "NMCI" instead of data for NIPR fields
+        if (boat.isNmci && isNiprField(field)) {
+            return <td className="bg-blue-100 text-blue-700 text-xs font-semibold" title="This boat uses NMCI for NIPR network">NMCI</td>;
+        }
         return <td className={`${className} ${overridden ? 'overridden' : ''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(boat.boatName, field, boat[field])} title={overridden ? 'Overridden - click to edit' : 'Click to override'}>{format === 'pct' ? fmtPct(value) : format === 'date' ? fmtDate(value) : format === 'num2' ? fmt(value, 2) : value ?? '-'}</td>;
     };
 
@@ -2162,8 +2183,8 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">Boats ({settings.boats.length})</h3>
-                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table></div>
-                        <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
+                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>NMCI</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td className={b.nmci ? 'bg-blue-100 text-blue-700 font-semibold' : ''}>{b.nmci ? 'Yes' : 'No'}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table></div>
+                        <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, nmci: false, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
                     </div>
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">ISICs ({settings.isics.length})</h3>
@@ -2331,6 +2352,11 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div><label className="block text-sm text-slate-500 mb-1">Boat Name (e.g. SSN-21)</label><input value={editingBoat.boat_name} onChange={(e) => setEditingBoat({...editingBoat, boat_name: e.target.value})} className="w-full" disabled={!editingBoat.isNew} /></div>
                             <div><label className="block text-sm text-slate-500 mb-1">Full Name</label><input value={editingBoat.boat_full_name} onChange={(e) => setEditingBoat({...editingBoat, boat_full_name: e.target.value})} className="w-full" /></div>
                             <div><label className="block text-sm text-slate-500 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
+                            <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+                                <input type="checkbox" id="nmci-checkbox" checked={editingBoat.nmci || false} onChange={(e) => setEditingBoat({...editingBoat, nmci: e.target.checked})} />
+                                <label htmlFor="nmci-checkbox" className="text-sm font-medium text-blue-800">NMCI Network (NIPR)</label>
+                                <span className="text-xs text-blue-600 ml-2">Check if this boat uses NMCI for their NIPR network instead of SUBFOR managed</span>
+                            </div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
                     </div>
