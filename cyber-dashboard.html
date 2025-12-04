@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Dashboard Generator</title>
+    <title>SUBFOR Cyber Risk Dashboard</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -673,11 +673,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 @page{margin:0.5in;size:landscape}
 </style></head><body>
 <div class="header no-print">
-<div><h1>Cyber Status Report</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
+<div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
 <button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
 </div>
 <div class="print-only print-header">
-<h1>Cyber Status Report</h1>
+<h1>SUBFOR Cyber Risk Dashboard</h1>
 <div class="date">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | Version ${reportData.version}</div>
 </div>
 <div class="tabs no-print">
@@ -1895,7 +1895,7 @@ function App() {
                 <div className="flex justify-between items-center max-w-[95vw] mx-auto">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">CD</div>
-                        <div><h1 className="text-xl font-bold text-slate-800">Cyber Dashboard Generator</h1><p className="text-xs text-slate-500">Drop Excel files or a report HTML to begin</p></div>
+                        <div><h1 className="text-xl font-bold text-slate-800">SUBFOR Cyber Risk Dashboard</h1><p className="text-xs text-slate-500">Compliments of COMSUBLANT</p></div>
                     </div>
                 </div>
             </header>
@@ -1910,7 +1910,7 @@ function App() {
                 {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
 
-            <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
+            <footer className="text-center py-6 text-slate-400 text-sm">SUBFOR Cyber Risk Dashboard v1.0</footer>
 
             {namePrompt && <NamePromptModal onSubmit={handleNameSubmit} onCancel={() => setNamePrompt(null)} />}
 
