@@ -272,11 +272,11 @@ const defaultLegendText = {
     low: 'No criteria met'
 };
 
-// Settings Manager with File System Access API
-const SettingsManager = {
-    _fileHandle: null,
-    _settingsCache: null,
+// Settings Manager with localStorage
+const SETTINGS_STORAGE_KEY = 'cyberDashboard_settings';
+const SETTINGS_VERSION = '1.0';
 
+const SettingsManager = {
     // Get embedded defaults from HTML
     getEmbeddedDefaults() {
         try {
@@ -284,12 +284,21 @@ const SettingsManager = {
         } catch { return null; }
     },
 
-    // Ensure settings have all required fields
-    ensureDefaults(settings) {
+    // Ensure settings have all required fields and versioning
+    ensureDefaults(settings, options = {}) {
         if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
+
+        // Initialize versioning if missing
+        if (!settings._settingsVersion) {
+            settings._settingsVersion = SETTINGS_VERSION;
+            settings._settingsAuthor = options.author || 'Unknown';
+            settings._settingsModified = new Date().toISOString();
+            settings._settingsHistory = [];
+        }
+
         // Migrate old columnMappings
         if (settings.columnMappings && !settings.schemaConfig) {
             settings.schemaConfig = this.migrateColumnMappings(settings.columnMappings);
@@ -298,107 +307,66 @@ const SettingsManager = {
         return settings;
     },
 
-    // Try to load settings.json from same directory using File System Access API
-    async tryAutoLoad() {
-        // Check if File System Access API is available
-        if (!('showOpenFilePicker' in window)) {
-            console.log('File System Access API not available');
-            return null;
-        }
-        // Can't auto-load without user interaction, return null
-        return null;
-    },
-
-    // Prompt user to select settings.json file
-    async promptLoadSettings() {
-        if (!('showOpenFilePicker' in window)) {
-            // Fallback to file input
-            return new Promise((resolve) => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        try {
-                            const text = await file.text();
-                            const settings = JSON.parse(text);
-                            this._settingsCache = this.ensureDefaults(settings);
-                            resolve(this._settingsCache);
-                        } catch (err) {
-                            console.error('Failed to parse settings:', err);
-                            resolve(null);
-                        }
-                    } else {
-                        resolve(null);
-                    }
-                };
-                input.click();
-            });
-        }
-
+    // Load settings from localStorage, fall back to embedded defaults
+    load() {
         try {
-            const [handle] = await window.showOpenFilePicker({
-                types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }],
-                multiple: false
-            });
-            this._fileHandle = handle;
-            const file = await handle.getFile();
-            const text = await file.text();
-            const settings = JSON.parse(text);
-            this._settingsCache = this.ensureDefaults(settings);
-            return this._settingsCache;
+            const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+            if (stored) {
+                const settings = JSON.parse(stored);
+                return this.ensureDefaults(settings);
+            }
         } catch (err) {
-            if (err.name !== 'AbortError') console.error('Failed to load settings:', err);
-            return null;
+            console.error('Failed to load settings from localStorage:', err);
+        }
+
+        // Fall back to embedded defaults
+        const embedded = this.getEmbeddedDefaults();
+        if (embedded) {
+            return this.ensureDefaults(embedded, { author: 'Default' });
+        }
+        return this.getDefaults();
+    },
+
+    // Save settings to localStorage
+    save(settings) {
+        try {
+            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+            return { success: true };
+        } catch (err) {
+            console.error('Failed to save settings to localStorage:', err);
+            return { success: false, error: err.message };
         }
     },
 
-    // Save settings to JSON file
-    async saveSettings(settings) {
-        const jsonStr = JSON.stringify(settings, null, 2);
+    // Update settings version info when user makes changes
+    updateVersion(settings, authorName) {
+        const now = new Date().toISOString();
+        const prevVersion = settings._settingsVersion || '1.0';
+        const prevAuthor = settings._settingsAuthor || 'Unknown';
+        const prevModified = settings._settingsModified;
 
-        // Try to use existing file handle first
-        if (this._fileHandle) {
-            try {
-                const writable = await this._fileHandle.createWritable();
-                await writable.write(jsonStr);
-                await writable.close();
-                this._settingsCache = settings;
-                return { success: true, method: 'fileHandle' };
-            } catch (err) {
-                console.log('Could not write to existing handle, will prompt for save location');
+        // Add to history
+        if (!settings._settingsHistory) settings._settingsHistory = [];
+        if (prevModified) {
+            settings._settingsHistory.push({
+                version: prevVersion,
+                author: prevAuthor,
+                modified: prevModified,
+                savedAt: now
+            });
+            // Keep only last 10 history entries
+            if (settings._settingsHistory.length > 10) {
+                settings._settingsHistory = settings._settingsHistory.slice(-10);
             }
         }
 
-        // Use File System Access API to save
-        if ('showSaveFilePicker' in window) {
-            try {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: 'settings.json',
-                    types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }]
-                });
-                this._fileHandle = handle;
-                const writable = await handle.createWritable();
-                await writable.write(jsonStr);
-                await writable.close();
-                this._settingsCache = settings;
-                return { success: true, method: 'filePicker' };
-            } catch (err) {
-                if (err.name === 'AbortError') return { success: false, cancelled: true };
-                console.error('Save failed:', err);
-            }
-        }
+        // Increment version
+        const [major, minor] = prevVersion.split('.').map(Number);
+        settings._settingsVersion = `${major}.${minor + 1}`;
+        settings._settingsAuthor = authorName || prevAuthor;
+        settings._settingsModified = now;
 
-        // Fallback: download the file
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'settings.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        this._settingsCache = settings;
-        return { success: true, method: 'download' };
+        return settings;
     },
 
     // Export settings as JSON download
@@ -407,19 +375,48 @@ const SettingsManager = {
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'settings.json';
+        a.download = `settings-v${settings._settingsVersion || '1.0'}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
     },
 
-    // Load settings (sync for initial render, uses embedded defaults)
-    load() {
-        // Start with embedded defaults
-        const embedded = this.getEmbeddedDefaults();
-        if (embedded) {
-            return this.ensureDefaults(embedded);
+    // Import settings from JSON file
+    importSettings() {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const text = await file.text();
+                        const settings = JSON.parse(text);
+                        resolve({ success: true, settings: this.ensureDefaults(settings) });
+                    } catch (err) {
+                        resolve({ success: false, error: err.message });
+                    }
+                } else {
+                    resolve({ success: false, error: 'No file selected' });
+                }
+            };
+            input.click();
+        });
+    },
+
+    // Clear localStorage settings
+    clear() {
+        try {
+            localStorage.removeItem(SETTINGS_STORAGE_KEY);
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
         }
-        return this.getDefaults();
+    },
+
+    // Check if localStorage has saved settings
+    hasSavedSettings() {
+        return localStorage.getItem(SETTINGS_STORAGE_KEY) !== null;
     },
 
     migrateColumnMappings(old) {
@@ -444,6 +441,10 @@ const SettingsManager = {
     getDefaults() {
         return {
             _version: 1,
+            _settingsVersion: SETTINGS_VERSION,
+            _settingsAuthor: 'Default',
+            _settingsModified: new Date().toISOString(),
+            _settingsHistory: [],
             tycoms: ['CSL', 'CSP'],
             isics: [],
             boats: [],
@@ -637,8 +638,9 @@ const generateReportHTML = (reportData, settings) => {
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
-    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0;
-    const changeCount = allOverrides.length + thresholdChanges.length;
+    const settingsHistory = settings._settingsHistory || [];
+    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0;
+    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0);
 
     // Tab visibility helpers
     const tabConfig = settings.tabConfig || [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
@@ -926,9 +928,20 @@ ${summaryHeaders ? `<div class="page">
 ${(hasChanges && isTabVisible('changelog')) ? `<div id="tab-changelog" class="tab-content${firstVisibleTab==='changelog'?' active':''}">
 <div class="page">
 <div class="page-header"><h2>Change Log</h2><div class="toolbar"><button onclick="printTab('changelog')">Print Changes</button></div></div>
+
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
+<h4 style="font-size:10pt;color:#0369a1;margin:0 0 8px;">Current Settings</h4>
+<p style="font-size:9pt;color:#0c4a6e;margin:0;">Version <strong>${settings._settingsVersion || '1.0'}</strong> by <strong>${settings._settingsAuthor || 'Unknown'}</strong> • Last modified: ${settings._settingsModified ? new Date(settings._settingsModified).toLocaleString() : 'Unknown'}</p>
+</div>
+
+${settingsHistory.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;color:#0891b2;">Settings Version History</h3>
+<table class="summary-table"><thead><tr><th>Version</th><th style="text-align:left">Author</th><th style="text-align:left">Modified</th></tr></thead>
+<tbody>${settingsHistory.slice().reverse().map(h => `<tr><td style="font-weight:bold;">${h.version}</td><td style="text-align:left">${h.author}</td><td style="text-align:left">${new Date(h.modified).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
 ${thresholdChanges.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;color:#b45309;">Threshold Adjustments</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Threshold</th><th>Default</th><th>Used</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${thresholdChanges.map(t => `<tr><td style="text-align:left">${t.field.replace(/_/g, ' ')}</td><td>${t.defaultValue}</td><td style="font-weight:bold;color:#b45309;">${t.newValue}</td><td>${t.user}</td><td>${new Date(t.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
 ${allOverrides.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#7c3aed;">Value Overrides</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th style="text-align:left">Field</th><th>Original</th><th>New</th><th style="text-align:left">Reason</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${allOverrides.map(o => `<tr><td style="text-align:left;font-family:monospace;">${o.boatName}</td><td style="text-align:left">${o.field}</td><td>${o.originalValue}</td><td style="font-weight:bold;color:#7c3aed;">${o.overrideValue}</td><td style="text-align:left">${o.reason}</td><td>${o.user}</td><td>${new Date(o.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -1395,10 +1408,11 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     );
 };
 
-const SettingsTab = ({ settings, setSettings, onAlert }) => {
+const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, onSaveToMySettings }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
-    const [saveStatus, setSaveStatus] = React.useState(null);
+    const [authorName, setAuthorName] = React.useState(settings.user?.default_name || '');
+    const [showAuthorPrompt, setShowAuthorPrompt] = React.useState(false);
 
     const saveBoat = () => {
         if (!editingBoat.boat_name) return;
@@ -1408,32 +1422,60 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
         setEditingBoat(null);
     };
 
-    const handleLoadSettings = async () => {
-        const loaded = await SettingsManager.promptLoadSettings();
-        if (loaded) {
-            setSettings(loaded);
-            onAlert && onAlert({ type: 'info', msg: 'Settings loaded successfully' });
+    // Auto-save to localStorage whenever settings change
+    React.useEffect(() => {
+        if (!isUsingImportedSettings) {
+            SettingsManager.save(settings);
         }
-    };
+    }, [settings, isUsingImportedSettings]);
 
-    const handleSaveSettings = async () => {
-        setSaveStatus('saving');
-        const result = await SettingsManager.saveSettings(settings);
+    const handleImportSettings = async () => {
+        const result = await SettingsManager.importSettings();
         if (result.success) {
-            setSaveStatus('saved');
-            onAlert && onAlert({ type: 'info', msg: result.method === 'download' ? 'Settings downloaded as settings.json' : 'Settings saved successfully' });
-            setTimeout(() => setSaveStatus(null), 2000);
-        } else if (!result.cancelled) {
-            setSaveStatus(null);
-            onAlert && onAlert({ type: 'error', msg: 'Failed to save settings' });
-        } else {
-            setSaveStatus(null);
+            setSettings(result.settings);
+            SettingsManager.save(result.settings);
+            onAlert && onAlert({ type: 'info', msg: `Settings imported (v${result.settings._settingsVersion} by ${result.settings._settingsAuthor})` });
+        } else if (result.error) {
+            onAlert && onAlert({ type: 'error', msg: 'Failed to import: ' + result.error });
         }
     };
 
     const handleExportSettings = () => {
         SettingsManager.exportSettings(settings);
-        onAlert && onAlert({ type: 'info', msg: 'Settings exported as settings.json' });
+        onAlert && onAlert({ type: 'info', msg: `Settings exported as settings-v${settings._settingsVersion}.json` });
+    };
+
+    const handleSaveAsMySettings = () => {
+        if (!authorName.trim()) {
+            setShowAuthorPrompt(true);
+            return;
+        }
+        const updated = SettingsManager.updateVersion({...settings}, authorName);
+        updated.user = { ...updated.user, default_name: authorName };
+        setSettings(updated);
+        SettingsManager.save(updated);
+        onSaveToMySettings && onSaveToMySettings();
+        onAlert && onAlert({ type: 'info', msg: `Settings saved as v${updated._settingsVersion}` });
+    };
+
+    const handleResetToDefaults = () => {
+        if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+            SettingsManager.clear();
+            const defaults = SettingsManager.getDefaults();
+            setSettings(defaults);
+            onAlert && onAlert({ type: 'info', msg: 'Settings reset to defaults' });
+        }
+    };
+
+    const saveAuthorAndSettings = () => {
+        if (!authorName.trim()) return;
+        setShowAuthorPrompt(false);
+        const updated = SettingsManager.updateVersion({...settings}, authorName);
+        updated.user = { ...updated.user, default_name: authorName };
+        setSettings(updated);
+        SettingsManager.save(updated);
+        onSaveToMySettings && onSaveToMySettings();
+        onAlert && onAlert({ type: 'info', msg: `Settings saved as v${updated._settingsVersion}` });
     };
 
     // Legend text helpers
@@ -1485,17 +1527,36 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
-                <div className="flex gap-2">
-                    <button onClick={handleLoadSettings} className="btn-secondary text-sm">Load Settings</button>
-                    <button onClick={handleSaveSettings} className={`btn-success text-sm ${saveStatus === 'saving' ? 'opacity-50' : ''}`} disabled={saveStatus === 'saving'}>
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save Settings'}
-                    </button>
-                    <button onClick={handleExportSettings} className="btn-secondary text-sm">Export</button>
+            {/* Warning Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                    <span className="text-blue-500 text-xl">ℹ</span>
+                    <div>
+                        <h4 className="font-semibold text-blue-800 mb-1">Settings are saved automatically in this browser</h4>
+                        <p className="text-sm text-blue-700">Changes are auto-saved to your browser's local storage. Use <strong>Export</strong> to backup or share settings, and <strong>Import</strong> to restore from a backup file.</p>
+                        {isUsingImportedSettings && <p className="text-sm text-amber-700 mt-2 font-medium">You're currently using settings from an imported report. Click "Save to My Settings" to make these your default.</p>}
+                    </div>
                 </div>
             </div>
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
+
+            {/* Header with version info */}
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                        v{settings._settingsVersion || '1.0'} by {settings._settingsAuthor || 'Unknown'}
+                        {settings._settingsModified && <span className="ml-2">• Last modified: {new Date(settings._settingsModified).toLocaleDateString()}</span>}
+                    </p>
+                </div>
+                <div className="flex gap-2 flex-wrap justify-end">
+                    <button onClick={handleImportSettings} className="btn-secondary text-sm">Import</button>
+                    <button onClick={handleExportSettings} className="btn-secondary text-sm">Export</button>
+                    {isUsingImportedSettings && <button onClick={handleSaveAsMySettings} className="btn-success text-sm">Save to My Settings</button>}
+                    <button onClick={handleResetToDefaults} className="text-sm text-red-600 hover:text-red-800 px-3">Reset</button>
+                </div>
+            </div>
+
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -1550,7 +1611,7 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-2 text-slate-700">Excel/ODS Schema Configuration</h3>
-                        <p className="text-sm text-slate-500 mb-4">Configure fields to extract from each file type. Drag to reorder, toggle visibility, edit column headers. Supports .xlsx, .xls, .csv, and .ods files.</p>
+                        <p className="text-sm text-slate-500 mb-4">Configure fields to extract from each file type. <strong>Header Text</strong> appears on preview and generated reports. <strong>Excel Column</strong> must match the column header in your source files. Drag to reorder columns, toggle visibility.</p>
                         {['vram', 'ess', 'tam'].map(type => (
                             <div key={type} className="mb-6">
                                 <div className="flex items-center justify-between mb-2">
@@ -1560,10 +1621,10 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                                 <div className="border border-slate-200 rounded">
                                     <div className="grid grid-cols-12 gap-2 p-2 bg-slate-100 text-xs font-semibold text-slate-600 border-b">
                                         <div className="col-span-1"></div>
-                                        <div className="col-span-1">Use</div>
-                                        <div className="col-span-3">Field Label</div>
+                                        <div className="col-span-1">Show</div>
+                                        <div className="col-span-3">Header Text (Report)</div>
                                         <div className="col-span-3">Field ID</div>
-                                        <div className="col-span-3">Excel Column</div>
+                                        <div className="col-span-3">Excel Column (Source)</div>
                                         <div className="col-span-1"></div>
                                     </div>
                                     {(schema[type] || []).map((item, idx) => (
@@ -1661,24 +1722,6 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                 </div>
             )}
 
-            {subTab === 'tabs' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">Report Tab Configuration</h3>
-                    <p className="text-sm text-slate-500 mb-4">Drag to reorder tabs. Uncheck to hide a tab from the generated report.</p>
-                    <div className="space-y-2">
-                        {(settings.tabConfig || []).map((tab, idx) => (
-                            <div key={tab.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100" draggable onDragStart={(e) => e.dataTransfer.setData('tabIdx', idx)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const fromIdx = parseInt(e.dataTransfer.getData('tabIdx')); if (fromIdx === idx) return; const newConfig = [...settings.tabConfig]; const [moved] = newConfig.splice(fromIdx, 1); newConfig.splice(idx, 0, moved); setSettings(p => ({...p, tabConfig: newConfig})); }}>
-                                <span className="cursor-move text-slate-400 text-lg" title="Drag to reorder">&#9776;</span>
-                                <input type="checkbox" checked={tab.visible} onChange={(e) => { const newConfig = [...settings.tabConfig]; newConfig[idx] = {...tab, visible: e.target.checked}; setSettings(p => ({...p, tabConfig: newConfig})); }} className="w-4 h-4" />
-                                <span className="font-medium text-slate-700 flex-1">{tab.label}</span>
-                                <span className="text-xs text-slate-400">({tab.id})</span>
-                            </div>
-                        ))}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-4">Note: The "Changes" tab only appears when there are overrides or threshold adjustments.</p>
-                </div>
-            )}
-
             {editingBoat && (
                 <div className="modal-overlay" onClick={() => setEditingBoat(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1689,6 +1732,20 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                             <div><label className="block text-sm text-slate-500 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
+                    </div>
+                </div>
+            )}
+
+            {showAuthorPrompt && (
+                <div className="modal-overlay" onClick={() => setShowAuthorPrompt(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Enter Your Name</h3>
+                        <p className="text-sm text-slate-500 mb-4">Your name will be recorded with this settings version for tracking purposes.</p>
+                        <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Your name" className="w-full mb-4" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveAuthorAndSettings()} />
+                        <div className="flex gap-2">
+                            <button onClick={saveAuthorAndSettings} className="btn-primary" disabled={!authorName.trim()}>Save Settings</button>
+                            <button onClick={() => setShowAuthorPrompt(false)} className="btn-secondary">Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1723,11 +1780,14 @@ function App() {
     const [reportData, setReportData] = React.useState(null);
     const [alerts, setAlerts] = React.useState([]);
     const [namePrompt, setNamePrompt] = React.useState(null);
+    const [isUsingImportedSettings, setIsUsingImportedSettings] = React.useState(false);
 
     const handleReportImport = async (file) => {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
+            // Use the imported report's settings for this session (don't save to localStorage)
+            setIsUsingImportedSettings(true);
             setSettings(result.settings);
             setReportData(result.reportData);
             setCurrentTab('preview');
@@ -1769,7 +1829,7 @@ function App() {
             <main className="max-w-[95vw] mx-auto p-6">
                 {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
                 {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
-                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} />}
+                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
 
             <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
