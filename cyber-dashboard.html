@@ -34,6 +34,7 @@
         .data-table td { padding: 4px 3px; text-align: center; border: 1px solid #e2e8f0; background: #ffffff; white-space: nowrap; }
         .table-scroll { overflow-x: auto; }
         .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #0891b2; }
+        .data-table .isic-header, .data-table .isic-cell { background: #1e293b; color: white; font-weight: 700; text-align: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); padding: 8px 4px; font-size: 9px; width: 28px; min-width: 28px; max-width: 28px; }
         .col-ess-n { background: rgba(59,130,246,0.1) !important; } .col-ess-s { background: rgba(99,102,241,0.1) !important; }
         .col-vram-n { background: rgba(249,115,22,0.1) !important; } .col-vram-s { background: rgba(234,88,12,0.1) !important; }
         .col-ra { background: rgba(168,85,247,0.1) !important; } .col-tam { background: rgba(107,114,128,0.1) !important; } .col-status { background: rgba(16,185,129,0.1) !important; }
@@ -537,9 +538,21 @@ const generateReportHTML = (reportData, settings) => {
     const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
     const tamExt = getLabel('tam', 'extensions', 'Ext');
 
-    const boatRow = (b) => `<tr><td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td></tr>`;
+    const boatCells = (b) => `<td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
 
-    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">${essAssets}</th><th class="col-ess-n">${essBreakfix}</th><th class="col-ess-n">${essProdCompliance}</th><th class="col-ess-n">${essPolicyEnforced}</th><th class="col-ess-s">${essAssets}</th><th class="col-ess-s">${essBreakfix}</th><th class="col-ess-s">${essProdCompliance}</th><th class="col-ess-s">${essPolicyEnforced}</th><th class="col-vram-n">${vramAssets}</th><th class="col-vram-n">${vramScan}</th><th class="col-vram-n">${vramVph}</th><th class="col-vram-n">${vramIntegrity}</th><th class="col-vram-n">${vramScanned}</th><th class="col-vram-s">${vramAssets}</th><th class="col-vram-s">${vramScan}</th><th class="col-vram-s">${vramVph}</th><th class="col-vram-s">${vramIntegrity}</th><th class="col-vram-s">${vramScanned}</th><th class="col-ra">${vramCritical}</th><th class="col-ra">${vramHigh}</th><th class="col-tam">${tamOverdue}</th><th class="col-tam">${tamExt}</th><th class="col-status">Risk</th><th class="col-status">${vramExempt}</th><th class="col-status">Notes</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
+    const summaryTable = (byISIC) => {
+        const entries = Object.entries(byISIC);
+        if (entries.length === 0) return '<p>No data</p>';
+        let bodyRows = '';
+        for (const [isic, isicBoats] of entries) {
+            isicBoats.forEach((b, i) => {
+                bodyRows += '<tr>';
+                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${isic}</td>`;
+                bodyRows += boatCells(b) + '</tr>';
+            });
+        }
+        return `<table class="summary-table"><thead><tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">${essAssets}</th><th class="col-ess-n">${essBreakfix}</th><th class="col-ess-n">${essProdCompliance}</th><th class="col-ess-n">${essPolicyEnforced}</th><th class="col-ess-s">${essAssets}</th><th class="col-ess-s">${essBreakfix}</th><th class="col-ess-s">${essProdCompliance}</th><th class="col-ess-s">${essPolicyEnforced}</th><th class="col-vram-n">${vramAssets}</th><th class="col-vram-n">${vramScan}</th><th class="col-vram-n">${vramVph}</th><th class="col-vram-n">${vramIntegrity}</th><th class="col-vram-n">${vramScanned}</th><th class="col-vram-s">${vramAssets}</th><th class="col-vram-s">${vramScan}</th><th class="col-vram-s">${vramVph}</th><th class="col-vram-s">${vramIntegrity}</th><th class="col-vram-s">${vramScanned}</th><th class="col-ra">${vramCritical}</th><th class="col-ra">${vramHigh}</th><th class="col-tam">${tamOverdue}</th><th class="col-tam">${tamExt}</th><th class="col-status">Risk</th><th class="col-status">${vramExempt}</th><th class="col-status">Notes</th></tr></thead><tbody>${bodyRows}</tbody></table>`;
+    };
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
@@ -553,7 +566,7 @@ const generateReportHTML = (reportData, settings) => {
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR ESS Compliance</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR ESS Compliance</td>${list.map(a=>`<td>${a.siprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR ESS Compliance</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR ESS Compliance</td>${list.map(a=>`<td>${a.siprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -596,6 +609,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}
+.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:8px 4px;font-size:9pt;width:28px;min-width:28px;max-width:28px}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
@@ -682,7 +696,7 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 &nbsp;|&nbsp;
 <span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
-<div id="csl-content">${Object.entries(cslByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
+<div id="csl-content">${summaryTable(cslByISIC)}</div>
 </div>
 </div>` : ''}
 
@@ -707,7 +721,7 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 &nbsp;|&nbsp;
 <span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
-<div id="csp-content">${Object.entries(cspByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
+<div id="csp-content">${summaryTable(cspByISIC)}</div>
 </div>
 </div>` : ''}
 
@@ -882,8 +896,13 @@ function printTab(id) {
 }
 function filterISIC(p, v) {
     const c = document.getElementById(p + '-content');
-    const s = c.querySelectorAll('.isic-section');
-    s.forEach(x => x.style.display = !v || x.dataset.isic === v ? '' : 'none');
+    const rows = c.querySelectorAll('tbody tr');
+    let currentISIC = '';
+    rows.forEach(row => {
+        const isicCell = row.querySelector('.isic-cell');
+        if (isicCell) currentISIC = isicCell.textContent;
+        row.style.display = !v || currentISIC === v ? '' : 'none';
+    });
 }
 function exportToExcel() {
     const m = document.querySelector('script[type="application/x-dashboard-report"]');
@@ -1216,51 +1235,49 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             {subTab === 'hq' ? (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
-                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
                 </div>
             ) : (
                 <div className="card p-4 overflow-x-auto">
-                    {Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) => (
-                        <div key={isic} className="mb-6">
-                            <h3 className="text-sm font-bold mb-2 px-3 py-2 rounded bg-slate-100 text-slate-700">{isic}</h3>
-                            <table className="data-table">
-                                <thead>
-                                    <tr><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
-                                    <tr><th className="col-ess-n">Assets</th><th className="col-ess-n">Breakfix</th><th className="col-ess-n">Prod%</th><th className="col-ess-n">Policy%</th><th className="col-ess-s">Assets</th><th className="col-ess-s">Breakfix</th><th className="col-ess-s">Prod%</th><th className="col-ess-s">Policy%</th><th className="col-vram-n">Assets</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Integrity</th><th className="col-vram-n">Scanned</th><th className="col-vram-s">Assets</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Integrity</th><th className="col-vram-s">Scanned</th><th className="col-ra">Critical</th><th className="col-ra">High</th><th className="col-tam">Overdue</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">Exempt</th><th className="col-status">Notes</th></tr>
-                                </thead>
-                                <tbody>{isicBoats.map(b => <tr key={b.boatName}>
-                                    <td className="boat-name">{b.boatName}</td>
-                                    <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
-                                    <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
-                                    <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
-                                    <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
-                                    <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
-                                    <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
-                                    <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
-                                    <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
-                                    <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
-                                    <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />
-                                    <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
-                                    <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
-                                    <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
-                                    <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
-                                    <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />
-                                    <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
-                                    <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
-                                    <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
-                                    <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
-                                    <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
-                                    <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
-                                    <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
-                                    <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
-                                    <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
-                                    <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
-                                </tr>)}</tbody>
-                            </table>
-                        </div>
-                    ))}
+                    <table className="data-table">
+                        <thead>
+                            <tr><th rowSpan="2" className="isic-header">ISIC</th><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
+                            <tr><th className="col-ess-n">Assets</th><th className="col-ess-n">Breakfix</th><th className="col-ess-n">Prod%</th><th className="col-ess-n">Policy%</th><th className="col-ess-s">Assets</th><th className="col-ess-s">Breakfix</th><th className="col-ess-s">Prod%</th><th className="col-ess-s">Policy%</th><th className="col-vram-n">Assets</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Integrity</th><th className="col-vram-n">Scanned</th><th className="col-vram-s">Assets</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Integrity</th><th className="col-vram-s">Scanned</th><th className="col-ra">Critical</th><th className="col-ra">High</th><th className="col-tam">Overdue</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">Exempt</th><th className="col-status">Notes</th></tr>
+                        </thead>
+                        <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
+                            isicBoats.map((b, idx) => <tr key={b.boatName}>
+                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
+                                <td className="boat-name">{b.boatName}</td>
+                                <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
+                                <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
+                                <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
+                                <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
+                                <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
+                                <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
+                                <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
+                                <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
+                                <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
+                                <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />
+                                <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
+                                <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
+                                <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
+                                <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
+                                <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />
+                                <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
+                                <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
+                                <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
+                                <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
+                                <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
+                                <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
+                                <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
+                                <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
+                                <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
+                            </tr>)
+                        )}</tbody>
+                    </table>
                 </div>
             )}
 
