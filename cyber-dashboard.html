@@ -494,7 +494,7 @@ const aggregateByISIC = (boats, settings) => {
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
             if (b.vramNiprScanExempt || b.vramSiprScanExempt) agg.scanExemptCount++;
         }
-        agg.niprEssEnforcedAvg = nCnt > 0 ? nSum / nCnt : 0; agg.siprEssEnforcedAvg = sCnt > 0 ? sSum / sCnt : 0;
+        agg.niprEssEnforcedAvg = nCnt > 0 ? Math.min(100, nSum / nCnt) : 0; agg.siprEssEnforcedAvg = sCnt > 0 ? Math.min(100, sSum / sCnt) : 0;
         return agg;
     });
     return { csl: aggs.filter(a => a.tycom === 'CSL'), csp: aggs.filter(a => a.tycom === 'CSP') };
@@ -528,7 +528,7 @@ const generateReportHTML = (reportData, settings) => {
     const embedded = compressAndEncode({ reportData, settingsSnapshot: settings, generatedAt: new Date().toISOString() });
 
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
+    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
 
     // Format legend text by substituting threshold values
@@ -545,7 +545,7 @@ const generateReportHTML = (reportData, settings) => {
     const cspRiskCounts = { HIGH: cspBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cspBoats.filter(b => b.riskLevel === 'MED').length, LOW: cspBoats.filter(b => b.riskLevel === 'LOW').length };
     const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
     const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
-    const avgCompliance = boats.length > 0 ? (boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
+    const avgCompliance = boats.length > 0 ? Math.min(100, boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
 
     // Get label and visibility from schema config
     const schema = settings.schemaConfig || defaultSchemaConfig;
@@ -954,12 +954,12 @@ ${isTabVisible('analytics') ? (() => {
     const r3 = getRanking('worstBoatsCompliance');
     if (r3.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (a.essNiprProductCompliance||0) - (b.essNiprProductCompliance||0)).slice(0, r3.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r4 = getRanking('bestBoatsCompliance');
     if (r4.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (b.essNiprProductCompliance||0) - (a.essNiprProductCompliance||0)).slice(0, r4.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => ({isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: ib.reduce((s,b)=>s+(b.vramNiprRaVph||0),0)/ib.length}));
     const r5 = getRanking('worstIsicsRisk');
@@ -1346,7 +1346,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [currentUserName, setCurrentUserName] = React.useState('');
 
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
+    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
 
     const fieldLabels = {
