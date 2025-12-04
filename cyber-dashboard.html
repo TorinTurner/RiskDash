@@ -632,9 +632,36 @@ const generateReportHTML = (reportData, settings) => {
     const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
     const avgCompliance = boats.length > 0 ? (boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
 
+    // Get label from schema config, with fallback
+    const schema = settings.schemaConfig || defaultSchemaConfig;
+    const getLabel = (type, field, fallback) => {
+        const item = schema[type]?.find(s => s.field === field);
+        return item?.label || fallback;
+    };
+
+    // ESS column labels
+    const essAssets = getLabel('ess', 'assets', 'Assets');
+    const essBreakfix = getLabel('ess', 'breakfix', 'Breakfix');
+    const essProdCompliance = getLabel('ess', 'productCompliance', 'Prod%');
+    const essPolicyEnforced = getLabel('ess', 'policyEnforced', 'Policy%');
+
+    // VRAM column labels
+    const vramAssets = getLabel('vram', 'assets', 'Assets');
+    const vramScan = getLabel('vram', 'scanDate', 'Scan');
+    const vramVph = getLabel('vram', 'raVph', 'VPH');
+    const vramIntegrity = getLabel('vram', 'scanIntegrity', 'Integrity');
+    const vramScanned = getLabel('vram', 'scanPercent', 'Scanned');
+    const vramCritical = getLabel('vram', 'raCrit', 'Critical');
+    const vramHigh = getLabel('vram', 'raHigh', 'High');
+    const vramExempt = getLabel('vram', 'scanExempt', 'Exempt');
+
+    // TAM column labels
+    const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
+    const tamExt = getLabel('tam', 'extensions', 'Ext');
+
     const boatRow = (b) => `<tr><td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td></tr>`;
 
-    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">Assets</th><th class="col-ess-n">Breakfix</th><th class="col-ess-n">Prod%</th><th class="col-ess-n">Policy%</th><th class="col-ess-s">Assets</th><th class="col-ess-s">Breakfix</th><th class="col-ess-s">Prod%</th><th class="col-ess-s">Policy%</th><th class="col-vram-n">Assets</th><th class="col-vram-n">Scan</th><th class="col-vram-n">VPH</th><th class="col-vram-n">Integrity</th><th class="col-vram-n">Scanned</th><th class="col-vram-s">Assets</th><th class="col-vram-s">Scan</th><th class="col-vram-s">VPH</th><th class="col-vram-s">Integrity</th><th class="col-vram-s">Scanned</th><th class="col-ra">Critical</th><th class="col-ra">High</th><th class="col-tam">Overdue</th><th class="col-tam">Ext</th><th class="col-status">Risk</th><th class="col-status">Exempt</th><th class="col-status">Notes</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
+    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">${essAssets}</th><th class="col-ess-n">${essBreakfix}</th><th class="col-ess-n">${essProdCompliance}</th><th class="col-ess-n">${essPolicyEnforced}</th><th class="col-ess-s">${essAssets}</th><th class="col-ess-s">${essBreakfix}</th><th class="col-ess-s">${essProdCompliance}</th><th class="col-ess-s">${essPolicyEnforced}</th><th class="col-vram-n">${vramAssets}</th><th class="col-vram-n">${vramScan}</th><th class="col-vram-n">${vramVph}</th><th class="col-vram-n">${vramIntegrity}</th><th class="col-vram-n">${vramScanned}</th><th class="col-vram-s">${vramAssets}</th><th class="col-vram-s">${vramScan}</th><th class="col-vram-s">${vramVph}</th><th class="col-vram-s">${vramIntegrity}</th><th class="col-vram-s">${vramScanned}</th><th class="col-ra">${vramCritical}</th><th class="col-ra">${vramHigh}</th><th class="col-tam">${tamOverdue}</th><th class="col-tam">${tamExt}</th><th class="col-status">Risk</th><th class="col-status">${vramExempt}</th><th class="col-status">Notes</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
@@ -648,7 +675,7 @@ const generateReportHTML = (reportData, settings) => {
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR ESS %</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr></tbody></table>`;
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR ESS Compliance</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR ESS Compliance</td>${list.map(a=>`<td>${a.siprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
