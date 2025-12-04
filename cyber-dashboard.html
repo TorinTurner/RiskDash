@@ -32,6 +32,10 @@
         .data-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         .data-table th { background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 8px; letter-spacing: 0.3px; padding: 6px 3px; text-align: center; border: 1px solid #e2e8f0; white-space: nowrap; }
         .data-table td { padding: 4px 3px; text-align: center; border: 1px solid #e2e8f0; background: #ffffff; white-space: nowrap; }
+        .data-table.settings-table { font-size: 14px; }
+        .data-table.settings-table th { font-size: 12px; padding: 10px 12px; }
+        .data-table.settings-table td { padding: 8px 12px; }
+        .data-table.settings-table td.boat-name { font-size: 14px; }
         .table-scroll { overflow-x: auto; }
         .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; color: #0891b2; }
         .data-table .isic-header, .data-table .isic-cell { background: #1e293b; color: white; font-weight: 700; text-align: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); padding: 8px 4px; font-size: 9px; width: 28px; min-width: 28px; max-width: 28px; }
@@ -2183,12 +2187,12 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">Boats ({settings.boats.length})</h3>
-                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>NMCI</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td className={b.nmci ? 'bg-blue-100 text-blue-700 font-semibold' : ''}>{b.nmci ? 'Yes' : 'No'}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table></div>
+                        <div className="overflow-x-auto"><table className="data-table settings-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>NMCI</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td className={b.nmci ? 'bg-blue-100 text-blue-700 font-semibold' : ''}>{b.nmci ? 'Yes' : 'No'}</td><td><button onClick={() => setEditingBoat(b)} className="text-cyan-600 mr-3">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-red-500">Delete</button></td></tr>)}</tbody></table></div>
                         <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, nmci: false, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
                     </div>
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">ISICs ({settings.isics.length})</h3>
-                        <table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th>Short</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.isics.map(i => <tr key={i.isic_name}><td style={{textAlign:'left'}}>{i.isic_name}</td><td>{i.isic_short}</td><td>{i.tycom}</td><td><button onClick={() => setEditingISIC(i)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteISIC(i.isic_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table>
+                        <table className="data-table settings-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th>Short</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.isics.map(i => <tr key={i.isic_name}><td style={{textAlign:'left'}}>{i.isic_name}</td><td>{i.isic_short}</td><td>{i.tycom}</td><td><button onClick={() => setEditingISIC(i)} className="text-cyan-600 mr-3">Edit</button><button onClick={() => deleteISIC(i.isic_name)} className="text-red-500">Delete</button></td></tr>)}</tbody></table>
                         <button onClick={() => setEditingISIC({ isic_name: '', isic_short: '', tycom: 'CSL', isNew: true })} className="btn-primary mt-4">+ Add ISIC</button>
                     </div>
                 </div>
