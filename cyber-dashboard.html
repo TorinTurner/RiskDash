@@ -34,6 +34,7 @@
         .data-table td { padding: 4px 3px; text-align: center; border: 1px solid #e2e8f0; background: #ffffff; white-space: nowrap; }
         .table-scroll { overflow-x: auto; }
         .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #0891b2; }
+        .data-table .isic-header, .data-table .isic-cell { background: #1e293b; color: white; font-weight: 700; text-align: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); padding: 8px 4px; font-size: 9px; width: 28px; min-width: 28px; max-width: 28px; }
         .col-ess-n { background: rgba(59,130,246,0.1) !important; } .col-ess-s { background: rgba(99,102,241,0.1) !important; }
         .col-vram-n { background: rgba(249,115,22,0.1) !important; } .col-vram-s { background: rgba(234,88,12,0.1) !important; }
         .col-ra { background: rgba(168,85,247,0.1) !important; } .col-tam { background: rgba(107,114,128,0.1) !important; } .col-status { background: rgba(16,185,129,0.1) !important; }
@@ -52,133 +53,11 @@
 {
     "_version": 1,
     "tycoms": ["CSL", "CSP"],
-    "isics": [
-        {"isic_name": "COMSUBDEVRON 5", "isic_short": "CSDS5", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 4", "isic_short": "CSS4", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 6", "isic_short": "CSS6", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 8", "isic_short": "CSS8", "tycom": "CSL", "active": true},
-        {"isic_name": "COMSUBRON 17", "isic_short": "CSS17", "tycom": "CSP", "active": true},
-        {"isic_name": "COMSUBRON 19", "isic_short": "CSS19", "tycom": "CSP", "active": true},
-        {"isic_name": "COMSUBRON 20", "isic_short": "CSS20", "tycom": "CSP", "active": true}
-    ],
-    "boats": [
-        {"boat_name": "SSN-21", "boat_full_name": "USS SEAWOLF", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-22", "boat_full_name": "USS CONNECTICUT", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-23", "boat_full_name": "USS JIMMY CARTER", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-774", "boat_full_name": "USS VIRGINIA", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-775", "boat_full_name": "USS TEXAS", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-776", "boat_full_name": "USS HAWAII", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-777", "boat_full_name": "USS NORTH CAROLINA", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
-        {"boat_name": "SSN-778", "boat_full_name": "USS NEW HAMPSHIRE", "isic": "COMSUBRON 8", "tycom": "CSL", "active": true},
-        {"boat_name": "SSBN-730", "boat_full_name": "USS HENRY M JACKSON", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-731", "boat_full_name": "USS ALABAMA", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-732", "boat_full_name": "USS ALASKA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSBN-733", "boat_full_name": "USS NEVADA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-726", "boat_full_name": "USS OHIO", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-727", "boat_full_name": "USS MICHIGAN", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true},
-        {"boat_name": "SSGN-728", "boat_full_name": "USS FLORIDA", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true}
-    ],
-    "thresholds": {
-        "auto_high_scan_age_days": 90,
-        "auto_high_scan_integrity": 80,
-        "auto_high_scan_percent": 80,
-        "auto_high_ra_vph": 10,
-        "auto_high_ra_crit": 50,
-        "high_scan_age_days": 60,
-        "high_scan_integrity": 90,
-        "high_ra_vph": 5,
-        "high_ra_crit": 20,
-        "high_ess_compliance": 85,
-        "high_tam_past_due": 5,
-        "med_scan_age_days": 30,
-        "med_ra_vph": 2.5,
-        "med_ess_compliance": 95,
-        "med_tam_past_due": 1
-    },
-    "display": {
-        "color_scan_age_amber_days": 30,
-        "color_scan_age_red_days": 90,
-        "color_ra_vph_amber": 2.5,
-        "color_ra_vph_red": 5,
-        "color_scan_quality_red": 98
-    },
-    "user": {"default_name": ""},
-    "schemaConfig": {
-        "vram": [
-            {"field": "siteName", "label": "Site/Boat Name", "column": "Site Name", "visible": true},
-            {"field": "scanDate", "label": "Last Scan Date", "column": "Last Scan Date", "visible": true},
-            {"field": "assets", "label": "Asset Count", "column": "Valid Assets", "visible": true},
-            {"field": "raVph", "label": "RA VPH", "column": "RA VPH", "visible": true},
-            {"field": "scanIntegrity", "label": "Scan Integrity %", "column": "Scan Integrity", "visible": true},
-            {"field": "scanPercent", "label": "Percent Scanned", "column": "Percent Scanned", "visible": true},
-            {"field": "raCrit", "label": "RA Critical", "column": "RA Crit", "visible": true},
-            {"field": "raHigh", "label": "RA High", "column": "RA High", "visible": true},
-            {"field": "scanExempt", "label": "Scan Exempt", "column": "Scan Exempt", "visible": true}
-        ],
-        "ess": [
-            {"field": "shipName", "label": "Ship/Boat Name", "column": "Ships", "visible": true},
-            {"field": "isic", "label": "ISIC Column", "column": "ISICs", "visible": true},
-            {"field": "productCompliance", "label": "Product Compliance %", "column": "Product Compliance", "visible": true},
-            {"field": "policyEnforced", "label": "Policy Enforced %", "column": "Policy Enforced", "visible": true},
-            {"field": "breakfix", "label": "Breakfix Count", "column": "Assets in Breakfix", "visible": true},
-            {"field": "assets", "label": "Asset Count", "column": "Asset Count", "visible": true}
-        ],
-        "tam": [
-            {"field": "boatName", "label": "Boat Name", "column": "Boat", "visible": true},
-            {"field": "pastDue", "label": "Past Due Count", "column": "# Past Due", "visible": true},
-            {"field": "extensions", "label": "Extensions Count", "column": "# Extensions", "visible": true}
-        ]
-    },
-    "tabConfig": [
-        {"id": "csl", "label": "CSL Summary", "visible": true},
-        {"id": "csp", "label": "CSP Summary", "visible": true},
-        {"id": "hq", "label": "HQ Status", "visible": true},
-        {"id": "analytics", "label": "Analytics", "visible": true},
-        {"id": "changelog", "label": "Changes", "visible": true}
-    ],
-    "analyticsConfig": {
-        "statCards": [
-            {"id": "totalBoats", "label": "Total Boats", "visible": true},
-            {"id": "highRisk", "label": "High Risk", "visible": true},
-            {"id": "medRisk", "label": "Medium Risk", "visible": true},
-            {"id": "lowRisk", "label": "Low Risk", "visible": true},
-            {"id": "avgVph", "label": "Avg NIPR VPH", "visible": true},
-            {"id": "totalBreakfix", "label": "Total Breakfix", "visible": true},
-            {"id": "avgCompliance", "label": "Avg ESS Compliance", "visible": true},
-            {"id": "scanExempt", "label": "Scan Exempt", "visible": true}
-        ],
-        "charts": [
-            {"id": "riskDistribution", "label": "Risk Distribution - All", "visible": true},
-            {"id": "riskByTycom", "label": "Risk by TYCOM", "visible": true},
-            {"id": "vphByIsic", "label": "Average VPH by ISIC", "visible": true},
-            {"id": "highRiskTable", "label": "High Risk Boats Table", "visible": true}
-        ],
-        "rankings": [
-            {"id": "worstBoatsVph", "label": "Worst Boats by VPH", "visible": true, "count": 5},
-            {"id": "bestBoatsVph", "label": "Best Boats by VPH", "visible": false, "count": 5},
-            {"id": "worstBoatsCompliance", "label": "Worst Boats by Compliance", "visible": true, "count": 5},
-            {"id": "bestBoatsCompliance", "label": "Best Boats by Compliance", "visible": false, "count": 5},
-            {"id": "worstIsicsRisk", "label": "Worst ISICs by High Risk Count", "visible": true, "count": 3},
-            {"id": "bestIsicsRisk", "label": "Best ISICs by Low Risk %", "visible": false, "count": 3},
-            {"id": "worstIsicsVph", "label": "Worst ISICs by Avg VPH", "visible": false, "count": 3},
-            {"id": "boatsWithBreakfix", "label": "Boats with Breakfix Issues", "visible": true, "count": 5},
-            {"id": "tycomComparison", "label": "TYCOM vs TYCOM Comparison", "visible": true, "count": 0}
-        ],
-        "summaryColumns": [
-            {"id": "isic", "label": "ISIC", "visible": true},
-            {"id": "boats", "label": "Boats", "visible": true},
-            {"id": "high", "label": "High", "visible": true},
-            {"id": "med", "label": "Med", "visible": true},
-            {"id": "low", "label": "Low", "visible": true},
-            {"id": "avgVph", "label": "Avg VPH", "visible": true},
-            {"id": "breakfix", "label": "Breakfix", "visible": true}
-        ]
-    },
-    "legendText": {
-        "high": "Breakfix > 0, Scan > {auto_high_scan_age_days}d, VPH > {auto_high_ra_vph}, Integrity < {auto_high_scan_integrity}%, Policy < {high_ess_compliance}%, TAM > {high_tam_past_due}",
-        "med": "Scan > {med_scan_age_days}d, VPH > {med_ra_vph}, Policy < {med_ess_compliance}%, TAM > {med_tam_past_due}",
-        "low": "No criteria met"
-    }
+    "isics": [],
+    "boats": [],
+    "thresholds": {},
+    "display": {},
+    "user": {"default_name": ""}
 }
 </script>
 
@@ -272,11 +151,11 @@ const defaultLegendText = {
     low: 'No criteria met'
 };
 
-// Settings Manager with File System Access API
-const SettingsManager = {
-    _fileHandle: null,
-    _settingsCache: null,
+// Settings Manager with localStorage
+const SETTINGS_STORAGE_KEY = 'cyberDashboard_settings';
+const SETTINGS_VERSION = '1.0';
 
+const SettingsManager = {
     // Get embedded defaults from HTML
     getEmbeddedDefaults() {
         try {
@@ -284,12 +163,21 @@ const SettingsManager = {
         } catch { return null; }
     },
 
-    // Ensure settings have all required fields
-    ensureDefaults(settings) {
+    // Ensure settings have all required fields and versioning
+    ensureDefaults(settings, options = {}) {
         if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
+
+        // Initialize versioning if missing
+        if (!settings._settingsVersion) {
+            settings._settingsVersion = SETTINGS_VERSION;
+            settings._settingsAuthor = options.author || 'Unknown';
+            settings._settingsModified = new Date().toISOString();
+            settings._settingsHistory = [];
+        }
+
         // Migrate old columnMappings
         if (settings.columnMappings && !settings.schemaConfig) {
             settings.schemaConfig = this.migrateColumnMappings(settings.columnMappings);
@@ -298,107 +186,66 @@ const SettingsManager = {
         return settings;
     },
 
-    // Try to load settings.json from same directory using File System Access API
-    async tryAutoLoad() {
-        // Check if File System Access API is available
-        if (!('showOpenFilePicker' in window)) {
-            console.log('File System Access API not available');
-            return null;
-        }
-        // Can't auto-load without user interaction, return null
-        return null;
-    },
-
-    // Prompt user to select settings.json file
-    async promptLoadSettings() {
-        if (!('showOpenFilePicker' in window)) {
-            // Fallback to file input
-            return new Promise((resolve) => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        try {
-                            const text = await file.text();
-                            const settings = JSON.parse(text);
-                            this._settingsCache = this.ensureDefaults(settings);
-                            resolve(this._settingsCache);
-                        } catch (err) {
-                            console.error('Failed to parse settings:', err);
-                            resolve(null);
-                        }
-                    } else {
-                        resolve(null);
-                    }
-                };
-                input.click();
-            });
-        }
-
+    // Load settings from localStorage, fall back to embedded defaults
+    load() {
         try {
-            const [handle] = await window.showOpenFilePicker({
-                types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }],
-                multiple: false
-            });
-            this._fileHandle = handle;
-            const file = await handle.getFile();
-            const text = await file.text();
-            const settings = JSON.parse(text);
-            this._settingsCache = this.ensureDefaults(settings);
-            return this._settingsCache;
+            const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+            if (stored) {
+                const settings = JSON.parse(stored);
+                return this.ensureDefaults(settings);
+            }
         } catch (err) {
-            if (err.name !== 'AbortError') console.error('Failed to load settings:', err);
-            return null;
+            console.error('Failed to load settings from localStorage:', err);
+        }
+
+        // Fall back to embedded defaults
+        const embedded = this.getEmbeddedDefaults();
+        if (embedded) {
+            return this.ensureDefaults(embedded, { author: 'Default' });
+        }
+        return this.getDefaults();
+    },
+
+    // Save settings to localStorage
+    save(settings) {
+        try {
+            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+            return { success: true };
+        } catch (err) {
+            console.error('Failed to save settings to localStorage:', err);
+            return { success: false, error: err.message };
         }
     },
 
-    // Save settings to JSON file
-    async saveSettings(settings) {
-        const jsonStr = JSON.stringify(settings, null, 2);
+    // Update settings version info when user makes changes
+    updateVersion(settings, authorName) {
+        const now = new Date().toISOString();
+        const prevVersion = settings._settingsVersion || '1.0';
+        const prevAuthor = settings._settingsAuthor || 'Unknown';
+        const prevModified = settings._settingsModified;
 
-        // Try to use existing file handle first
-        if (this._fileHandle) {
-            try {
-                const writable = await this._fileHandle.createWritable();
-                await writable.write(jsonStr);
-                await writable.close();
-                this._settingsCache = settings;
-                return { success: true, method: 'fileHandle' };
-            } catch (err) {
-                console.log('Could not write to existing handle, will prompt for save location');
+        // Add to history
+        if (!settings._settingsHistory) settings._settingsHistory = [];
+        if (prevModified) {
+            settings._settingsHistory.push({
+                version: prevVersion,
+                author: prevAuthor,
+                modified: prevModified,
+                savedAt: now
+            });
+            // Keep only last 10 history entries
+            if (settings._settingsHistory.length > 10) {
+                settings._settingsHistory = settings._settingsHistory.slice(-10);
             }
         }
 
-        // Use File System Access API to save
-        if ('showSaveFilePicker' in window) {
-            try {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: 'settings.json',
-                    types: [{ description: 'Settings JSON', accept: { 'application/json': ['.json'] } }]
-                });
-                this._fileHandle = handle;
-                const writable = await handle.createWritable();
-                await writable.write(jsonStr);
-                await writable.close();
-                this._settingsCache = settings;
-                return { success: true, method: 'filePicker' };
-            } catch (err) {
-                if (err.name === 'AbortError') return { success: false, cancelled: true };
-                console.error('Save failed:', err);
-            }
-        }
+        // Increment version
+        const [major, minor] = prevVersion.split('.').map(Number);
+        settings._settingsVersion = `${major}.${minor + 1}`;
+        settings._settingsAuthor = authorName || prevAuthor;
+        settings._settingsModified = now;
 
-        // Fallback: download the file
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'settings.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        this._settingsCache = settings;
-        return { success: true, method: 'download' };
+        return settings;
     },
 
     // Export settings as JSON download
@@ -407,19 +254,48 @@ const SettingsManager = {
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'settings.json';
+        a.download = `settings-v${settings._settingsVersion || '1.0'}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
     },
 
-    // Load settings (sync for initial render, uses embedded defaults)
-    load() {
-        // Start with embedded defaults
-        const embedded = this.getEmbeddedDefaults();
-        if (embedded) {
-            return this.ensureDefaults(embedded);
+    // Import settings from JSON file
+    importSettings() {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const text = await file.text();
+                        const settings = JSON.parse(text);
+                        resolve({ success: true, settings: this.ensureDefaults(settings) });
+                    } catch (err) {
+                        resolve({ success: false, error: err.message });
+                    }
+                } else {
+                    resolve({ success: false, error: 'No file selected' });
+                }
+            };
+            input.click();
+        });
+    },
+
+    // Clear localStorage settings
+    clear() {
+        try {
+            localStorage.removeItem(SETTINGS_STORAGE_KEY);
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
         }
-        return this.getDefaults();
+    },
+
+    // Check if localStorage has saved settings
+    hasSavedSettings() {
+        return localStorage.getItem(SETTINGS_STORAGE_KEY) !== null;
     },
 
     migrateColumnMappings(old) {
@@ -444,6 +320,10 @@ const SettingsManager = {
     getDefaults() {
         return {
             _version: 1,
+            _settingsVersion: SETTINGS_VERSION,
+            _settingsAuthor: 'Default',
+            _settingsModified: new Date().toISOString(),
+            _settingsHistory: [],
             tycoms: ['CSL', 'CSP'],
             isics: [],
             boats: [],
@@ -530,25 +410,25 @@ const mergeData = (sources, settings) => {
 // Risk Calculator
 const calculateRisk = (boat, thresholds) => {
     const reasons = []; let level = 'LOW';
-    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : Infinity;
+    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : null;
     const nAge = scanAge(boat.vramNiprScanDate); const sAge = scanAge(boat.vramSiprScanDate);
 
     if ((boat.essNiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`NIPR BF: ${boat.essNiprBreakfix}`); }
     if ((boat.essSiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`SIPR BF: ${boat.essSiprBreakfix}`); }
-    if (nAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
-    if (sAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`SIPR Scan: ${sAge}d`); }
+    if (nAge !== null && nAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
+    if (sAge !== null && sAge > thresholds.auto_high_scan_age_days) { level = 'HIGH'; reasons.push(`SIPR Scan: ${sAge}d`); }
     if (boat.vramNiprScanIntegrity !== null && boat.vramNiprScanIntegrity < thresholds.auto_high_scan_integrity) { level = 'HIGH'; reasons.push(`NIPR Int: ${boat.vramNiprScanIntegrity}%`); }
     if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.auto_high_ra_vph) { level = 'HIGH'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
 
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.high_ess_compliance) { level = 'HIGH'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
         if ((boat.tamPastDue||0) > thresholds.high_tam_past_due) { level = 'HIGH'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
-        if (nAge > thresholds.high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
+        if (nAge !== null && nAge > thresholds.high_scan_age_days) { level = 'HIGH'; reasons.push(`NIPR Scan: ${nAge}d`); }
     }
 
     if (level !== 'HIGH') {
         if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < thresholds.med_ess_compliance) { level = 'MED'; reasons.push(`NIPR Pol: ${boat.essNiprTruePolicy.toFixed(1)}%`); }
-        if (nAge > thresholds.med_scan_age_days) { level = 'MED'; reasons.push(`NIPR Scan: ${nAge}d`); }
+        if (nAge !== null && nAge > thresholds.med_scan_age_days) { level = 'MED'; reasons.push(`NIPR Scan: ${nAge}d`); }
         if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > thresholds.med_ra_vph) { level = 'MED'; reasons.push(`NIPR VPH: ${boat.vramNiprRaVph}`); }
         if ((boat.tamPastDue||0) > thresholds.med_tam_past_due) { level = 'MED'; reasons.push(`TAMs: ${boat.tamPastDue}`); }
     }
@@ -631,14 +511,54 @@ const generateReportHTML = (reportData, settings) => {
     const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
     const avgCompliance = boats.length > 0 ? (boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
 
-    const boatRow = (b) => `<tr><td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td></tr>`;
+    // Get label from schema config, with fallback
+    const schema = settings.schemaConfig || defaultSchemaConfig;
+    const getLabel = (type, field, fallback) => {
+        const item = schema[type]?.find(s => s.field === field);
+        return item?.label || fallback;
+    };
 
-    const isicTable = (isic, boats) => `<div class="isic-section" data-isic="${isic}"><h3 style="background:#1e293b;color:white;padding:6px 10px;margin:12px 0 0;font-size:11px;">${isic}</h3><table class="summary-table"><thead><tr><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">Assets</th><th class="col-ess-n">Breakfix</th><th class="col-ess-n">Prod%</th><th class="col-ess-n">Policy%</th><th class="col-ess-s">Assets</th><th class="col-ess-s">Breakfix</th><th class="col-ess-s">Prod%</th><th class="col-ess-s">Policy%</th><th class="col-vram-n">Assets</th><th class="col-vram-n">Scan</th><th class="col-vram-n">VPH</th><th class="col-vram-n">Integrity</th><th class="col-vram-n">Scanned</th><th class="col-vram-s">Assets</th><th class="col-vram-s">Scan</th><th class="col-vram-s">VPH</th><th class="col-vram-s">Integrity</th><th class="col-vram-s">Scanned</th><th class="col-ra">Critical</th><th class="col-ra">High</th><th class="col-tam">Overdue</th><th class="col-tam">Ext</th><th class="col-status">Risk</th><th class="col-status">Exempt</th><th class="col-status">Notes</th></tr></thead><tbody>${boats.map(boatRow).join('')}</tbody></table></div>`;
+    // ESS column labels
+    const essAssets = getLabel('ess', 'assets', 'Assets');
+    const essBreakfix = getLabel('ess', 'breakfix', 'Breakfix');
+    const essProdCompliance = getLabel('ess', 'productCompliance', 'Prod%');
+    const essPolicyEnforced = getLabel('ess', 'policyEnforced', 'Policy%');
+
+    // VRAM column labels
+    const vramAssets = getLabel('vram', 'assets', 'Assets');
+    const vramScan = getLabel('vram', 'scanDate', 'Scan');
+    const vramVph = getLabel('vram', 'raVph', 'VPH');
+    const vramIntegrity = getLabel('vram', 'scanIntegrity', 'Integrity');
+    const vramScanned = getLabel('vram', 'scanPercent', 'Scanned');
+    const vramCritical = getLabel('vram', 'raCrit', 'Critical');
+    const vramHigh = getLabel('vram', 'raHigh', 'High');
+    const vramExempt = getLabel('vram', 'scanExempt', 'Exempt');
+
+    // TAM column labels
+    const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
+    const tamExt = getLabel('tam', 'extensions', 'Ext');
+
+    const boatCells = (b) => `<td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+
+    const summaryTable = (byISIC) => {
+        const entries = Object.entries(byISIC);
+        if (entries.length === 0) return '<p>No data</p>';
+        let bodyRows = '';
+        for (const [isic, isicBoats] of entries) {
+            isicBoats.forEach((b, i) => {
+                bodyRows += '<tr>';
+                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${isic}</td>`;
+                bodyRows += boatCells(b) + '</tr>';
+            });
+        }
+        return `<table class="summary-table"><thead><tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">${essAssets}</th><th class="col-ess-n">${essBreakfix}</th><th class="col-ess-n">${essProdCompliance}</th><th class="col-ess-n">${essPolicyEnforced}</th><th class="col-ess-s">${essAssets}</th><th class="col-ess-s">${essBreakfix}</th><th class="col-ess-s">${essProdCompliance}</th><th class="col-ess-s">${essPolicyEnforced}</th><th class="col-vram-n">${vramAssets}</th><th class="col-vram-n">${vramScan}</th><th class="col-vram-n">${vramVph}</th><th class="col-vram-n">${vramIntegrity}</th><th class="col-vram-n">${vramScanned}</th><th class="col-vram-s">${vramAssets}</th><th class="col-vram-s">${vramScan}</th><th class="col-vram-s">${vramVph}</th><th class="col-vram-s">${vramIntegrity}</th><th class="col-vram-s">${vramScanned}</th><th class="col-ra">${vramCritical}</th><th class="col-ra">${vramHigh}</th><th class="col-tam">${tamOverdue}</th><th class="col-tam">${tamExt}</th><th class="col-status">Risk</th><th class="col-status">${vramExempt}</th><th class="col-status">Notes</th></tr></thead><tbody>${bodyRows}</tbody></table>`;
+    };
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
-    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0;
-    const changeCount = allOverrides.length + thresholdChanges.length;
+    const settingsHistory = settings._settingsHistory || [];
+    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0;
+    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0);
 
     // Tab visibility helpers
     const tabConfig = settings.tabConfig || [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
@@ -646,7 +566,7 @@ const generateReportHTML = (reportData, settings) => {
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR ESS %</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr></tbody></table>`;
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR ESS Compliance</td>${list.map(a=>`<td>${a.niprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR ESS Compliance</td>${list.map(a=>`<td>${a.siprEssEnforcedAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -689,6 +609,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}
+.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:8px 4px;font-size:9pt;width:28px;min-width:28px;max-width:28px}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
@@ -713,21 +634,28 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .mini-table th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 .mini-table tr:last-child td{border-bottom:none}
+.print-only{display:none}
+.print-header{background:#1e293b;color:white;padding:12px 24px;margin-bottom:16px}
+.print-header h1{font-size:14pt;font-weight:600;margin-bottom:4px}
+.print-header .date{font-size:10pt;opacity:0.9}
 @media print{
     .no-print{display:none!important}
+    .print-only{display:block!important}
     body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .tab-content{display:none!important;padding:10px}
     .tab-content.print-active{display:block!important}
     .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:1px solid #e2e8f0}
     .isic-section{page-break-inside:avoid}
-    .stat-cards{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
-    .stat-card{padding:10px!important;page-break-inside:avoid}
-    .stat-card .value{font-size:18pt!important}
-    .chart-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
-    .chart-box{padding:10px!important;page-break-inside:avoid;max-height:280px!important}
-    .chart-box canvas{max-height:200px!important}
-    .rankings-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
-    .ranking-box{padding:8px!important;page-break-inside:avoid}
+    .stat-cards{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+    .stat-card{padding:8px!important;page-break-inside:avoid}
+    .stat-card h3{font-size:8pt!important;margin-bottom:4px!important}
+    .stat-card .value{font-size:16pt!important}
+    .chart-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+    .chart-box{padding:10px!important;page-break-inside:avoid;max-height:220px!important;max-width:100%!important;overflow:hidden!important}
+    .chart-box h3{font-size:9pt!important;margin-bottom:8px!important}
+    .chart-box canvas{max-height:160px!important;max-width:100%!important;width:auto!important;height:auto!important;object-fit:contain!important}
+    .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+    .ranking-box{padding:8px!important;page-break-inside:avoid;max-height:180px!important;overflow:hidden!important}
     .ranking-box h4{font-size:8pt!important;margin-bottom:6px!important}
     .mini-table{font-size:7pt!important}
     .summary-table{font-size:7pt!important}
@@ -739,12 +667,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 @media print and (orientation:landscape){
     .chart-grid{grid-template-columns:repeat(2,1fr)!important}
     .stat-cards{grid-template-columns:repeat(4,1fr)!important}
+    .chart-box{max-height:200px!important}
+    .chart-box canvas{max-height:140px!important}
 }
 @page{margin:0.5in;size:landscape}
 </style></head><body>
 <div class="header no-print">
+<div><h1>Cyber Status Report</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
+<button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
+</div>
+<div class="print-only print-header">
 <h1>Cyber Status Report</h1>
-<div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div>
+<div class="date">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | Version ${reportData.version}</div>
 </div>
 <div class="tabs no-print">
 ${tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((t, i) => `<button class="tab-btn${i===0?' active':''}" onclick="showTab('${t.id}')">${t.id === 'changelog' ? `Changes (${changeCount})` : t.label}</button>`).join('')}
@@ -752,16 +686,16 @@ ${tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((
 
 ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==='csl'?' active':''}">
 <div class="page">
-<div class="page-header">
+<div class="page-header no-print">
 <h2>CSL Cyber Summary</h2>
 <div class="toolbar">
 <select onchange="filterISIC('csl',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;">
 <option value="">All Squadrons</option>${Object.keys(cslByISIC).map(i=>`<option value="${i}">${i}</option>`).join('')}
 </select>
 <button onclick="printTab('csl')">Print CSL</button>
-<button onclick="exportToExcel()">Export Excel</button>
 </div>
 </div>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSL Cyber Summary</h2>
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -771,22 +705,22 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 &nbsp;|&nbsp;
 <span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
-<div id="csl-content">${Object.entries(cslByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
+<div id="csl-content">${summaryTable(cslByISIC)}</div>
 </div>
 </div>` : ''}
 
 ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==='csp'?' active':''}">
 <div class="page">
-<div class="page-header">
+<div class="page-header no-print">
 <h2>CSP Cyber Summary</h2>
 <div class="toolbar">
 <select onchange="filterISIC('csp',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;">
 <option value="">All Squadrons</option>${Object.keys(cspByISIC).map(i=>`<option value="${i}">${i}</option>`).join('')}
 </select>
 <button onclick="printTab('csp')">Print CSP</button>
-<button onclick="exportToExcel()">Export Excel</button>
 </div>
 </div>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSP Cyber Summary</h2>
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -796,16 +730,17 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 &nbsp;|&nbsp;
 <span class="risk-low">LOW</span> = ${formatLegend(legendText.low)}
 </div>
-<div id="csp-content">${Object.entries(cspByISIC).map(([isic,boats])=>isicTable(isic,boats)).join('')}</div>
+<div id="csp-content">${summaryTable(cspByISIC)}</div>
 </div>
 </div>` : ''}
 
 ${isTabVisible('hq') ? `<div id="tab-hq" class="tab-content${firstVisibleTab==='hq'?' active':''}">
 <div class="page">
-<div class="page-header">
+<div class="page-header no-print">
 <h2>HQ Cyber Status</h2>
 <div class="toolbar"><button onclick="printTab('hq')">Print HQ Status</button></div>
 </div>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">HQ Cyber Status</h2>
 ${hqTable(aggs.csl, 'CSL Status')}
 ${hqTable(aggs.csp, 'CSP Status')}
 </div>
@@ -912,11 +847,13 @@ ${isTabVisible('analytics') ? (() => {
         ].filter(Boolean).join('')}</tr>`;
     }).join('');
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
+<div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Analytics</h2>
 ${visibleStats ? `<div class="stat-cards">${visibleStats}</div>` : ''}
 ${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
 ${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
 ${summaryHeaders ? `<div class="page">
-<div class="page-header"><h2>Risk Summary by ISIC</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
+<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">Risk Summary by ISIC</h3>
 <table class="summary-table"><thead><tr>${summaryHeaders}</tr></thead>
 <tbody>${summaryRows}</tbody></table>
 </div>` : ''}
@@ -925,10 +862,22 @@ ${summaryHeaders ? `<div class="page">
 
 ${(hasChanges && isTabVisible('changelog')) ? `<div id="tab-changelog" class="tab-content${firstVisibleTab==='changelog'?' active':''}">
 <div class="page">
-<div class="page-header"><h2>Change Log</h2><div class="toolbar"><button onclick="printTab('changelog')">Print Changes</button></div></div>
+<div class="page-header no-print"><h2>Change Log</h2><div class="toolbar"><button onclick="printTab('changelog')">Print Changes</button></div></div>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Change Log</h2>
+
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
+<h4 style="font-size:10pt;color:#0369a1;margin:0 0 8px;">Current Settings</h4>
+<p style="font-size:9pt;color:#0c4a6e;margin:0;">Version <strong>${settings._settingsVersion || '1.0'}</strong> by <strong>${settings._settingsAuthor || 'Unknown'}</strong> • Last modified: ${settings._settingsModified ? new Date(settings._settingsModified).toLocaleString() : 'Unknown'}</p>
+</div>
+
+${settingsHistory.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;color:#0891b2;">Settings Version History</h3>
+<table class="summary-table"><thead><tr><th>Version</th><th style="text-align:left">Author</th><th style="text-align:left">Modified</th></tr></thead>
+<tbody>${settingsHistory.slice().reverse().map(h => `<tr><td style="font-weight:bold;">${h.version}</td><td style="text-align:left">${h.author}</td><td style="text-align:left">${new Date(h.modified).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
 ${thresholdChanges.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;color:#b45309;">Threshold Adjustments</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Threshold</th><th>Default</th><th>Used</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${thresholdChanges.map(t => `<tr><td style="text-align:left">${t.field.replace(/_/g, ' ')}</td><td>${t.defaultValue}</td><td style="font-weight:bold;color:#b45309;">${t.newValue}</td><td>${t.user}</td><td>${new Date(t.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
 ${allOverrides.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#7c3aed;">Value Overrides</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th style="text-align:left">Field</th><th>Original</th><th>New</th><th style="text-align:left">Reason</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${allOverrides.map(o => `<tr><td style="text-align:left;font-family:monospace;">${o.boatName}</td><td style="text-align:left">${o.field}</td><td>${o.originalValue}</td><td style="font-weight:bold;color:#7c3aed;">${o.overrideValue}</td><td style="text-align:left">${o.reason}</td><td>${o.user}</td><td>${new Date(o.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -959,8 +908,13 @@ function printTab(id) {
 }
 function filterISIC(p, v) {
     const c = document.getElementById(p + '-content');
-    const s = c.querySelectorAll('.isic-section');
-    s.forEach(x => x.style.display = !v || x.dataset.isic === v ? '' : 'none');
+    const rows = c.querySelectorAll('tbody tr');
+    let currentISIC = '';
+    rows.forEach(row => {
+        const isicCell = row.querySelector('.isic-cell');
+        if (isicCell) currentISIC = isicCell.textContent;
+        row.style.display = !v || currentISIC === v ? '' : 'none';
+    });
 }
 function exportToExcel() {
     const m = document.querySelector('script[type="application/x-dashboard-report"]');
@@ -1293,51 +1247,49 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             {subTab === 'hq' ? (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
-                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csl.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
                     <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
+                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR ESS %</td>{aggs.csp.map(a => <td key={a.isicName}>{a.niprEssEnforcedAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr></tbody></table></div>
                 </div>
             ) : (
                 <div className="card p-4 overflow-x-auto">
-                    {Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) => (
-                        <div key={isic} className="mb-6">
-                            <h3 className="text-sm font-bold mb-2 px-3 py-2 rounded bg-slate-100 text-slate-700">{isic}</h3>
-                            <table className="data-table">
-                                <thead>
-                                    <tr><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
-                                    <tr><th className="col-ess-n">Assets</th><th className="col-ess-n">Breakfix</th><th className="col-ess-n">Prod%</th><th className="col-ess-n">Policy%</th><th className="col-ess-s">Assets</th><th className="col-ess-s">Breakfix</th><th className="col-ess-s">Prod%</th><th className="col-ess-s">Policy%</th><th className="col-vram-n">Assets</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Integrity</th><th className="col-vram-n">Scanned</th><th className="col-vram-s">Assets</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Integrity</th><th className="col-vram-s">Scanned</th><th className="col-ra">Critical</th><th className="col-ra">High</th><th className="col-tam">Overdue</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">Exempt</th><th className="col-status">Notes</th></tr>
-                                </thead>
-                                <tbody>{isicBoats.map(b => <tr key={b.boatName}>
-                                    <td className="boat-name">{b.boatName}</td>
-                                    <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
-                                    <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
-                                    <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
-                                    <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
-                                    <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
-                                    <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
-                                    <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
-                                    <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
-                                    <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
-                                    <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />
-                                    <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
-                                    <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
-                                    <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
-                                    <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
-                                    <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />
-                                    <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
-                                    <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
-                                    <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
-                                    <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
-                                    <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
-                                    <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
-                                    <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
-                                    <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
-                                    <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
-                                    <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
-                                </tr>)}</tbody>
-                            </table>
-                        </div>
-                    ))}
+                    <table className="data-table">
+                        <thead>
+                            <tr><th rowSpan="2" className="isic-header">ISIC</th><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
+                            <tr><th className="col-ess-n">Assets</th><th className="col-ess-n">Breakfix</th><th className="col-ess-n">Prod%</th><th className="col-ess-n">Policy%</th><th className="col-ess-s">Assets</th><th className="col-ess-s">Breakfix</th><th className="col-ess-s">Prod%</th><th className="col-ess-s">Policy%</th><th className="col-vram-n">Assets</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Integrity</th><th className="col-vram-n">Scanned</th><th className="col-vram-s">Assets</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Integrity</th><th className="col-vram-s">Scanned</th><th className="col-ra">Critical</th><th className="col-ra">High</th><th className="col-tam">Overdue</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">Exempt</th><th className="col-status">Notes</th></tr>
+                        </thead>
+                        <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
+                            isicBoats.map((b, idx) => <tr key={b.boatName}>
+                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
+                                <td className="boat-name">{b.boatName}</td>
+                                <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
+                                <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
+                                <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
+                                <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
+                                <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
+                                <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
+                                <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
+                                <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
+                                <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
+                                <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />
+                                <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
+                                <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
+                                <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
+                                <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
+                                <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />
+                                <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
+                                <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
+                                <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
+                                <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
+                                <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
+                                <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
+                                <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
+                                <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
+                                <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
+                            </tr>)
+                        )}</tbody>
+                    </table>
                 </div>
             )}
 
@@ -1395,10 +1347,11 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     );
 };
 
-const SettingsTab = ({ settings, setSettings, onAlert }) => {
+const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, onSaveToMySettings }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
-    const [saveStatus, setSaveStatus] = React.useState(null);
+    const [authorName, setAuthorName] = React.useState(settings.user?.default_name || '');
+    const [showAuthorPrompt, setShowAuthorPrompt] = React.useState(false);
 
     const saveBoat = () => {
         if (!editingBoat.boat_name) return;
@@ -1408,32 +1361,60 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
         setEditingBoat(null);
     };
 
-    const handleLoadSettings = async () => {
-        const loaded = await SettingsManager.promptLoadSettings();
-        if (loaded) {
-            setSettings(loaded);
-            onAlert && onAlert({ type: 'info', msg: 'Settings loaded successfully' });
+    // Auto-save to localStorage whenever settings change
+    React.useEffect(() => {
+        if (!isUsingImportedSettings) {
+            SettingsManager.save(settings);
         }
-    };
+    }, [settings, isUsingImportedSettings]);
 
-    const handleSaveSettings = async () => {
-        setSaveStatus('saving');
-        const result = await SettingsManager.saveSettings(settings);
+    const handleImportSettings = async () => {
+        const result = await SettingsManager.importSettings();
         if (result.success) {
-            setSaveStatus('saved');
-            onAlert && onAlert({ type: 'info', msg: result.method === 'download' ? 'Settings downloaded as settings.json' : 'Settings saved successfully' });
-            setTimeout(() => setSaveStatus(null), 2000);
-        } else if (!result.cancelled) {
-            setSaveStatus(null);
-            onAlert && onAlert({ type: 'error', msg: 'Failed to save settings' });
-        } else {
-            setSaveStatus(null);
+            setSettings(result.settings);
+            SettingsManager.save(result.settings);
+            onAlert && onAlert({ type: 'info', msg: `Settings imported (v${result.settings._settingsVersion} by ${result.settings._settingsAuthor})` });
+        } else if (result.error) {
+            onAlert && onAlert({ type: 'error', msg: 'Failed to import: ' + result.error });
         }
     };
 
     const handleExportSettings = () => {
         SettingsManager.exportSettings(settings);
-        onAlert && onAlert({ type: 'info', msg: 'Settings exported as settings.json' });
+        onAlert && onAlert({ type: 'info', msg: `Settings exported as settings-v${settings._settingsVersion}.json` });
+    };
+
+    const handleSaveAsMySettings = () => {
+        if (!authorName.trim()) {
+            setShowAuthorPrompt(true);
+            return;
+        }
+        const updated = SettingsManager.updateVersion({...settings}, authorName);
+        updated.user = { ...updated.user, default_name: authorName };
+        setSettings(updated);
+        SettingsManager.save(updated);
+        onSaveToMySettings && onSaveToMySettings();
+        onAlert && onAlert({ type: 'info', msg: `Settings saved as v${updated._settingsVersion}` });
+    };
+
+    const handleResetToDefaults = () => {
+        if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+            SettingsManager.clear();
+            const defaults = SettingsManager.getDefaults();
+            setSettings(defaults);
+            onAlert && onAlert({ type: 'info', msg: 'Settings reset to defaults' });
+        }
+    };
+
+    const saveAuthorAndSettings = () => {
+        if (!authorName.trim()) return;
+        setShowAuthorPrompt(false);
+        const updated = SettingsManager.updateVersion({...settings}, authorName);
+        updated.user = { ...updated.user, default_name: authorName };
+        setSettings(updated);
+        SettingsManager.save(updated);
+        onSaveToMySettings && onSaveToMySettings();
+        onAlert && onAlert({ type: 'info', msg: `Settings saved as v${updated._settingsVersion}` });
     };
 
     // Legend text helpers
@@ -1485,17 +1466,36 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
-                <div className="flex gap-2">
-                    <button onClick={handleLoadSettings} className="btn-secondary text-sm">Load Settings</button>
-                    <button onClick={handleSaveSettings} className={`btn-success text-sm ${saveStatus === 'saving' ? 'opacity-50' : ''}`} disabled={saveStatus === 'saving'}>
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save Settings'}
-                    </button>
-                    <button onClick={handleExportSettings} className="btn-secondary text-sm">Export</button>
+            {/* Warning Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                    <span className="text-blue-500 text-xl">ℹ</span>
+                    <div>
+                        <h4 className="font-semibold text-blue-800 mb-1">Settings are saved automatically in this browser</h4>
+                        <p className="text-sm text-blue-700">Changes are auto-saved to your browser's local storage. Use <strong>Export</strong> to backup or share settings, and <strong>Import</strong> to restore from a backup file.</p>
+                        {isUsingImportedSettings && <p className="text-sm text-amber-700 mt-2 font-medium">You're currently using settings from an imported report. Click "Save to My Settings" to make these your default.</p>}
+                    </div>
                 </div>
             </div>
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics', 'tabs'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'tabs' ? 'Report Tabs' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
+
+            {/* Header with version info */}
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                        v{settings._settingsVersion || '1.0'} by {settings._settingsAuthor || 'Unknown'}
+                        {settings._settingsModified && <span className="ml-2">• Last modified: {new Date(settings._settingsModified).toLocaleDateString()}</span>}
+                    </p>
+                </div>
+                <div className="flex gap-2 flex-wrap justify-end">
+                    <button onClick={handleImportSettings} className="btn-secondary text-sm">Import</button>
+                    <button onClick={handleExportSettings} className="btn-secondary text-sm">Export</button>
+                    {isUsingImportedSettings && <button onClick={handleSaveAsMySettings} className="btn-success text-sm">Save to My Settings</button>}
+                    <button onClick={handleResetToDefaults} className="text-sm text-red-600 hover:text-red-800 px-3">Reset</button>
+                </div>
+            </div>
+
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -1550,7 +1550,7 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-2 text-slate-700">Excel/ODS Schema Configuration</h3>
-                        <p className="text-sm text-slate-500 mb-4">Configure fields to extract from each file type. Drag to reorder, toggle visibility, edit column headers. Supports .xlsx, .xls, .csv, and .ods files.</p>
+                        <p className="text-sm text-slate-500 mb-4">Configure fields to extract from each file type. <strong>Header Text</strong> appears on preview and generated reports. <strong>Excel Column</strong> must match the column header in your source files. Drag to reorder columns, toggle visibility.</p>
                         {['vram', 'ess', 'tam'].map(type => (
                             <div key={type} className="mb-6">
                                 <div className="flex items-center justify-between mb-2">
@@ -1560,10 +1560,10 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                                 <div className="border border-slate-200 rounded">
                                     <div className="grid grid-cols-12 gap-2 p-2 bg-slate-100 text-xs font-semibold text-slate-600 border-b">
                                         <div className="col-span-1"></div>
-                                        <div className="col-span-1">Use</div>
-                                        <div className="col-span-3">Field Label</div>
+                                        <div className="col-span-1">Show</div>
+                                        <div className="col-span-3">Header Text (Report)</div>
                                         <div className="col-span-3">Field ID</div>
-                                        <div className="col-span-3">Excel Column</div>
+                                        <div className="col-span-3">Excel Column (Source)</div>
                                         <div className="col-span-1"></div>
                                     </div>
                                     {(schema[type] || []).map((item, idx) => (
@@ -1661,24 +1661,6 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                 </div>
             )}
 
-            {subTab === 'tabs' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">Report Tab Configuration</h3>
-                    <p className="text-sm text-slate-500 mb-4">Drag to reorder tabs. Uncheck to hide a tab from the generated report.</p>
-                    <div className="space-y-2">
-                        {(settings.tabConfig || []).map((tab, idx) => (
-                            <div key={tab.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100" draggable onDragStart={(e) => e.dataTransfer.setData('tabIdx', idx)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const fromIdx = parseInt(e.dataTransfer.getData('tabIdx')); if (fromIdx === idx) return; const newConfig = [...settings.tabConfig]; const [moved] = newConfig.splice(fromIdx, 1); newConfig.splice(idx, 0, moved); setSettings(p => ({...p, tabConfig: newConfig})); }}>
-                                <span className="cursor-move text-slate-400 text-lg" title="Drag to reorder">&#9776;</span>
-                                <input type="checkbox" checked={tab.visible} onChange={(e) => { const newConfig = [...settings.tabConfig]; newConfig[idx] = {...tab, visible: e.target.checked}; setSettings(p => ({...p, tabConfig: newConfig})); }} className="w-4 h-4" />
-                                <span className="font-medium text-slate-700 flex-1">{tab.label}</span>
-                                <span className="text-xs text-slate-400">({tab.id})</span>
-                            </div>
-                        ))}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-4">Note: The "Changes" tab only appears when there are overrides or threshold adjustments.</p>
-                </div>
-            )}
-
             {editingBoat && (
                 <div className="modal-overlay" onClick={() => setEditingBoat(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1689,6 +1671,20 @@ const SettingsTab = ({ settings, setSettings, onAlert }) => {
                             <div><label className="block text-sm text-slate-500 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
+                    </div>
+                </div>
+            )}
+
+            {showAuthorPrompt && (
+                <div className="modal-overlay" onClick={() => setShowAuthorPrompt(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Enter Your Name</h3>
+                        <p className="text-sm text-slate-500 mb-4">Your name will be recorded with this settings version for tracking purposes.</p>
+                        <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Your name" className="w-full mb-4" autoFocus onKeyDown={(e) => e.key === 'Enter' && saveAuthorAndSettings()} />
+                        <div className="flex gap-2">
+                            <button onClick={saveAuthorAndSettings} className="btn-primary" disabled={!authorName.trim()}>Save Settings</button>
+                            <button onClick={() => setShowAuthorPrompt(false)} className="btn-secondary">Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1715,6 +1711,83 @@ const NamePromptModal = ({ onSubmit, onCancel }) => {
     );
 };
 
+// First Time Setup Modal
+const FirstTimeSetupModal = ({ onImportSettings, onImportReport, onDismiss }) => {
+    const [isDragging, setIsDragging] = React.useState(false);
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (file) {
+            if (file.name.endsWith('.html')) {
+                onImportReport(file);
+            } else if (file.name.endsWith('.json')) {
+                try {
+                    const text = await file.text();
+                    const settings = JSON.parse(text);
+                    onImportSettings(settings);
+                } catch (err) {
+                    alert('Failed to parse settings file: ' + err.message);
+                }
+            } else {
+                alert('Please drop a .html report file or a .json settings file');
+            }
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '550px' }} onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2 text-slate-800">Welcome to Cyber Dashboard</h3>
+                <p className="text-sm text-slate-600 mb-6">No settings configured yet. Import your settings to get started.</p>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                        <span className="text-amber-500 text-lg">⚠</span>
+                        <div className="text-sm text-amber-800">
+                            <strong>Important:</strong> Once imported, your settings are saved in this browser's local storage. They will persist until you clear your browser cache/data, use a different browser, or use incognito/private mode.
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    className={`drag-zone p-8 text-center mb-4 ${isDragging ? 'drag-active' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                >
+                    <div className="text-4xl mb-3">📂</div>
+                    <p className="text-slate-600 font-medium mb-2">Drop a file here to import settings</p>
+                    <p className="text-sm text-slate-500">
+                        Drop a previously generated <strong>report.html</strong> (settings will be extracted and saved)<br/>
+                        or drop a <strong>settings.json</strong> file (will be saved automatically)
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex-1 border-t border-slate-200"></div>
+                    <span className="text-sm text-slate-400">or</span>
+                    <div className="flex-1 border-t border-slate-200"></div>
+                </div>
+
+                <div className="flex gap-3 justify-center">
+                    <button onClick={onImportSettings} className="btn-primary">
+                        Import settings.json
+                    </button>
+                    <button onClick={onDismiss} className="btn-secondary">
+                        Start Fresh
+                    </button>
+                </div>
+
+                <p className="text-xs text-slate-400 mt-4 text-center">
+                    Starting fresh? You can configure boats, ISICs, and thresholds in the Settings tab.
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Main App
 function App() {
     const [settings, setSettings] = React.useState(() => SettingsManager.load());
@@ -1723,23 +1796,88 @@ function App() {
     const [reportData, setReportData] = React.useState(null);
     const [alerts, setAlerts] = React.useState([]);
     const [namePrompt, setNamePrompt] = React.useState(null);
+    const [isUsingImportedSettings, setIsUsingImportedSettings] = React.useState(false);
+    const [showFirstTimeSetup, setShowFirstTimeSetup] = React.useState(false);
 
-    const handleReportImport = async (file) => {
+    // Check if settings are blank on first load
+    React.useEffect(() => {
+        const isBlank = !settings.boats?.length && !settings.isics?.length && !Object.keys(settings.thresholds || {}).length;
+        const hasStoredSettings = SettingsManager.hasSavedSettings();
+        if (isBlank && !hasStoredSettings) {
+            setShowFirstTimeSetup(true);
+        }
+    }, []);
+
+    const handleReportImport = async (file, fromSetup = false) => {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
-            setSettings(result.settings);
-            setReportData(result.reportData);
-            setCurrentTab('preview');
-            setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
-            if (!result.valid) setAlerts(p => [...p, { type: 'warning', msg: 'Report hash invalid - data may have been modified' }]);
+            if (fromSetup) {
+                // From first-time setup: save settings to localStorage permanently
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setShowFirstTimeSetup(false);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
+            } else {
+                // Normal import: use for session only
+                setIsUsingImportedSettings(true);
+                setSettings(result.settings);
+                setReportData(result.reportData);
+                setCurrentTab('preview');
+                setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
+                if (!result.valid) setAlerts(p => [...p, { type: 'warning', msg: 'Report hash invalid - data may have been modified' }]);
+            }
+        }
+    };
+
+    const handleFirstTimeImportSettings = async (settingsOrNull) => {
+        if (settingsOrNull) {
+            // Settings object passed directly from drag/drop
+            const imported = SettingsManager.ensureDefaults(settingsOrNull);
+            SettingsManager.save(imported);
+            setSettings(imported);
+            setShowFirstTimeSetup(false);
+            setAlerts([{ type: 'info', msg: `✓ Settings saved! ${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs configured` }]);
+        } else {
+            // Open file picker
+            const result = await SettingsManager.importSettings();
+            if (result.success) {
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setShowFirstTimeSetup(false);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs configured` }]);
+            }
         }
     };
 
     const handleGlobalDrop = async (e) => {
         e.preventDefault();
         const file = e.dataTransfer?.files?.[0];
-        if (file?.name.endsWith('.html')) { handleReportImport(file); }
+        if (!file) return;
+
+        if (file.name.endsWith('.json')) {
+            // JSON file: import settings only
+            try {
+                const text = await file.text();
+                const settings = JSON.parse(text);
+                const imported = SettingsManager.ensureDefaults(settings);
+                SettingsManager.save(imported);
+                setSettings(imported);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! ${imported.boats?.length || 0} boats, ${imported.isics?.length || 0} ISICs configured` }]);
+            } catch (err) {
+                setAlerts([{ type: 'error', msg: 'Failed to parse settings file: ' + err.message }]);
+            }
+        } else if (file.name.endsWith('.html')) {
+            // HTML report: extract and save settings only (discard report data)
+            const result = await importReportHTML(file);
+            if (result.error) {
+                setAlerts([{ type: 'error', msg: result.error }]);
+            } else {
+                SettingsManager.save(result.settings);
+                setSettings(result.settings);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
+            }
+        }
     };
 
     const requestName = (callback) => {
@@ -1769,12 +1907,20 @@ function App() {
             <main className="max-w-[95vw] mx-auto p-6">
                 {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
                 {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
-                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} />}
+                {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
 
             <footer className="text-center py-6 text-slate-400 text-sm">Cyber Dashboard Generator v1.0</footer>
 
             {namePrompt && <NamePromptModal onSubmit={handleNameSubmit} onCancel={() => setNamePrompt(null)} />}
+
+            {showFirstTimeSetup && (
+                <FirstTimeSetupModal
+                    onImportSettings={handleFirstTimeImportSettings}
+                    onImportReport={(file) => handleReportImport(file, true)}
+                    onDismiss={() => setShowFirstTimeSetup(false)}
+                />
+            )}
         </div>
     );
 }
