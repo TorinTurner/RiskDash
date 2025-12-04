@@ -538,7 +538,7 @@ const generateReportHTML = (reportData, settings) => {
     const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
     const tamExt = getLabel('tam', 'extensions', 'Ext');
 
-    const boatCells = (b) => `<td class="boat-name">${b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+    const boatCells = (b) => `<td class="boat-name">${b.boatFullName || b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
 
     const summaryTable = (byISIC) => {
         const entries = Object.entries(byISIC);
@@ -570,7 +570,7 @@ const generateReportHTML = (reportData, settings) => {
 
     // High risk boats table for analytics
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
-    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatName}</td><td>${b.isic}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${(b.essNiprBreakfix||0)+(b.essSiprBreakfix||0)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
+    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${(b.essNiprBreakfix||0)+(b.essSiprBreakfix||0)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
 
     // VPH by ISIC for bar chart
     const isicVph = {};
@@ -775,22 +775,22 @@ ${isTabVisible('analytics') ? (() => {
     const r1 = getRanking('worstBoatsVph');
     if (r1.visible) {
         const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (b.vramNiprRaVph||0) - (a.vramNiprRaVph||0)).slice(0, r1.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r2 = getRanking('bestBoatsVph');
     if (r2.visible) {
         const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (a.vramNiprRaVph||0) - (b.vramNiprRaVph||0)).slice(0, r2.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r3 = getRanking('worstBoatsCompliance');
     if (r3.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (a.essNiprProductCompliance||0) - (b.essNiprProductCompliance||0)).slice(0, r3.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r4 = getRanking('bestBoatsCompliance');
     if (r4.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (b.essNiprProductCompliance||0) - (a.essNiprProductCompliance||0)).slice(0, r4.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => ({isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: ib.reduce((s,b)=>s+(b.vramNiprRaVph||0),0)/ib.length}));
     const r5 = getRanking('worstIsicsRisk');
@@ -811,7 +811,7 @@ ${isTabVisible('analytics') ? (() => {
     const r8 = getRanking('boatsWithBreakfix');
     if (r8.visible) {
         const sorted = [...boats].filter(b => (b.essNiprBreakfix||0) > 0).sort((a,b) => (b.essNiprBreakfix||0) - (a.essNiprBreakfix||0)).slice(0, r8.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatName}</td><td>${b.isic}</td><td class="alert-red">${b.essNiprBreakfix||0}</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${b.essNiprBreakfix||0}</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r9 = getRanking('tycomComparison');
     if (r9.visible) {
@@ -928,7 +928,7 @@ function exportToExcel() {
         if (d.reportData.sourceData.essNipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essNipr.raw), 'ESS NIPR');
         if (d.reportData.sourceData.essSipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essSipr.raw), 'ESS SIPR');
         if (d.reportData.sourceData.tam?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.tam.raw), 'TAM');
-        const calc = d.reportData.boats.map(b => ({ Boat: b.boatName, ISIC: b.isic, TYCOM: b.tycom, Risk: b.riskLevel, Reasons: b.riskReasons.join('; '), Notes: b.notes || '' }));
+        const calc = d.reportData.boats.map(b => ({ Boat: b.boatFullName || b.boatName, ISIC: b.isic, TYCOM: b.tycom, Risk: b.riskLevel, Reasons: b.riskReasons.join('; '), Notes: b.notes || '' }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(calc), 'Summary');
         XLSX.writeFile(wb, 'cyber-export-' + new Date().toISOString().slice(0, 10) + '.xlsx');
     } catch (e) { alert('Export failed: ' + e.message); }
@@ -1261,7 +1261,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                         <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
                             isicBoats.map((b, idx) => <tr key={b.boatName}>
                                 {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
-                                <td className="boat-name">{b.boatName}</td>
+                                <td className="boat-name">{b.boatFullName || b.boatName}</td>
                                 <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
                                 <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
                                 <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
