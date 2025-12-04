@@ -18,9 +18,9 @@
         .drag-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; background: #ffffff; border-radius: 8px; }
         .drag-zone:hover, .drag-zone.drag-active { border-color: #0891b2; background: #ecfeff; }
         .drag-zone.has-file { border-color: #10b981; background: #ecfdf5; }
-        .risk-high { background: #fee2e2; color: #991b1b; font-weight: bold; }
-        .risk-med { background: #fef3c7; color: #92400e; font-weight: bold; }
-        .risk-low { background: #d1fae5; color: #065f46; }
+        .risk-high { background: #fee2e2 !important; color: #991b1b !important; font-weight: bold; }
+        .risk-med { background: #fef3c7 !important; color: #92400e !important; font-weight: bold; }
+        .risk-low { background: #d1fae5 !important; color: #065f46 !important; }
         .alert-red { background: #fee2e2; } .alert-amber { background: #fef3c7; } .alert-blue { background: #dbeafe; }
         .tab-btn { position: relative; padding: 12px 24px; font-weight: 500; color: #64748b; transition: all 0.2s; background: none; border: none; cursor: pointer; }
         .tab-btn:hover { color: #0f172a; } .tab-btn.active { color: #0891b2; } .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #0891b2; }
@@ -531,9 +531,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
-.risk-high{background:#fee2e2!important;color:#991b1b;font-weight:bold}
-.risk-med{background:#fef3c7!important;color:#92400e;font-weight:bold}
-.risk-low{background:#d1fae5!important;color:#065f46}
+.risk-high{background:#fee2e2!important;color:#991b1b!important;font-weight:bold}
+.risk-med{background:#fef3c7!important;color:#92400e!important;font-weight:bold}
+.risk-low{background:#d1fae5!important;color:#065f46!important}
 .alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}
 .hq-table th:first-child,.hq-table td:first-child{text-align:left}
 .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
@@ -559,7 +559,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 <div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div>
 </div>
 <div class="tabs no-print">
-${(settings.tabConfig || []).filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((t, i) => `<button class="tab-btn${i===0?' active':''}" onclick="showTab('${t.id}')">${t.id === 'changelog' ? `Changes (${changeCount})` : t.label}</button>`).join('')}
+${tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((t, i) => `<button class="tab-btn${i===0?' active':''}" onclick="showTab('${t.id}')">${t.id === 'changelog' ? `Changes (${changeCount})` : t.label}</button>`).join('')}
 </div>
 
 ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==='csl'?' active':''}">
