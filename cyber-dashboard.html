@@ -655,7 +655,7 @@ const generateReportHTML = (reportData, settings) => {
         // Status
         cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
         if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
-        cells += `<td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+        cells += `<td style="font-size:6pt;max-width:80px;max-height:36px;overflow:hidden;word-wrap:break-word;white-space:normal;line-height:1.2;" title="${b.notes||''}">${b.notes||'-'}</td>`;
         return cells;
     };
 
@@ -1585,7 +1585,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
                                 <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
                                 {showVramExempt && <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>}
-                                <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
+                                <td className="text-xs max-w-[80px] cursor-pointer hover:bg-cyan-50" style={{wordWrap:'break-word',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}} onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
                             </tr>)
                         )}</tbody>
                     </table>
