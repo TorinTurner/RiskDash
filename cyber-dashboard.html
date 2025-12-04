@@ -44,6 +44,7 @@
         .modal-content { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
         .overridden { box-shadow: inset 0 0 0 2px #7c3aed; }
         @media print { .no-print { display: none !important; } }
+        @page { margin: 0; size: landscape; }
     </style>
 </head>
 <body>
@@ -111,7 +112,7 @@ const defaultAnalyticsConfig = {
         {id: 'highRisk', label: 'High Risk', visible: true},
         {id: 'medRisk', label: 'Medium Risk', visible: true},
         {id: 'lowRisk', label: 'Low Risk', visible: true},
-        {id: 'avgVph', label: 'Avg NIPR VPH', visible: true},
+        {id: 'avgVph', label: 'Avg RA VPH', visible: true},
         {id: 'totalBreakfix', label: 'Total Breakfix', visible: true},
         {id: 'avgCompliance', label: 'Avg ESS Compliance', visible: true},
         {id: 'scanExempt', label: 'Scan Exempt', visible: true}
@@ -543,7 +544,7 @@ const generateReportHTML = (reportData, settings) => {
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
     const cslRiskCounts = { HIGH: cslBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cslBoats.filter(b => b.riskLevel === 'MED').length, LOW: cslBoats.filter(b => b.riskLevel === 'LOW').length };
     const cspRiskCounts = { HIGH: cspBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cspBoats.filter(b => b.riskLevel === 'MED').length, LOW: cspBoats.filter(b => b.riskLevel === 'LOW').length };
-    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
+    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0) + (b.vramSiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
     const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
     const avgCompliance = boats.length > 0 ? Math.min(100, boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
 
@@ -833,7 +834,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .chart-box{max-height:200px!important}
     .chart-box canvas{max-height:140px!important}
 }
-@page{margin:0.5in;size:landscape}
+@page{margin:0;size:landscape}
 </style></head><body>
 <div class="header no-print">
 <div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
@@ -924,7 +925,7 @@ ${isTabVisible('analytics') ? (() => {
         isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
         isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
         isStatVisible('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
-        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg NIPR VPH</h3><div class="value">${avgVph}</div></div>` : '',
+        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
         isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
         isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
         isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
