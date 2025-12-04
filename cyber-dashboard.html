@@ -61,7 +61,23 @@
         {"isic_name": "COMSUBRON 19", "isic_short": "CSS19", "tycom": "CSP", "active": true},
         {"isic_name": "COMSUBRON 20", "isic_short": "CSS20", "tycom": "CSP", "active": true}
     ],
-    "boats": [],
+    "boats": [
+        {"boat_name": "SSN-21", "boat_full_name": "USS SEAWOLF", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-22", "boat_full_name": "USS CONNECTICUT", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-23", "boat_full_name": "USS JIMMY CARTER", "isic": "COMSUBDEVRON 5", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-774", "boat_full_name": "USS VIRGINIA", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-775", "boat_full_name": "USS TEXAS", "isic": "COMSUBRON 4", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-776", "boat_full_name": "USS HAWAII", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-777", "boat_full_name": "USS NORTH CAROLINA", "isic": "COMSUBRON 6", "tycom": "CSL", "active": true},
+        {"boat_name": "SSN-778", "boat_full_name": "USS NEW HAMPSHIRE", "isic": "COMSUBRON 8", "tycom": "CSL", "active": true},
+        {"boat_name": "SSBN-730", "boat_full_name": "USS HENRY M JACKSON", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
+        {"boat_name": "SSBN-731", "boat_full_name": "USS ALABAMA", "isic": "COMSUBRON 17", "tycom": "CSP", "active": true},
+        {"boat_name": "SSBN-732", "boat_full_name": "USS ALASKA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
+        {"boat_name": "SSBN-733", "boat_full_name": "USS NEVADA", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
+        {"boat_name": "SSGN-726", "boat_full_name": "USS OHIO", "isic": "COMSUBRON 19", "tycom": "CSP", "active": true},
+        {"boat_name": "SSGN-727", "boat_full_name": "USS MICHIGAN", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true},
+        {"boat_name": "SSGN-728", "boat_full_name": "USS FLORIDA", "isic": "COMSUBRON 20", "tycom": "CSP", "active": true}
+    ],
     "thresholds": {
         "auto_high_scan_age_days": 90,
         "auto_high_scan_integrity": 80,
@@ -1224,7 +1240,7 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
     };
 
     const schemaTypeLabels = { vram: 'VRAM Files', ess: 'ESS Files', tam: 'TAM Files' };
-    const schemaTypeColors = { vram: 'cyan', ess: 'indigo', tam: 'orange' };
+    const schemaTypeColors = { vram: 'text-cyan-700', ess: 'text-indigo-700', tam: 'text-orange-700' };
 
     // Analytics config helpers
     const analytics = settings.analyticsConfig || JSON.parse(JSON.stringify(defaultAnalyticsConfig));
@@ -1268,7 +1284,7 @@ const SettingsTab = ({ settings, setSettings, onRequestName }) => {
                         {['vram', 'ess', 'tam'].map(type => (
                             <div key={type} className="mb-6">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h4 className={`font-bold text-${schemaTypeColors[type]}-700`}>{schemaTypeLabels[type]}</h4>
+                                    <h4 className={`font-bold ${schemaTypeColors[type]}`}>{schemaTypeLabels[type]}</h4>
                                     <button onClick={() => setNewFieldModal({ type, field: '', label: '', column: '' })} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Field</button>
                                 </div>
                                 <div className="border border-slate-200 rounded">
