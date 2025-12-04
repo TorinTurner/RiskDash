@@ -345,25 +345,45 @@ const createBoatData = (name, fullName, isic, tycom) => ({
     essSiprAssets: null, essSiprBreakfix: null, essSiprProductCompliance: null, essSiprTruePolicy: null,
     vramNiprAssets: null, vramNiprScanDate: null, vramNiprRaVph: null, vramNiprScanIntegrity: null, vramNiprScanPercent: null, vramNiprRaCrit: null, vramNiprRaHigh: null, vramNiprScanExempt: false,
     vramSiprAssets: null, vramSiprScanDate: null, vramSiprRaVph: null, vramSiprScanIntegrity: null, vramSiprScanPercent: null, vramSiprRaCrit: null, vramSiprRaHigh: null, vramSiprScanExempt: false,
-    tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: ''
+    tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: '',
+    customFields: {} // Stores custom schema fields: { vramNipr: {}, vramSipr: {}, essNipr: {}, essSipr: {}, tam: {} }
 });
+
+// Standard fields for each schema type (used to identify custom fields)
+const standardFields = {
+    vram: ['siteName', 'scanDate', 'assets', 'raVph', 'scanIntegrity', 'scanPercent', 'raCrit', 'raHigh', 'scanExempt'],
+    ess: ['shipName', 'isic', 'productCompliance', 'policyEnforced', 'breakfix', 'assets'],
+    tam: ['boatName', 'pastDue', 'extensions']
+};
+
+// Get custom fields from schema (fields not in standard list)
+const getCustomFields = (schemaArr, type) => {
+    if (!schemaArr) return [];
+    return schemaArr.filter(s => !standardFields[type].includes(s.field) && s.visible !== false);
+};
 
 // Parsers - use schema config from settings to build column maps
 const parseVRAM = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.vram);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.vram, 'vram');
     const wb = XLSX.read(data, { type: 'array', cellDates: true }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const site = row[m.siteName]; if (!site) continue;
         const name = normalizeBoatName(site); if (!name) continue;
         let scanDate = null; const rawDate = row[m.scanDate];
         if (rawDate) { scanDate = rawDate instanceof Date ? rawDate : new Date(rawDate); if (isNaN(scanDate)) scanDate = null; }
-        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row[m.assets]), raVph: parseNumber(row[m.raVph]), scanIntegrity: parseNumber(row[m.scanIntegrity]), scanPercent: parseNumber(row[m.scanPercent]), raCrit: parseNumber(row[m.raCrit]), raHigh: parseNumber(row[m.raHigh]), scanExempt: String(row[m.scanExempt]).toLowerCase() === 'true' };
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row[m.assets]), raVph: parseNumber(row[m.raVph]), scanIntegrity: parseNumber(row[m.scanIntegrity]), scanPercent: parseNumber(row[m.scanPercent]), raCrit: parseNumber(row[m.raCrit]), raHigh: parseNumber(row[m.raHigh]), scanExempt: String(row[m.scanExempt]).toLowerCase() === 'true', custom };
     }
-    return { parsed, raw: rows };
+    return { parsed, raw: rows, customFieldDefs };
 };
 
 const parseESS = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.ess);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.ess, 'ess');
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {}; const isicMap = {};
     for (const row of rows) {
         const ship = row[m.shipName]; if (!ship) continue;
@@ -371,20 +391,29 @@ const parseESS = (data, schemaArr) => {
         const isic = row[m.isic]; if (isic) isicMap[name] = String(isic).trim();
         const prodComp = parsePercent(row[m.productCompliance]); const polEnf = parsePercent(row[m.policyEnforced]);
         const truePolicy = (prodComp && polEnf && prodComp > 0) ? polEnf * (100 / prodComp) : null;
-        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy };
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy, custom };
     }
-    return { parsed, isicMap, raw: rows };
+    return { parsed, isicMap, raw: rows, customFieldDefs };
 };
 
 const parseTAM = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.tam);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.tam, 'tam');
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const boat = row[m.boatName]; if (!boat) continue;
         const name = normalizeBoatName(boat); if (!name) continue;
-        parsed[name] = { pastDue: parseNumber(row[m.pastDue]), extensions: parseNumber(row[m.extensions]) };
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { pastDue: parseNumber(row[m.pastDue]), extensions: parseNumber(row[m.extensions]), custom };
     }
-    return { parsed, raw: rows };
+    return { parsed, raw: rows, customFieldDefs };
 };
 
 // Merge Data
@@ -396,11 +425,12 @@ const mergeData = (sources, settings) => {
 
     for (const name of Object.keys(registry)) {
         const reg = registry[name]; const boat = createBoatData(reg.boat_name, reg.boat_full_name, reg.isic, reg.tycom);
-        const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; }
-        const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaCrit = vs.raCrit; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; }
-        const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; }
-        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; }
-        const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; }
+        boat.customFields = { vramNipr: {}, vramSipr: {}, essNipr: {}, essSipr: {}, tam: {} };
+        const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; if (vn.custom) boat.customFields.vramNipr = vn.custom; }
+        const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaCrit = vs.raCrit; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; if (vs.custom) boat.customFields.vramSipr = vs.custom; }
+        const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
+        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; if (es.custom) boat.customFields.essSipr = es.custom; }
+        const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; if (t.custom) boat.customFields.tam = t.custom; }
         boats.push(boat);
     }
     for (const name of allNames) if (!registry[name]) unregistered.add(name);
@@ -528,12 +558,17 @@ const generateReportHTML = (reportData, settings) => {
         return item?.visible !== false;
     };
 
+    // Custom fields for each type (visible fields not in standard list)
+    const essCustomFields = getCustomFields(schema.ess, 'ess');
+    const vramCustomFields = getCustomFields(schema.vram, 'vram');
+    const tamCustomFields = getCustomFields(schema.tam, 'tam');
+
     // ESS column visibility and labels
     const showEssAssets = isVisible('ess', 'assets');
     const showEssBreakfix = isVisible('ess', 'breakfix');
     const showEssProdComp = isVisible('ess', 'productCompliance');
     const showEssPolicy = isVisible('ess', 'policyEnforced');
-    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length;
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
     const essSiprCount = essNiprCount;
     const essAssets = getLabel('ess', 'assets', 'Assets');
     const essBreakfix = getLabel('ess', 'breakfix', 'Breakfix');
@@ -549,7 +584,7 @@ const generateReportHTML = (reportData, settings) => {
     const showVramCrit = isVisible('vram', 'raCrit');
     const showVramHigh = isVisible('vram', 'raHigh');
     const showVramExempt = isVisible('vram', 'scanExempt');
-    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length;
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
     const vramSiprCount = vramNiprCount;
     const raCount = [showVramCrit, showVramHigh].filter(Boolean).length;
     const vramAssets = getLabel('vram', 'assets', 'Assets');
@@ -564,12 +599,15 @@ const generateReportHTML = (reportData, settings) => {
     // TAM column visibility and labels
     const showTamPastDue = isVisible('tam', 'pastDue');
     const showTamExtensions = isVisible('tam', 'extensions');
-    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length;
+    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length + tamCustomFields.length;
     const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
     const tamExt = getLabel('tam', 'extensions', 'Ext');
 
     // Status columns (Risk always shown, Exempt based on vram.scanExempt, Notes always shown)
     const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
+
+    // Helper to format custom field value
+    const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
 
     const boatCells = (b) => {
         let cells = `<td class="boat-name">${b.boatFullName || b.boatName}</td>`;
@@ -578,29 +616,34 @@ const generateReportHTML = (reportData, settings) => {
         if (showEssBreakfix) cells += `<td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td>`;
         if (showEssProdComp) cells += `<td>${fmtPct(b.essNiprProductCompliance)}</td>`;
         if (showEssPolicy) cells += `<td>${fmtPct(b.essNiprTruePolicy)}</td>`;
+        for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>`;
         // ESS SIPR
         if (showEssAssets) cells += `<td>${fmt(b.essSiprAssets)}</td>`;
         if (showEssBreakfix) cells += `<td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td>`;
         if (showEssProdComp) cells += `<td>${fmtPct(b.essSiprProductCompliance)}</td>`;
         if (showEssPolicy) cells += `<td>${fmtPct(b.essSiprTruePolicy)}</td>`;
+        for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>`;
         // VRAM NIPR
         if (showVramAssets) cells += `<td>${fmt(b.vramNiprAssets)}</td>`;
         if (showVramScan) cells += `<td>${fmtDate(b.vramNiprScanDate)}</td>`;
         if (showVramVph) cells += `<td>${fmt(b.vramNiprRaVph,2)}</td>`;
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramNiprScanPercent)}</td>`;
+        for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>`;
         // VRAM SIPR
         if (showVramAssets) cells += `<td>${fmt(b.vramSiprAssets)}</td>`;
         if (showVramScan) cells += `<td>${fmtDate(b.vramSiprScanDate)}</td>`;
         if (showVramVph) cells += `<td>${fmt(b.vramSiprRaVph,2)}</td>`;
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
+        for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
         // RA
         if (showVramCrit) cells += `<td>${fmt(b.vramNiprRaCrit)}</td>`;
         if (showVramHigh) cells += `<td>${fmt(b.vramNiprRaHigh)}</td>`;
         // TAM
         if (showTamPastDue) cells += `<td>${fmt(b.tamPastDue)}</td>`;
         if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
+        for (const cf of tamCustomFields) cells += `<td>${fmtCustom(b.customFields?.tam?.[cf.field])}</td>`;
         // Status
         cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
         if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
@@ -630,28 +673,40 @@ const generateReportHTML = (reportData, settings) => {
         hdr1 += `<th colspan="${statusCount}" class="col-status">STATUS</th></tr>`;
         // Build header row 2 with individual column names
         let hdr2 = '<tr>';
+        // ESS NIPR headers
         if (showEssAssets) hdr2 += `<th class="col-ess-n">${essAssets}</th>`;
         if (showEssBreakfix) hdr2 += `<th class="col-ess-n">${essBreakfix}</th>`;
         if (showEssProdComp) hdr2 += `<th class="col-ess-n">${essProdCompliance}</th>`;
         if (showEssPolicy) hdr2 += `<th class="col-ess-n">${essPolicyEnforced}</th>`;
+        for (const cf of essCustomFields) hdr2 += `<th class="col-ess-n">${cf.label || cf.field}</th>`;
+        // ESS SIPR headers
         if (showEssAssets) hdr2 += `<th class="col-ess-s">${essAssets}</th>`;
         if (showEssBreakfix) hdr2 += `<th class="col-ess-s">${essBreakfix}</th>`;
         if (showEssProdComp) hdr2 += `<th class="col-ess-s">${essProdCompliance}</th>`;
         if (showEssPolicy) hdr2 += `<th class="col-ess-s">${essPolicyEnforced}</th>`;
+        for (const cf of essCustomFields) hdr2 += `<th class="col-ess-s">${cf.label || cf.field}</th>`;
+        // VRAM NIPR headers
         if (showVramAssets) hdr2 += `<th class="col-vram-n">${vramAssets}</th>`;
         if (showVramScan) hdr2 += `<th class="col-vram-n">${vramScan}</th>`;
         if (showVramVph) hdr2 += `<th class="col-vram-n">${vramVph}</th>`;
         if (showVramIntegrity) hdr2 += `<th class="col-vram-n">${vramIntegrity}</th>`;
         if (showVramScanned) hdr2 += `<th class="col-vram-n">${vramScanned}</th>`;
+        for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-n">${cf.label || cf.field}</th>`;
+        // VRAM SIPR headers
         if (showVramAssets) hdr2 += `<th class="col-vram-s">${vramAssets}</th>`;
         if (showVramScan) hdr2 += `<th class="col-vram-s">${vramScan}</th>`;
         if (showVramVph) hdr2 += `<th class="col-vram-s">${vramVph}</th>`;
         if (showVramIntegrity) hdr2 += `<th class="col-vram-s">${vramIntegrity}</th>`;
         if (showVramScanned) hdr2 += `<th class="col-vram-s">${vramScanned}</th>`;
+        for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-s">${cf.label || cf.field}</th>`;
+        // RA headers
         if (showVramCrit) hdr2 += `<th class="col-ra">${vramCritical}</th>`;
         if (showVramHigh) hdr2 += `<th class="col-ra">${vramHigh}</th>`;
+        // TAM headers
         if (showTamPastDue) hdr2 += `<th class="col-tam">${tamOverdue}</th>`;
         if (showTamExtensions) hdr2 += `<th class="col-tam">${tamExt}</th>`;
+        for (const cf of tamCustomFields) hdr2 += `<th class="col-tam">${cf.label || cf.field}</th>`;
+        // Status headers
         hdr2 += '<th class="col-status">Risk</th>';
         if (showVramExempt) hdr2 += `<th class="col-status">${vramExempt}</th>`;
         hdr2 += '<th class="col-status">Notes</th></tr>';
@@ -1187,14 +1242,19 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const showVramCrit = isVisible('vram', 'raCrit');
     const showVramHigh = isVisible('vram', 'raHigh');
     const showVramExempt = isVisible('vram', 'scanExempt');
+    // Custom fields
+    const essCustomFields = getCustomFields(schema.ess, 'ess');
+    const vramCustomFields = getCustomFields(schema.vram, 'vram');
+    const tamCustomFields = getCustomFields(schema.tam, 'tam');
+    const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
     const showTamPastDue = isVisible('tam', 'pastDue');
     const showTamExtensions = isVisible('tam', 'extensions');
-    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length;
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
     const essSiprCount = essNiprCount;
-    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length;
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
     const vramSiprCount = vramNiprCount;
     const raCount = [showVramCrit, showVramHigh].filter(Boolean).length;
-    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length;
+    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length + tamCustomFields.length;
     const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
@@ -1404,24 +1464,29 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {showEssBreakfix && <th className="col-ess-n">Breakfix</th>}
                                 {showEssProdComp && <th className="col-ess-n">Prod%</th>}
                                 {showEssPolicy && <th className="col-ess-n">Policy%</th>}
+                                {essCustomFields.map(cf => <th key={`essn-${cf.field}`} className="col-ess-n">{cf.label || cf.field}</th>)}
                                 {showEssAssets && <th className="col-ess-s">Assets</th>}
                                 {showEssBreakfix && <th className="col-ess-s">Breakfix</th>}
                                 {showEssProdComp && <th className="col-ess-s">Prod%</th>}
                                 {showEssPolicy && <th className="col-ess-s">Policy%</th>}
+                                {essCustomFields.map(cf => <th key={`esss-${cf.field}`} className="col-ess-s">{cf.label || cf.field}</th>)}
                                 {showVramAssets && <th className="col-vram-n">Assets</th>}
                                 {showVramScan && <th className="col-vram-n">Scan</th>}
                                 {showVramVph && <th className="col-vram-n">VPH</th>}
                                 {showVramIntegrity && <th className="col-vram-n">Integrity</th>}
                                 {showVramScanned && <th className="col-vram-n">Scanned</th>}
+                                {vramCustomFields.map(cf => <th key={`vramn-${cf.field}`} className="col-vram-n">{cf.label || cf.field}</th>)}
                                 {showVramAssets && <th className="col-vram-s">Assets</th>}
                                 {showVramScan && <th className="col-vram-s">Scan</th>}
                                 {showVramVph && <th className="col-vram-s">VPH</th>}
                                 {showVramIntegrity && <th className="col-vram-s">Integrity</th>}
                                 {showVramScanned && <th className="col-vram-s">Scanned</th>}
+                                {vramCustomFields.map(cf => <th key={`vrams-${cf.field}`} className="col-vram-s">{cf.label || cf.field}</th>)}
                                 {showVramCrit && <th className="col-ra">Critical</th>}
                                 {showVramHigh && <th className="col-ra">High</th>}
                                 {showTamPastDue && <th className="col-tam">Overdue</th>}
                                 {showTamExtensions && <th className="col-tam">Ext</th>}
+                                {tamCustomFields.map(cf => <th key={`tam-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
                                 <th className="col-status">Risk</th>
                                 {showVramExempt && <th className="col-status">Exempt</th>}
                                 <th className="col-status">Notes</th>
@@ -1435,24 +1500,29 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {showEssBreakfix && <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />}
                                 {showEssProdComp && <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />}
                                 {showEssPolicy && <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />}
+                                {essCustomFields.map(cf => <td key={`essn-${cf.field}`}>{fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>)}
                                 {showEssAssets && <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />}
                                 {showEssBreakfix && <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />}
                                 {showEssProdComp && <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />}
                                 {showEssPolicy && <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />}
+                                {essCustomFields.map(cf => <td key={`esss-${cf.field}`}>{fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>)}
                                 {showVramAssets && <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />}
                                 {showVramScan && <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />}
                                 {showVramVph && <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />}
                                 {showVramIntegrity && <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />}
+                                {vramCustomFields.map(cf => <td key={`vramn-${cf.field}`}>{fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>)}
                                 {showVramAssets && <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />}
                                 {showVramScan && <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />}
                                 {showVramVph && <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />}
                                 {showVramIntegrity && <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />}
+                                {vramCustomFields.map(cf => <td key={`vrams-${cf.field}`}>{fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>)}
                                 {showVramCrit && <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />}
                                 {showVramHigh && <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />}
                                 {showTamPastDue && <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />}
                                 {showTamExtensions && <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />}
+                                {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
                                 <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
                                 {showVramExempt && <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>}
                                 <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
