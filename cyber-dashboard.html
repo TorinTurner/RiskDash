@@ -44,6 +44,7 @@
         .modal-content { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
         .overridden { box-shadow: inset 0 0 0 2px #7c3aed; }
         @media print { .no-print { display: none !important; } }
+        @page { margin: 0; size: landscape; }
     </style>
 </head>
 <body>
@@ -111,7 +112,7 @@ const defaultAnalyticsConfig = {
         {id: 'highRisk', label: 'High Risk', visible: true},
         {id: 'medRisk', label: 'Medium Risk', visible: true},
         {id: 'lowRisk', label: 'Low Risk', visible: true},
-        {id: 'avgVph', label: 'Avg NIPR VPH', visible: true},
+        {id: 'avgVph', label: 'Avg RA VPH', visible: true},
         {id: 'totalBreakfix', label: 'Total Breakfix', visible: true},
         {id: 'avgCompliance', label: 'Avg ESS Compliance', visible: true},
         {id: 'scanExempt', label: 'Scan Exempt', visible: true}
@@ -345,46 +346,75 @@ const createBoatData = (name, fullName, isic, tycom) => ({
     essSiprAssets: null, essSiprBreakfix: null, essSiprProductCompliance: null, essSiprTruePolicy: null,
     vramNiprAssets: null, vramNiprScanDate: null, vramNiprRaVph: null, vramNiprScanIntegrity: null, vramNiprScanPercent: null, vramNiprRaCrit: null, vramNiprRaHigh: null, vramNiprScanExempt: false,
     vramSiprAssets: null, vramSiprScanDate: null, vramSiprRaVph: null, vramSiprScanIntegrity: null, vramSiprScanPercent: null, vramSiprRaCrit: null, vramSiprRaHigh: null, vramSiprScanExempt: false,
-    tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: ''
+    tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: '',
+    customFields: {} // Stores custom schema fields: { vramNipr: {}, vramSipr: {}, essNipr: {}, essSipr: {}, tam: {} }
 });
+
+// Standard fields for each schema type (used to identify custom fields)
+const standardFields = {
+    vram: ['siteName', 'scanDate', 'assets', 'raVph', 'scanIntegrity', 'scanPercent', 'raCrit', 'raHigh', 'scanExempt'],
+    ess: ['shipName', 'isic', 'productCompliance', 'policyEnforced', 'breakfix', 'assets'],
+    tam: ['boatName', 'pastDue', 'extensions']
+};
+
+// Get custom fields from schema (fields not in standard list)
+const getCustomFields = (schemaArr, type) => {
+    if (!schemaArr) return [];
+    return schemaArr.filter(s => !standardFields[type].includes(s.field) && s.visible !== false);
+};
 
 // Parsers - use schema config from settings to build column maps
 const parseVRAM = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.vram);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.vram, 'vram');
     const wb = XLSX.read(data, { type: 'array', cellDates: true }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const site = row[m.siteName]; if (!site) continue;
         const name = normalizeBoatName(site); if (!name) continue;
         let scanDate = null; const rawDate = row[m.scanDate];
         if (rawDate) { scanDate = rawDate instanceof Date ? rawDate : new Date(rawDate); if (isNaN(scanDate)) scanDate = null; }
-        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row[m.assets]), raVph: parseNumber(row[m.raVph]), scanIntegrity: parseNumber(row[m.scanIntegrity]), scanPercent: parseNumber(row[m.scanPercent]), raCrit: parseNumber(row[m.raCrit]), raHigh: parseNumber(row[m.raHigh]), scanExempt: String(row[m.scanExempt]).toLowerCase() === 'true' };
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { fullName: site, scanDate: scanDate?.toISOString() || null, assets: parseNumber(row[m.assets]), raVph: parseNumber(row[m.raVph]), scanIntegrity: parseNumber(row[m.scanIntegrity]), scanPercent: parseNumber(row[m.scanPercent]), raCrit: parseNumber(row[m.raCrit]), raHigh: parseNumber(row[m.raHigh]), scanExempt: String(row[m.scanExempt]).toLowerCase() === 'true', custom };
     }
-    return { parsed, raw: rows };
+    return { parsed, raw: rows, customFieldDefs };
 };
 
 const parseESS = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.ess);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.ess, 'ess');
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {}; const isicMap = {};
     for (const row of rows) {
         const ship = row[m.shipName]; if (!ship) continue;
         const name = normalizeBoatName(ship); if (!name) continue;
         const isic = row[m.isic]; if (isic) isicMap[name] = String(isic).trim();
         const prodComp = parsePercent(row[m.productCompliance]); const polEnf = parsePercent(row[m.policyEnforced]);
-        const truePolicy = (prodComp && polEnf && prodComp > 0) ? polEnf * (100 / prodComp) : null;
-        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy };
+        const truePolicy = (prodComp !== null && polEnf !== null) ? (polEnf * prodComp / 100) : null;
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy, custom };
     }
-    return { parsed, isicMap, raw: rows };
+    return { parsed, isicMap, raw: rows, customFieldDefs };
 };
 
 const parseTAM = (data, schemaArr) => {
     const m = buildColumnMap(schemaArr || defaultSchemaConfig.tam);
+    const customFieldDefs = getCustomFields(schemaArr || defaultSchemaConfig.tam, 'tam');
     const wb = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const parsed = {};
     for (const row of rows) {
         const boat = row[m.boatName]; if (!boat) continue;
         const name = normalizeBoatName(boat); if (!name) continue;
-        parsed[name] = { pastDue: parseNumber(row[m.pastDue]), extensions: parseNumber(row[m.extensions]) };
+        const custom = {};
+        for (const cf of customFieldDefs) {
+            if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
+        }
+        parsed[name] = { pastDue: parseNumber(row[m.pastDue]), extensions: parseNumber(row[m.extensions]), custom };
     }
-    return { parsed, raw: rows };
+    return { parsed, raw: rows, customFieldDefs };
 };
 
 // Merge Data
@@ -396,11 +426,12 @@ const mergeData = (sources, settings) => {
 
     for (const name of Object.keys(registry)) {
         const reg = registry[name]; const boat = createBoatData(reg.boat_name, reg.boat_full_name, reg.isic, reg.tycom);
-        const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; }
-        const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaCrit = vs.raCrit; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; }
-        const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; }
-        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; }
-        const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; }
+        boat.customFields = { vramNipr: {}, vramSipr: {}, essNipr: {}, essSipr: {}, tam: {} };
+        const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaCrit = vn.raCrit; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; if (vn.custom) boat.customFields.vramNipr = vn.custom; }
+        const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaCrit = vs.raCrit; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; if (vs.custom) boat.customFields.vramSipr = vs.custom; }
+        const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
+        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; if (es.custom) boat.customFields.essSipr = es.custom; }
+        const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; if (t.custom) boat.customFields.tam = t.custom; }
         boats.push(boat);
     }
     for (const name of allNames) if (!registry[name]) unregistered.add(name);
@@ -410,7 +441,13 @@ const mergeData = (sources, settings) => {
 // Risk Calculator
 const calculateRisk = (boat, thresholds) => {
     const reasons = []; let level = 'LOW';
-    const scanAge = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : null;
+    const scanAge = (d) => {
+        if (!d) return null;
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return null;
+        const age = Math.floor((new Date() - date) / 86400000);
+        return (isFinite(age) && age >= 0) ? age : null;
+    };
     const nAge = scanAge(boat.vramNiprScanDate); const sAge = scanAge(boat.vramSiprScanDate);
 
     if ((boat.essNiprBreakfix||0) > 0) { level = 'HIGH'; reasons.push(`NIPR BF: ${boat.essNiprBreakfix}`); }
@@ -458,7 +495,7 @@ const aggregateByISIC = (boats, settings) => {
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
             if (b.vramNiprScanExempt || b.vramSiprScanExempt) agg.scanExemptCount++;
         }
-        agg.niprEssEnforcedAvg = nCnt > 0 ? nSum / nCnt : 0; agg.siprEssEnforcedAvg = sCnt > 0 ? sSum / sCnt : 0;
+        agg.niprEssEnforcedAvg = nCnt > 0 ? Math.min(100, nSum / nCnt) : 0; agg.siprEssEnforcedAvg = sCnt > 0 ? Math.min(100, sSum / sCnt) : 0;
         return agg;
     });
     return { csl: aggs.filter(a => a.tycom === 'CSL'), csp: aggs.filter(a => a.tycom === 'CSP') };
@@ -492,7 +529,7 @@ const generateReportHTML = (reportData, settings) => {
     const embedded = compressAndEncode({ reportData, settingsSnapshot: settings, generatedAt: new Date().toISOString() });
 
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
+    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
 
     // Format legend text by substituting threshold values
@@ -507,24 +544,50 @@ const generateReportHTML = (reportData, settings) => {
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
     const cslRiskCounts = { HIGH: cslBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cslBoats.filter(b => b.riskLevel === 'MED').length, LOW: cslBoats.filter(b => b.riskLevel === 'LOW').length };
     const cspRiskCounts = { HIGH: cspBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cspBoats.filter(b => b.riskLevel === 'MED').length, LOW: cspBoats.filter(b => b.riskLevel === 'LOW').length };
-    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
+    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0) + (b.vramSiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
     const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
-    const avgCompliance = boats.length > 0 ? (boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
+    const avgCompliance = boats.length > 0 ? Math.min(100, boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
 
-    // Get label from schema config, with fallback
+    // Get label and visibility from schema config
     const schema = settings.schemaConfig || defaultSchemaConfig;
     const getLabel = (type, field, fallback) => {
         const item = schema[type]?.find(s => s.field === field);
         return item?.label || fallback;
     };
+    const isVisible = (type, field) => {
+        const item = schema[type]?.find(s => s.field === field);
+        return item?.visible !== false;
+    };
 
-    // ESS column labels
+    // Custom fields for each type (visible fields not in standard list)
+    const essCustomFields = getCustomFields(schema.ess, 'ess');
+    const vramCustomFields = getCustomFields(schema.vram, 'vram');
+    const tamCustomFields = getCustomFields(schema.tam, 'tam');
+
+    // ESS column visibility and labels
+    const showEssAssets = isVisible('ess', 'assets');
+    const showEssBreakfix = isVisible('ess', 'breakfix');
+    const showEssProdComp = isVisible('ess', 'productCompliance');
+    const showEssPolicy = isVisible('ess', 'policyEnforced');
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
+    const essSiprCount = essNiprCount;
     const essAssets = getLabel('ess', 'assets', 'Assets');
     const essBreakfix = getLabel('ess', 'breakfix', 'Breakfix');
     const essProdCompliance = getLabel('ess', 'productCompliance', 'Prod%');
     const essPolicyEnforced = getLabel('ess', 'policyEnforced', 'Policy%');
 
-    // VRAM column labels
+    // VRAM column visibility and labels
+    const showVramAssets = isVisible('vram', 'assets');
+    const showVramScan = isVisible('vram', 'scanDate');
+    const showVramVph = isVisible('vram', 'raVph');
+    const showVramIntegrity = isVisible('vram', 'scanIntegrity');
+    const showVramScanned = isVisible('vram', 'scanPercent');
+    const showVramCrit = isVisible('vram', 'raCrit');
+    const showVramHigh = isVisible('vram', 'raHigh');
+    const showVramExempt = isVisible('vram', 'scanExempt');
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
+    const vramSiprCount = vramNiprCount;
+    const raCount = [showVramCrit, showVramHigh].filter(Boolean).length;
     const vramAssets = getLabel('vram', 'assets', 'Assets');
     const vramScan = getLabel('vram', 'scanDate', 'Scan');
     const vramVph = getLabel('vram', 'raVph', 'VPH');
@@ -534,11 +597,60 @@ const generateReportHTML = (reportData, settings) => {
     const vramHigh = getLabel('vram', 'raHigh', 'High');
     const vramExempt = getLabel('vram', 'scanExempt', 'Exempt');
 
-    // TAM column labels
+    // TAM column visibility and labels
+    const showTamPastDue = isVisible('tam', 'pastDue');
+    const showTamExtensions = isVisible('tam', 'extensions');
+    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length + tamCustomFields.length;
     const tamOverdue = getLabel('tam', 'pastDue', 'Overdue');
     const tamExt = getLabel('tam', 'extensions', 'Ext');
 
-    const boatCells = (b) => `<td class="boat-name">${b.boatFullName || b.boatName}</td><td>${fmt(b.essNiprAssets)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td><td>${fmtPct(b.essNiprProductCompliance)}</td><td>${fmtPct(b.essNiprTruePolicy)}</td><td>${fmt(b.essSiprAssets)}</td><td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td><td>${fmtPct(b.essSiprProductCompliance)}</td><td>${fmtPct(b.essSiprTruePolicy)}</td><td>${fmt(b.vramNiprAssets)}</td><td>${fmtDate(b.vramNiprScanDate)}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td>${fmtPct(b.vramNiprScanIntegrity)}</td><td>${fmtPct(b.vramNiprScanPercent)}</td><td>${fmt(b.vramSiprAssets)}</td><td>${fmtDate(b.vramSiprScanDate)}</td><td>${fmt(b.vramSiprRaVph,2)}</td><td>${fmtPct(b.vramSiprScanIntegrity)}</td><td>${fmtPct(b.vramSiprScanPercent)}</td><td>${fmt(b.vramNiprRaCrit)}</td><td>${fmt(b.vramNiprRaHigh)}</td><td>${fmt(b.tamPastDue)}</td><td>${fmt(b.tamExtensions)}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td><td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+    // Status columns (Risk always shown, Exempt based on vram.scanExempt, Notes always shown)
+    const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
+
+    // Helper to format custom field value
+    const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
+
+    const boatCells = (b) => {
+        let cells = `<td class="boat-name">${b.boatFullName || b.boatName}</td>`;
+        // ESS NIPR
+        if (showEssAssets) cells += `<td>${fmt(b.essNiprAssets)}</td>`;
+        if (showEssBreakfix) cells += `<td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td>`;
+        if (showEssProdComp) cells += `<td>${fmtPct(b.essNiprProductCompliance)}</td>`;
+        if (showEssPolicy) cells += `<td>${fmtPct(b.essNiprTruePolicy)}</td>`;
+        for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>`;
+        // ESS SIPR
+        if (showEssAssets) cells += `<td>${fmt(b.essSiprAssets)}</td>`;
+        if (showEssBreakfix) cells += `<td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td>`;
+        if (showEssProdComp) cells += `<td>${fmtPct(b.essSiprProductCompliance)}</td>`;
+        if (showEssPolicy) cells += `<td>${fmtPct(b.essSiprTruePolicy)}</td>`;
+        for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>`;
+        // VRAM NIPR
+        if (showVramAssets) cells += `<td>${fmt(b.vramNiprAssets)}</td>`;
+        if (showVramScan) cells += `<td>${fmtDate(b.vramNiprScanDate)}</td>`;
+        if (showVramVph) cells += `<td>${fmt(b.vramNiprRaVph,2)}</td>`;
+        if (showVramIntegrity) cells += `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`;
+        if (showVramScanned) cells += `<td>${fmtPct(b.vramNiprScanPercent)}</td>`;
+        for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>`;
+        // VRAM SIPR
+        if (showVramAssets) cells += `<td>${fmt(b.vramSiprAssets)}</td>`;
+        if (showVramScan) cells += `<td>${fmtDate(b.vramSiprScanDate)}</td>`;
+        if (showVramVph) cells += `<td>${fmt(b.vramSiprRaVph,2)}</td>`;
+        if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
+        if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
+        for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
+        // RA
+        if (showVramCrit) cells += `<td>${fmt(b.vramNiprRaCrit)}</td>`;
+        if (showVramHigh) cells += `<td>${fmt(b.vramNiprRaHigh)}</td>`;
+        // TAM
+        if (showTamPastDue) cells += `<td>${fmt(b.tamPastDue)}</td>`;
+        if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
+        for (const cf of tamCustomFields) cells += `<td>${fmtCustom(b.customFields?.tam?.[cf.field])}</td>`;
+        // Status
+        cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
+        if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
+        cells += `<td style="font-size:6pt;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+        return cells;
+    };
 
     const summaryTable = (byISIC) => {
         const entries = Object.entries(byISIC);
@@ -551,7 +663,55 @@ const generateReportHTML = (reportData, settings) => {
                 bodyRows += boatCells(b) + '</tr>';
             });
         }
-        return `<table class="summary-table"><thead><tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:70px">BOAT</th><th colspan="4" class="col-ess-n">ESS NIPR</th><th colspan="4" class="col-ess-s">ESS SIPR</th><th colspan="5" class="col-vram-n">VRAM NIPR</th><th colspan="5" class="col-vram-s">VRAM SIPR</th><th colspan="2" class="col-ra">RA</th><th colspan="2" class="col-tam">TAM</th><th colspan="3" class="col-status">STATUS</th></tr><tr><th class="col-ess-n">${essAssets}</th><th class="col-ess-n">${essBreakfix}</th><th class="col-ess-n">${essProdCompliance}</th><th class="col-ess-n">${essPolicyEnforced}</th><th class="col-ess-s">${essAssets}</th><th class="col-ess-s">${essBreakfix}</th><th class="col-ess-s">${essProdCompliance}</th><th class="col-ess-s">${essPolicyEnforced}</th><th class="col-vram-n">${vramAssets}</th><th class="col-vram-n">${vramScan}</th><th class="col-vram-n">${vramVph}</th><th class="col-vram-n">${vramIntegrity}</th><th class="col-vram-n">${vramScanned}</th><th class="col-vram-s">${vramAssets}</th><th class="col-vram-s">${vramScan}</th><th class="col-vram-s">${vramVph}</th><th class="col-vram-s">${vramIntegrity}</th><th class="col-vram-s">${vramScanned}</th><th class="col-ra">${vramCritical}</th><th class="col-ra">${vramHigh}</th><th class="col-tam">${tamOverdue}</th><th class="col-tam">${tamExt}</th><th class="col-status">Risk</th><th class="col-status">${vramExempt}</th><th class="col-status">Notes</th></tr></thead><tbody>${bodyRows}</tbody></table>`;
+        // Build header row 1 with group spans
+        let hdr1 = '<tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:70px">BOAT</th>';
+        if (essNiprCount > 0) hdr1 += `<th colspan="${essNiprCount}" class="col-ess-n">ESS NIPR</th>`;
+        if (essSiprCount > 0) hdr1 += `<th colspan="${essSiprCount}" class="col-ess-s">ESS SIPR</th>`;
+        if (vramNiprCount > 0) hdr1 += `<th colspan="${vramNiprCount}" class="col-vram-n">VRAM NIPR</th>`;
+        if (vramSiprCount > 0) hdr1 += `<th colspan="${vramSiprCount}" class="col-vram-s">VRAM SIPR</th>`;
+        if (raCount > 0) hdr1 += `<th colspan="${raCount}" class="col-ra">RA</th>`;
+        if (tamCount > 0) hdr1 += `<th colspan="${tamCount}" class="col-tam">TAM</th>`;
+        hdr1 += `<th colspan="${statusCount}" class="col-status">STATUS</th></tr>`;
+        // Build header row 2 with individual column names
+        let hdr2 = '<tr>';
+        // ESS NIPR headers
+        if (showEssAssets) hdr2 += `<th class="col-ess-n">${essAssets}</th>`;
+        if (showEssBreakfix) hdr2 += `<th class="col-ess-n">${essBreakfix}</th>`;
+        if (showEssProdComp) hdr2 += `<th class="col-ess-n">${essProdCompliance}</th>`;
+        if (showEssPolicy) hdr2 += `<th class="col-ess-n">${essPolicyEnforced}</th>`;
+        for (const cf of essCustomFields) hdr2 += `<th class="col-ess-n">${cf.label || cf.field}</th>`;
+        // ESS SIPR headers
+        if (showEssAssets) hdr2 += `<th class="col-ess-s">${essAssets}</th>`;
+        if (showEssBreakfix) hdr2 += `<th class="col-ess-s">${essBreakfix}</th>`;
+        if (showEssProdComp) hdr2 += `<th class="col-ess-s">${essProdCompliance}</th>`;
+        if (showEssPolicy) hdr2 += `<th class="col-ess-s">${essPolicyEnforced}</th>`;
+        for (const cf of essCustomFields) hdr2 += `<th class="col-ess-s">${cf.label || cf.field}</th>`;
+        // VRAM NIPR headers
+        if (showVramAssets) hdr2 += `<th class="col-vram-n">${vramAssets}</th>`;
+        if (showVramScan) hdr2 += `<th class="col-vram-n">${vramScan}</th>`;
+        if (showVramVph) hdr2 += `<th class="col-vram-n">${vramVph}</th>`;
+        if (showVramIntegrity) hdr2 += `<th class="col-vram-n">${vramIntegrity}</th>`;
+        if (showVramScanned) hdr2 += `<th class="col-vram-n">${vramScanned}</th>`;
+        for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-n">${cf.label || cf.field}</th>`;
+        // VRAM SIPR headers
+        if (showVramAssets) hdr2 += `<th class="col-vram-s">${vramAssets}</th>`;
+        if (showVramScan) hdr2 += `<th class="col-vram-s">${vramScan}</th>`;
+        if (showVramVph) hdr2 += `<th class="col-vram-s">${vramVph}</th>`;
+        if (showVramIntegrity) hdr2 += `<th class="col-vram-s">${vramIntegrity}</th>`;
+        if (showVramScanned) hdr2 += `<th class="col-vram-s">${vramScanned}</th>`;
+        for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-s">${cf.label || cf.field}</th>`;
+        // RA headers
+        if (showVramCrit) hdr2 += `<th class="col-ra">${vramCritical}</th>`;
+        if (showVramHigh) hdr2 += `<th class="col-ra">${vramHigh}</th>`;
+        // TAM headers
+        if (showTamPastDue) hdr2 += `<th class="col-tam">${tamOverdue}</th>`;
+        if (showTamExtensions) hdr2 += `<th class="col-tam">${tamExt}</th>`;
+        for (const cf of tamCustomFields) hdr2 += `<th class="col-tam">${cf.label || cf.field}</th>`;
+        // Status headers
+        hdr2 += '<th class="col-status">Risk</th>';
+        if (showVramExempt) hdr2 += `<th class="col-status">${vramExempt}</th>`;
+        hdr2 += '<th class="col-status">Notes</th></tr>';
+        return `<table class="summary-table"><thead>${hdr1}${hdr2}</thead><tbody>${bodyRows}</tbody></table>`;
     };
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
@@ -609,7 +769,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc}
-.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:8px 4px;font-size:9pt;width:28px;min-width:28px;max-width:28px}
+.summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:4px 2px;font-size:7pt;width:20px;min-width:20px;max-width:20px}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
 .col-ra{background:rgba(168,85,247,0.2)!important}.col-tam{background:rgba(107,114,128,0.2)!important}.col-status{background:rgba(16,185,129,0.2)!important}
@@ -618,7 +778,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .risk-low{background:#d1fae5!important;color:#065f46!important}
 .alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}
 .hq-table th:first-child,.hq-table td:first-child{text-align:left}
-.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-cards{display:grid;gap:16px;margin-bottom:24px;width:100%}
 .stat-card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .stat-card h3{font-size:10pt;color:#64748b;margin-bottom:8px}
 .stat-card .value{font-size:28pt;font-weight:700;color:#1e293b}
@@ -626,10 +786,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:20px;margin-bottom:24px}
 .chart-box{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .chart-box h3{font-size:11pt;color:#1e293b;margin-bottom:16px;border-bottom:1px solid #e2e8f0;padding-bottom:8px}
-.rankings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px}
-.ranking-box{background:white;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #e2e8f0}
+.rankings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;width:100%}
+.ranking-box{background:white;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border:1px solid #e2e8f0;overflow:hidden}
 .ranking-box.wide{grid-column:1/-1}
 .ranking-box h4{font-size:10pt;color:#0891b2;margin:0 0 12px 0;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+.ranking-box .mini-table{width:100%;table-layout:fixed}
+.ranking-box .mini-table td,.ranking-box .mini-table th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini-table{width:100%;border-collapse:collapse;font-size:9pt}
 .mini-table th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
@@ -644,23 +806,25 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .tab-content{display:none!important;padding:10px}
     .tab-content.print-active{display:block!important}
-    .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:1px solid #e2e8f0}
+    .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:none;padding:10px;overflow:hidden!important}
     .isic-section{page-break-inside:avoid}
-    .stat-cards{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
-    .stat-card{padding:8px!important;page-break-inside:avoid}
+    .stat-cards{display:grid!important;gap:8px!important}
+    .stat-card{padding:8px!important;page-break-inside:avoid;overflow:hidden!important}
     .stat-card h3{font-size:8pt!important;margin-bottom:4px!important}
     .stat-card .value{font-size:16pt!important}
     .chart-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
     .chart-box{padding:10px!important;page-break-inside:avoid;max-height:220px!important;max-width:100%!important;overflow:hidden!important}
     .chart-box h3{font-size:9pt!important;margin-bottom:8px!important}
     .chart-box canvas{max-height:160px!important;max-width:100%!important;width:auto!important;height:auto!important;object-fit:contain!important}
-    .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
-    .ranking-box{padding:8px!important;page-break-inside:avoid;max-height:180px!important;overflow:hidden!important}
-    .ranking-box h4{font-size:8pt!important;margin-bottom:6px!important}
-    .mini-table{font-size:7pt!important}
-    .summary-table{font-size:7pt!important}
-    .summary-table th{padding:3px 2px!important;font-size:6pt!important}
-    .summary-table td{padding:2px!important}
+    .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
+    .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:hidden!important;box-sizing:border-box!important}
+    .ranking-box h4{font-size:7pt!important;margin-bottom:4px!important}
+    .mini-table{font-size:6pt!important;width:100%!important;table-layout:fixed!important}
+    .mini-table th,.mini-table td{padding:2px 3px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .summary-table{font-size:6pt!important;width:100%!important;table-layout:fixed!important}
+    .summary-table th{padding:2px 1px!important;font-size:5pt!important;overflow:hidden!important;text-overflow:ellipsis!important}
+    .summary-table td{padding:2px 1px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .summary-table .isic-header,.summary-table .isic-cell{font-size:5pt!important;width:16px!important;min-width:16px!important;max-width:16px!important;padding:2px 1px!important}
     h2{font-size:12pt!important}
     h3{font-size:10pt!important}
 }
@@ -670,11 +834,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .chart-box{max-height:200px!important}
     .chart-box canvas{max-height:140px!important}
 }
-@page{margin:0.5in;size:landscape}
+@page{margin:0;size:landscape}
 </style></head><body>
 <div class="header no-print">
 <div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
+<div style="display:flex;gap:8px;">
+<button onclick="showHelpModal()" style="background:#64748b;color:white;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;" title="Calculation Help">?</button>
 <button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
+</div>
 </div>
 <div class="print-only print-header">
 <h1>SUBFOR Cyber Risk Dashboard</h1>
@@ -753,16 +920,19 @@ ${isTabVisible('analytics') ? (() => {
     const isColVisible = (id) => ac.summaryColumns?.find(c => c.id === id)?.visible !== false;
     const getRanking = (id) => ac.rankings?.find(r => r.id === id) || {visible: false, count: 5};
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
-    const visibleStats = [
+    const visibleStatsArr = [
         isStatVisible('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
         isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
         isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
         isStatVisible('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
-        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg NIPR VPH</h3><div class="value">${avgVph}</div></div>` : '',
+        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
         isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
         isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
         isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
-    ].filter(Boolean).join('');
+    ].filter(Boolean);
+    const statCount = visibleStatsArr.length;
+    const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
+    const visibleStats = visibleStatsArr.join('');
     const visibleCharts = [
         isChartVisible('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
         isChartVisible('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
@@ -785,12 +955,12 @@ ${isTabVisible('analytics') ? (() => {
     const r3 = getRanking('worstBoatsCompliance');
     if (r3.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (a.essNiprProductCompliance||0) - (b.essNiprProductCompliance||0)).slice(0, r3.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const r4 = getRanking('bestBoatsCompliance');
     if (r4.visible) {
         const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (b.essNiprProductCompliance||0) - (a.essNiprProductCompliance||0)).slice(0, r4.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => ({isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: ib.reduce((s,b)=>s+(b.vramNiprRaVph||0),0)/ib.length}));
     const r5 = getRanking('worstIsicsRisk');
@@ -817,7 +987,7 @@ ${isTabVisible('analytics') ? (() => {
     if (r9.visible) {
         const tycomData = {};
         boats.forEach(b => { if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphSum:0,bfSum:0,compSum:0,compCount:0}; const t=tycomData[b.tycom]; t.boats++; if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++; t.vphSum+=(b.vramNiprRaVph||0); t.bfSum+=(b.essNiprBreakfix||0); if(b.essNiprProductCompliance!=null){t.compSum+=b.essNiprProductCompliance;t.compCount++;} });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td>${d.compCount?(d.compSum/d.compCount).toFixed(1)+'%':'-'}</td></tr>`).join('');
+        const rows = Object.entries(tycomData).map(([tycom,d]) => `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td>${d.compCount?Math.min(100,d.compSum/d.compCount).toFixed(1)+'%':'-'}</td></tr>`).join('');
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
@@ -849,7 +1019,7 @@ ${isTabVisible('analytics') ? (() => {
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Analytics</h2>
-${visibleStats ? `<div class="stat-cards">${visibleStats}</div>` : ''}
+${visibleStats ? `<div class="stat-cards" style="grid-template-columns:repeat(${statCols},1fr)">${visibleStats}</div>` : ''}
 ${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
 ${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
 ${summaryHeaders ? `<div class="page">
@@ -957,7 +1127,50 @@ function initCharts() {
         options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 }
+function showHelpModal() { document.getElementById('help-modal').style.display = 'flex'; }
+function hideHelpModal() { document.getElementById('help-modal').style.display = 'none'; }
 <\/script>
+<div id="help-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideHelpModal()">
+<div style="background:white;border-radius:12px;padding:24px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Calculation Reference</h3>
+<div style="font-size:10pt;">
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk Triggers</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Breakfix > 0</strong> - Any NIPR or SIPR breakfix issues</li>
+<li><strong>Scan Age > ${settings.thresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
+<li><strong>Scan Integrity < ${settings.thresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
+<li><strong>VPH > ${settings.thresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
+<li><strong>ESS Policy < ${settings.thresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
+<li><strong>TAM Past Due > ${settings.thresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk Triggers</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong></li>
+<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong></li>
+<li><strong>ESS Policy < ${settings.thresholds.med_ess_compliance}%</strong></li>
+<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong></li>
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#334155;margin-bottom:6px;">Key Calculations</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+<li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
+<li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
+<li><strong>ESS Policy %</strong> = True policy rate against all assets: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">PolicyEnforced × ProductCompliance / 100</code></li>
+<li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+</ul>
+</div>
+<div>
+<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
+<p style="color:#475569;">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+</div>
+</div>
+<div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
+</div>
+</div>
 </body></html>`;
 };
 
@@ -1045,6 +1258,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [showThresholds, setShowThresholds] = React.useState(false);
     const [previewThresholds, setPreviewThresholds] = React.useState(null);
     const [notesModal, setNotesModal] = React.useState(null);
+    const [showHelp, setShowHelp] = React.useState(false);
 
     // Initialize preview thresholds from settings if not set
     React.useEffect(() => {
@@ -1063,6 +1277,36 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const isics = [...new Set(current.map(b => b.isic))];
     const filtered = selectedISIC ? current.filter(b => b.isic === selectedISIC) : current;
     const groupByISIC = (list) => { const g = {}; for (const b of list) { if (!g[b.isic]) g[b.isic] = []; g[b.isic].push(b); } return g; };
+
+    // Schema visibility helpers
+    const schema = settings.schemaConfig || defaultSchemaConfig;
+    const isVisible = (type, field) => { const item = schema[type]?.find(s => s.field === field); return item?.visible !== false; };
+    const showEssAssets = isVisible('ess', 'assets');
+    const showEssBreakfix = isVisible('ess', 'breakfix');
+    const showEssProdComp = isVisible('ess', 'productCompliance');
+    const showEssPolicy = isVisible('ess', 'policyEnforced');
+    const showVramAssets = isVisible('vram', 'assets');
+    const showVramScan = isVisible('vram', 'scanDate');
+    const showVramVph = isVisible('vram', 'raVph');
+    const showVramIntegrity = isVisible('vram', 'scanIntegrity');
+    const showVramScanned = isVisible('vram', 'scanPercent');
+    const showVramCrit = isVisible('vram', 'raCrit');
+    const showVramHigh = isVisible('vram', 'raHigh');
+    const showVramExempt = isVisible('vram', 'scanExempt');
+    // Custom fields
+    const essCustomFields = getCustomFields(schema.ess, 'ess');
+    const vramCustomFields = getCustomFields(schema.vram, 'vram');
+    const tamCustomFields = getCustomFields(schema.tam, 'tam');
+    const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
+    const showTamPastDue = isVisible('tam', 'pastDue');
+    const showTamExtensions = isVisible('tam', 'extensions');
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
+    const essSiprCount = essNiprCount;
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
+    const vramSiprCount = vramNiprCount;
+    const raCount = [showVramCrit, showVramHigh].filter(Boolean).length;
+    const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length + tamCustomFields.length;
+    const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
 
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
 
@@ -1103,7 +1347,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
     const [currentUserName, setCurrentUserName] = React.useState('');
 
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : v.toFixed(1) + '%';
+    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
 
     const fieldLabels = {
@@ -1201,6 +1445,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Preview Report</h2>
                 <div className="flex gap-2">
+                    <button onClick={() => setShowHelp(true)} className="btn-secondary text-sm" title="Calculation Help">?</button>
                     <button onClick={() => setShowThresholds(!showThresholds)} className={`btn-secondary text-sm ${thresholdChanges.length > 0 ? 'ring-2 ring-amber-400' : ''}`}>{showThresholds ? 'Hide' : 'Adjust'} Thresholds{thresholdChanges.length > 0 ? ` (${thresholdChanges.length})` : ''}</button>
                     {allOverrides.length > 0 && <button onClick={() => setShowOverrideLog(!showOverrideLog)} className="btn-secondary text-sm">{showOverrideLog ? 'Hide' : 'Show'} Override Log ({allOverrides.length})</button>}
                     <button onClick={generate} className="btn-success">Generate HTML Report</button>
@@ -1255,37 +1500,83 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                 <div className="card p-4 overflow-x-auto">
                     <table className="data-table">
                         <thead>
-                            <tr><th rowSpan="2" className="isic-header">ISIC</th><th rowSpan="2" style={{width:'70px'}}>BOAT</th><th colSpan="4" className="col-ess-n">ESS NIPR</th><th colSpan="4" className="col-ess-s">ESS SIPR</th><th colSpan="5" className="col-vram-n">VRAM NIPR</th><th colSpan="5" className="col-vram-s">VRAM SIPR</th><th colSpan="2" className="col-ra">RA</th><th colSpan="2" className="col-tam">TAM</th><th colSpan="3" className="col-status">STATUS</th></tr>
-                            <tr><th className="col-ess-n">Assets</th><th className="col-ess-n">Breakfix</th><th className="col-ess-n">Prod%</th><th className="col-ess-n">Policy%</th><th className="col-ess-s">Assets</th><th className="col-ess-s">Breakfix</th><th className="col-ess-s">Prod%</th><th className="col-ess-s">Policy%</th><th className="col-vram-n">Assets</th><th className="col-vram-n">Scan</th><th className="col-vram-n">VPH</th><th className="col-vram-n">Integrity</th><th className="col-vram-n">Scanned</th><th className="col-vram-s">Assets</th><th className="col-vram-s">Scan</th><th className="col-vram-s">VPH</th><th className="col-vram-s">Integrity</th><th className="col-vram-s">Scanned</th><th className="col-ra">Critical</th><th className="col-ra">High</th><th className="col-tam">Overdue</th><th className="col-tam">Ext</th><th className="col-status">Risk</th><th className="col-status">Exempt</th><th className="col-status">Notes</th></tr>
+                            <tr>
+                                <th rowSpan="2" className="isic-header">ISIC</th>
+                                <th rowSpan="2" style={{width:'70px'}}>BOAT</th>
+                                {essNiprCount > 0 && <th colSpan={essNiprCount} className="col-ess-n">ESS NIPR</th>}
+                                {essSiprCount > 0 && <th colSpan={essSiprCount} className="col-ess-s">ESS SIPR</th>}
+                                {vramNiprCount > 0 && <th colSpan={vramNiprCount} className="col-vram-n">VRAM NIPR</th>}
+                                {vramSiprCount > 0 && <th colSpan={vramSiprCount} className="col-vram-s">VRAM SIPR</th>}
+                                {raCount > 0 && <th colSpan={raCount} className="col-ra">RA</th>}
+                                {tamCount > 0 && <th colSpan={tamCount} className="col-tam">TAM</th>}
+                                <th colSpan={statusCount} className="col-status">STATUS</th>
+                            </tr>
+                            <tr>
+                                {showEssAssets && <th className="col-ess-n">Assets</th>}
+                                {showEssBreakfix && <th className="col-ess-n">Breakfix</th>}
+                                {showEssProdComp && <th className="col-ess-n">Prod%</th>}
+                                {showEssPolicy && <th className="col-ess-n">Policy%</th>}
+                                {essCustomFields.map(cf => <th key={`essn-${cf.field}`} className="col-ess-n">{cf.label || cf.field}</th>)}
+                                {showEssAssets && <th className="col-ess-s">Assets</th>}
+                                {showEssBreakfix && <th className="col-ess-s">Breakfix</th>}
+                                {showEssProdComp && <th className="col-ess-s">Prod%</th>}
+                                {showEssPolicy && <th className="col-ess-s">Policy%</th>}
+                                {essCustomFields.map(cf => <th key={`esss-${cf.field}`} className="col-ess-s">{cf.label || cf.field}</th>)}
+                                {showVramAssets && <th className="col-vram-n">Assets</th>}
+                                {showVramScan && <th className="col-vram-n">Scan</th>}
+                                {showVramVph && <th className="col-vram-n">VPH</th>}
+                                {showVramIntegrity && <th className="col-vram-n">Integrity</th>}
+                                {showVramScanned && <th className="col-vram-n">Scanned</th>}
+                                {vramCustomFields.map(cf => <th key={`vramn-${cf.field}`} className="col-vram-n">{cf.label || cf.field}</th>)}
+                                {showVramAssets && <th className="col-vram-s">Assets</th>}
+                                {showVramScan && <th className="col-vram-s">Scan</th>}
+                                {showVramVph && <th className="col-vram-s">VPH</th>}
+                                {showVramIntegrity && <th className="col-vram-s">Integrity</th>}
+                                {showVramScanned && <th className="col-vram-s">Scanned</th>}
+                                {vramCustomFields.map(cf => <th key={`vrams-${cf.field}`} className="col-vram-s">{cf.label || cf.field}</th>)}
+                                {showVramCrit && <th className="col-ra">Critical</th>}
+                                {showVramHigh && <th className="col-ra">High</th>}
+                                {showTamPastDue && <th className="col-tam">Overdue</th>}
+                                {showTamExtensions && <th className="col-tam">Ext</th>}
+                                {tamCustomFields.map(cf => <th key={`tam-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
+                                <th className="col-status">Risk</th>
+                                {showVramExempt && <th className="col-status">Exempt</th>}
+                                <th className="col-status">Notes</th>
+                            </tr>
                         </thead>
                         <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
                             isicBoats.map((b, idx) => <tr key={b.boatName}>
                                 {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
                                 <td className="boat-name">{b.boatFullName || b.boatName}</td>
-                                <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />
-                                <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />
-                                <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />
-                                <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />
-                                <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />
-                                <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />
-                                <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />
-                                <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />
-                                <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />
-                                <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />
-                                <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />
-                                <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />
-                                <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />
-                                <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />
-                                <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />
-                                <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />
-                                <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />
-                                <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />
-                                <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />
-                                <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />
-                                <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />
-                                <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />
+                                {showEssAssets && <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />}
+                                {showEssBreakfix && <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />}
+                                {showEssProdComp && <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" />}
+                                {showEssPolicy && <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" />}
+                                {essCustomFields.map(cf => <td key={`essn-${cf.field}`}>{fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>)}
+                                {showEssAssets && <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />}
+                                {showEssBreakfix && <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />}
+                                {showEssProdComp && <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" />}
+                                {showEssPolicy && <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" />}
+                                {essCustomFields.map(cf => <td key={`esss-${cf.field}`}>{fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>)}
+                                {showVramAssets && <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />}
+                                {showVramScan && <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" />}
+                                {showVramVph && <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" />}
+                                {showVramIntegrity && <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />}
+                                {showVramScanned && <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />}
+                                {vramCustomFields.map(cf => <td key={`vramn-${cf.field}`}>{fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>)}
+                                {showVramAssets && <Cell boat={b} field="vramSiprAssets" value={fmt(b.vramSiprAssets)} />}
+                                {showVramScan && <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" />}
+                                {showVramVph && <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" />}
+                                {showVramIntegrity && <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />}
+                                {showVramScanned && <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />}
+                                {vramCustomFields.map(cf => <td key={`vrams-${cf.field}`}>{fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>)}
+                                {showVramCrit && <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />}
+                                {showVramHigh && <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />}
+                                {showTamPastDue && <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} />}
+                                {showTamExtensions && <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />}
+                                {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
                                 <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
-                                <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>
+                                {showVramExempt && <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>}
                                 <td className="text-xs max-w-[60px] truncate cursor-pointer hover:bg-cyan-50" onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
                             </tr>)
                         )}</tbody>
@@ -1343,6 +1634,50 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                     </div>
                 </div>
             )}
+
+            {showHelp && (
+                <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+                    <div className="modal-content" style={{maxWidth:'600px',maxHeight:'80vh',overflow:'auto'}} onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">Calculation Reference</h3>
+                        <div className="text-sm space-y-4">
+                            <div>
+                                <h4 className="font-bold text-red-600 mb-1">HIGH Risk Triggers</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Breakfix &gt; 0</strong> - Any NIPR or SIPR breakfix issues</li>
+                                    <li><strong>Scan Age &gt; {activeThresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
+                                    <li><strong>Scan Integrity &lt; {activeThresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
+                                    <li><strong>VPH &gt; {activeThresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
+                                    <li><strong>ESS Policy &lt; {activeThresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
+                                    <li><strong>TAM Past Due &gt; {activeThresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-amber-600 mb-1">MEDIUM Risk Triggers</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Scan Age &gt; {activeThresholds.med_scan_age_days} days</strong></li>
+                                    <li><strong>VPH &gt; {activeThresholds.med_ra_vph}</strong></li>
+                                    <li><strong>ESS Policy &lt; {activeThresholds.med_ess_compliance}%</strong></li>
+                                    <li><strong>TAM Past Due &gt; {activeThresholds.med_tam_past_due}</strong></li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-700 mb-1">Key Calculations</h4>
+                                <ul className="list-disc ml-5 text-slate-600 space-y-1">
+                                    <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
+                                    <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
+                                    <li><strong>ESS Policy %</strong> = True policy rate against all assets: <code className="bg-slate-100 px-1 rounded">PolicyEnforced × ProductCompliance / 100</code></li>
+                                    <li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-green-600 mb-1">LOW Risk</h4>
+                                <p className="text-slate-600">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+                            </div>
+                        </div>
+                        <div className="mt-6"><button onClick={() => setShowHelp(false)} className="btn-primary">Close</button></div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1350,6 +1685,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
 const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, onSaveToMySettings }) => {
     const [subTab, setSubTab] = React.useState('registry');
     const [editingBoat, setEditingBoat] = React.useState(null);
+    const [editingISIC, setEditingISIC] = React.useState(null);
     const [authorName, setAuthorName] = React.useState(settings.user?.default_name || '');
     const [showAuthorPrompt, setShowAuthorPrompt] = React.useState(false);
 
@@ -1359,6 +1695,35 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
         const boat = { ...editingBoat, tycom: isic?.tycom || 'CSL' }; delete boat.isNew;
         setSettings(prev => ({ ...prev, boats: editingBoat.isNew ? [...prev.boats, boat] : prev.boats.map(b => b.boat_name === boat.boat_name ? boat : b) }));
         setEditingBoat(null);
+    };
+
+    const deleteBoat = (boatName) => {
+        if (confirm(`Delete boat "${boatName}"?`)) {
+            setSettings(prev => ({ ...prev, boats: prev.boats.filter(b => b.boat_name !== boatName) }));
+        }
+    };
+
+    const saveISIC = () => {
+        if (!editingISIC.isic_name) return;
+        const isic = { ...editingISIC }; delete isic.isNew;
+        setSettings(prev => {
+            const newIsics = editingISIC.isNew ? [...prev.isics, isic] : prev.isics.map(i => i.isic_name === isic.isic_name ? isic : i);
+            // Update tycom on all boats belonging to this ISIC
+            const newBoats = prev.boats.map(b => b.isic === isic.isic_name ? { ...b, tycom: isic.tycom } : b);
+            return { ...prev, isics: newIsics, boats: newBoats };
+        });
+        setEditingISIC(null);
+    };
+
+    const deleteISIC = (isicName) => {
+        const boatsUsingISIC = settings.boats.filter(b => b.isic === isicName);
+        if (boatsUsingISIC.length > 0) {
+            onAlert && onAlert({ type: 'error', msg: `Cannot delete ISIC: ${boatsUsingISIC.length} boats are assigned to it` });
+            return;
+        }
+        if (confirm(`Delete ISIC "${isicName}"?`)) {
+            setSettings(prev => ({ ...prev, isics: prev.isics.filter(i => i.isic_name !== isicName) }));
+        }
     };
 
     // Auto-save to localStorage whenever settings change
@@ -1501,12 +1866,13 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 <div className="space-y-6">
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-4 text-slate-700">Boats ({settings.boats.length})</h3>
-                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600">Edit</button></td></tr>)}</tbody></table></div>
+                        <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Full Name</th><th>ISIC</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.boats.map(b => <tr key={b.boat_name}><td className="boat-name">{b.boat_name}</td><td style={{textAlign:'left'}}>{b.boat_full_name}</td><td>{b.isic}</td><td>{b.tycom}</td><td><button onClick={() => setEditingBoat(b)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteBoat(b.boat_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table></div>
                         <button onClick={() => setEditingBoat({ boat_name: '', boat_full_name: '', isic: settings.isics[0]?.isic_name || '', tycom: 'CSL', active: true, isNew: true })} className="btn-primary mt-4">+ Add Boat</button>
                     </div>
                     <div className="card p-4">
-                        <h3 className="text-lg font-bold mb-4 text-slate-700">ISICs</h3>
-                        <table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th>Short</th><th>TYCOM</th></tr></thead><tbody>{settings.isics.map(i => <tr key={i.isic_name}><td style={{textAlign:'left'}}>{i.isic_name}</td><td>{i.isic_short}</td><td>{i.tycom}</td></tr>)}</tbody></table>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">ISICs ({settings.isics.length})</h3>
+                        <table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Name</th><th>Short</th><th>TYCOM</th><th>Actions</th></tr></thead><tbody>{settings.isics.map(i => <tr key={i.isic_name}><td style={{textAlign:'left'}}>{i.isic_name}</td><td>{i.isic_short}</td><td>{i.tycom}</td><td><button onClick={() => setEditingISIC(i)} className="text-sm text-cyan-600 mr-2">Edit</button><button onClick={() => deleteISIC(i.isic_name)} className="text-sm text-red-500">Delete</button></td></tr>)}</tbody></table>
+                        <button onClick={() => setEditingISIC({ isic_name: '', isic_short: '', tycom: 'CSL', isNew: true })} className="btn-primary mt-4">+ Add ISIC</button>
                     </div>
                 </div>
             )}
@@ -1671,6 +2037,20 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div><label className="block text-sm text-slate-500 mb-1">ISIC</label><select value={editingBoat.isic} onChange={(e) => setEditingBoat({...editingBoat, isic: e.target.value})} className="w-full">{settings.isics.map(i => <option key={i.isic_name} value={i.isic_name}>{i.isic_name}</option>)}</select></div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
+                    </div>
+                </div>
+            )}
+
+            {editingISIC && (
+                <div className="modal-overlay" onClick={() => setEditingISIC(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4 text-slate-700">{editingISIC.isNew ? 'Add ISIC' : 'Edit ISIC'}</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-sm text-slate-500 mb-1">ISIC Name (e.g. COMSUBRON 1)</label><input value={editingISIC.isic_name} onChange={(e) => setEditingISIC({...editingISIC, isic_name: e.target.value})} className="w-full" disabled={!editingISIC.isNew} /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">Short Name (e.g. CSS1)</label><input value={editingISIC.isic_short} onChange={(e) => setEditingISIC({...editingISIC, isic_short: e.target.value})} className="w-full" /></div>
+                            <div><label className="block text-sm text-slate-500 mb-1">TYCOM</label><select value={editingISIC.tycom} onChange={(e) => setEditingISIC({...editingISIC, tycom: e.target.value})} className="w-full">{(settings.tycoms || ['CSL', 'CSP']).map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                        </div>
+                        <div className="flex gap-2 mt-6"><button onClick={saveISIC} className="btn-primary">Save</button><button onClick={() => setEditingISIC(null)} className="btn-secondary">Cancel</button></div>
                     </div>
                 </div>
             )}
