@@ -336,6 +336,11 @@ const SettingsManager = {
                     settings.thresholds[key] = defaultThresholds[key];
                 }
             }
+            // Remove obsolete threshold keys (e.g., ra_crit was removed)
+            const obsoleteKeys = ['auto_high_ra_crit', 'high_ra_crit', 'med_ra_crit', 'low_ra_crit', 'auto_high_scan_integrity', 'high_scan_age_days'];
+            for (const key of obsoleteKeys) {
+                delete settings.thresholds[key];
+            }
         }
 
         // Initialize versioning if missing
