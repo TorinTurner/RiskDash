@@ -265,7 +265,11 @@ const defaultHelpModalText = {
     highItems: [
         'Breakfix > 0 - Any asset in either enclave in breakfix',
         'No VRAM Scan Data - Unable to assess risk without scan data',
-        'Product Compliance < {high_product_compliance}% - Critical ESS compliance failure'
+        'Product Compliance < {high_product_compliance}% - Critical ESS compliance failure',
+        'VPH > {auto_high_ra_vph} - Vulnerabilities per host critically high',
+        'Scan Age > {auto_high_scan_age_days} days - VRAM scan critically outdated',
+        'Policy Compliance < {high_ess_compliance}% - Critical policy compliance failure',
+        'TAM Past Due > {high_tam_past_due} - Critical maintenance backlog'
     ],
     medItems: [
         'VPH > {med_ra_vph} - Vulnerabilities per host above threshold',
@@ -603,10 +607,11 @@ const mergeData = (sources, settings) => {
 };
 
 // Risk Calculator
-// RISK CRITERIA:
-// HIGH: Any asset in breakfix, no VRAM scan data, OR Product Compliance <50%
-// MED: 2 or more of: VPH >3.5, Product/Policy compliance <95%, Scan >14 days, TAMs past due >10
-// LOW: VPH <2.5, Scans within 14 days, Policy and Product compliance over 95%, no high triggers
+// RISK CRITERIA (all thresholds are configurable in Settings > Thresholds):
+// HIGH: Breakfix > 0, no VRAM data, Product Compliance < {high_product_compliance}%, VPH > {auto_high_ra_vph},
+//       Scan > {auto_high_scan_age_days}d, Policy Compliance < {high_ess_compliance}%, TAMs > {high_tam_past_due}
+// MED: 2+ of: VPH > {med_ra_vph}, Compliance < {med_ess_compliance}%, Scan > {med_scan_age_days}d, TAMs > {med_tam_past_due}
+// LOW: VPH < {low_vph}, Scans within {low_scan_age_days}d, Compliance > {low_ess_compliance}%, no HIGH triggers
 // NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
 const calculateRisk = (boat, thresholds) => {
     const reasons = [];
@@ -655,7 +660,7 @@ const calculateRisk = (boat, thresholds) => {
         highDueToNoScans = true;
     }
 
-    // 3. ESS Product Compliance < 50% (critical compliance failure) - skip NIPR for NMCI
+    // 3. ESS Product Compliance < high_product_compliance (critical compliance failure) - skip NIPR for NMCI
     const highProductComplianceThreshold = thresholds.high_product_compliance || 50;
     if (!isNmci && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < highProductComplianceThreshold) {
         level = 'HIGH';
@@ -664,6 +669,46 @@ const calculateRisk = (boat, thresholds) => {
     if (boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < highProductComplianceThreshold) {
         level = 'HIGH';
         reasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
+    }
+
+    // 4. VPH exceeds auto_high_ra_vph threshold (critical vulnerability level) - skip NIPR for NMCI
+    const autoHighVphThreshold = thresholds.auto_high_ra_vph || 5;
+    if (!isNmci && boat.vramNiprRaVph !== null && boat.vramNiprRaVph > autoHighVphThreshold) {
+        level = 'HIGH';
+        reasons.push(`NIPR VPH: ${boat.vramNiprRaVph.toFixed(2)}`);
+    }
+    if (boat.vramSiprRaVph !== null && boat.vramSiprRaVph > autoHighVphThreshold) {
+        level = 'HIGH';
+        reasons.push(`SIPR VPH: ${boat.vramSiprRaVph.toFixed(2)}`);
+    }
+
+    // 5. Scan age exceeds auto_high_scan_age_days threshold (critically outdated scans) - skip NIPR for NMCI
+    const autoHighScanAgeThreshold = thresholds.auto_high_scan_age_days || 30;
+    if (!isNmci && nAge !== null && nAge > autoHighScanAgeThreshold) {
+        level = 'HIGH';
+        reasons.push(`NIPR Scan: ${nAge}d`);
+    }
+    if (sAge !== null && sAge > autoHighScanAgeThreshold) {
+        level = 'HIGH';
+        reasons.push(`SIPR Scan: ${sAge}d`);
+    }
+
+    // 6. ESS Compliance below high_ess_compliance threshold (critical policy failure) - skip NIPR for NMCI
+    const highEssComplianceThreshold = thresholds.high_ess_compliance || 90;
+    if (!isNmci && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < highEssComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`NIPR Policy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
+    }
+    if (boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < highEssComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`SIPR Policy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
+    }
+
+    // 7. TAM past due exceeds high_tam_past_due threshold (critical maintenance backlog)
+    const highTamThreshold = thresholds.high_tam_past_due || 20;
+    if ((boat.tamPastDue || 0) > highTamThreshold) {
+        level = 'HIGH';
+        reasons.push(`TAMs: ${boat.tamPastDue}`);
     }
 
     // If not already HIGH, check MEDIUM criteria
@@ -2655,16 +2700,53 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                         </div>
                     </div>
                     <p className="text-sm text-slate-500 mb-4">These adjustments only apply to this preview session and will be logged in the generated report.</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {Object.entries(previewThresholds).map(([k, v]) => (
-                            <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
-                                <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
-                                <div className="flex items-center gap-1">
-                                    <input type="number" step="any" value={v} onChange={(e) => recalculateWithThresholds({...previewThresholds, [k]: parseFloat(e.target.value) || 0})} className="w-full text-right text-sm" />
-                                    {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+
+                    {/* HIGH Risk Thresholds */}
+                    <div className="mb-4">
+                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-high">HIGH</span></h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-red-300">
+                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('auto_high_') || k.startsWith('high_')).map(([k, v]) => (
+                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
+                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
+                                    <div className="flex items-center gap-1">
+                                        <input type="number" step="any" value={v} onChange={(e) => recalculateWithThresholds({...previewThresholds, [k]: parseFloat(e.target.value) || 0})} className="w-full text-right text-sm" />
+                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* MED Risk Thresholds */}
+                    <div className="mb-4">
+                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-med">MED</span></h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-amber-300">
+                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('med_')).map(([k, v]) => (
+                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
+                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
+                                    <div className="flex items-center gap-1">
+                                        <input type="number" step="any" value={v} onChange={(e) => recalculateWithThresholds({...previewThresholds, [k]: parseFloat(e.target.value) || 0})} className="w-full text-right text-sm" />
+                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* LOW Risk Thresholds */}
+                    <div>
+                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-low">LOW</span></h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-green-300">
+                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('low_')).map(([k, v]) => (
+                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
+                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
+                                    <div className="flex items-center gap-1">
+                                        <input type="number" step="any" value={v} onChange={(e) => recalculateWithThresholds({...previewThresholds, [k]: parseFloat(e.target.value) || 0})} className="w-full text-right text-sm" />
+                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
@@ -3111,7 +3193,31 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
             {subTab === 'thresholds' && (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-4 text-slate-700">Risk Thresholds</h3>
-                    <div className="grid grid-cols-2 gap-4">{Object.entries(settings.thresholds).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}</div>
+                    <p className="text-sm text-slate-500 mb-4">Configure the thresholds that determine risk levels. Changes affect risk calculations immediately.</p>
+
+                    {/* HIGH Risk Thresholds */}
+                    <div className="mb-6">
+                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Thresholds (Auto-HIGH if exceeded)</h4>
+                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-red-300">
+                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('auto_high_') || k.startsWith('high_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
+                        </div>
+                    </div>
+
+                    {/* MED Risk Thresholds */}
+                    <div className="mb-6">
+                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Thresholds (2+ conditions trigger MED)</h4>
+                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-amber-300">
+                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('med_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
+                        </div>
+                    </div>
+
+                    {/* LOW Risk Thresholds */}
+                    <div className="mb-2">
+                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Thresholds (Must meet all criteria)</h4>
+                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-green-300">
+                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('low_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
+                        </div>
+                    </div>
                 </div>
             )}
 
