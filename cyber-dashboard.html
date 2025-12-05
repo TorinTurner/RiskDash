@@ -1411,15 +1411,7 @@ ${isTabVisible('analytics') ? (() => {
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
-    const summaryHeaders = [
-        isColVisible('isic') ? `<th style="text-align:left">ISIC</th>` : '',
-        isColVisible('boats') ? `<th>Boats</th>` : '',
-        isColVisible('high') ? `<th>High</th>` : '',
-        isColVisible('med') ? `<th>Med</th>` : '',
-        isColVisible('low') ? `<th>Low</th>` : '',
-        isColVisible('avgVph') ? `<th>Avg VPH</th>` : '',
-        isColVisible('breakfix') ? `<th>Breakfix</th>` : ''
-    ].filter(Boolean).join('');
+    const summaryHeaders = `<th style="text-align:left">ISIC</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th>`;
     const summaryRows = Object.entries(groupByISIC(boats)).map(([isic, isicBoats]) => {
         const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
         const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
@@ -1429,15 +1421,7 @@ ${isTabVisible('analytics') ? (() => {
         const vph = vphVals.length > 0 ? (vphVals.reduce((s,v)=>s+v,0)/vphVals.length).toFixed(2) : '0.00';
         // Breakfix: sum NIPR (for non-NMCI) + SIPR
         const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
-        return `<tr>${[
-            isColVisible('isic') ? `<td style="text-align:left;font-weight:600">${isic}</td>` : '',
-            isColVisible('boats') ? `<td>${isicBoats.length}</td>` : '',
-            isColVisible('high') ? `<td class="${h>0?'risk-high':''}">${h}</td>` : '',
-            isColVisible('med') ? `<td class="${m>0?'risk-med':''}">${m}</td>` : '',
-            isColVisible('low') ? `<td class="risk-low">${l}</td>` : '',
-            isColVisible('avgVph') ? `<td>${vph}</td>` : '',
-            isColVisible('breakfix') ? `<td class="${bf>0?'alert-red':''}">${bf}</td>` : ''
-        ].filter(Boolean).join('')}</tr>`;
+        return `<tr><td style="text-align:left;font-weight:600">${isic}</td><td>${isicBoats.length}</td><td class="${h>0?'risk-high':''}">${h}</td><td class="${m>0?'risk-med':''}">${m}</td><td class="risk-low">${l}</td><td>${vph}</td><td class="${bf>0?'alert-red':''}">${bf}</td></tr>`;
     }).join('');
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
@@ -1866,7 +1850,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
 
     // Rankings data
     const worstVph = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, 5);
+    const bestVph = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, 5);
     const worstCompliance = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, 5);
+    const bestCompliance = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, 5);
     const boatsBreakfix = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
 
@@ -1880,7 +1866,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         { id: 'totalBreakfix', type: 'stat', label: 'Total Breakfix' },
         { id: 'avgCompliance', type: 'stat', label: 'Avg Compliance' },
         { id: 'scanExempt', type: 'stat', label: 'Scan Exempt' },
-        { id: 'riskDistribution', type: 'chart', label: 'Risk Distribution Chart' },
+        { id: 'riskPieChart', type: 'chart', label: 'Risk Pie Chart' },
+        { id: 'riskDistribution', type: 'chart', label: 'Risk Bar Chart' },
         { id: 'highRiskTable', type: 'chart', label: 'High Risk Boats Table' },
         { id: 'worstBoatsVph', type: 'ranking', label: 'Worst Boats by VPH' },
         { id: 'bestBoatsVph', type: 'ranking', label: 'Best Boats by VPH' },
@@ -1897,12 +1884,30 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
 
     const handleDrop = (targetRow, targetCol) => {
         if (!draggedItem) return;
+
+        // Check if target cell already has an item
+        const existingItem = layout.find(l => l.row === targetRow && l.col === targetCol);
+
         if (draggedItem.isNew) {
-            // Adding from sidebar
-            setLayout(prev => [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol }]);
+            // Adding from sidebar - only if cell is empty
+            if (!existingItem) {
+                setLayout(prev => [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol }]);
+            }
         } else {
-            // Moving existing item
-            setLayout(prev => prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item));
+            // Moving existing item - swap positions if target has item
+            if (existingItem && existingItem.id !== draggedItem.id) {
+                // Swap: move existing item to dragged item's old position
+                const draggedOldRow = layout.find(l => l.id === draggedItem.id)?.row;
+                const draggedOldCol = layout.find(l => l.id === draggedItem.id)?.col;
+                setLayout(prev => prev.map(item => {
+                    if (item.id === draggedItem.id) return { ...item, row: targetRow, col: targetCol };
+                    if (item.id === existingItem.id) return { ...item, row: draggedOldRow, col: draggedOldCol };
+                    return item;
+                }));
+            } else if (!existingItem) {
+                // Move to empty cell
+                setLayout(prev => prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item));
+            }
         }
         setDraggedItem(null);
     };
@@ -1930,9 +1935,30 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             case 'totalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${totalBreakfix > 0 ? 'text-red-600' : ''}`}>{totalBreakfix}</div></div>;
             case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg ESS Compliance</div><div className={valueStyle}>{avgCompliance}%</div></div>;
             case 'scanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{scanExemptCount}</div></div>;
+            case 'riskPieChart': {
+                const total = boats.length || 1;
+                const highPct = (riskCounts.HIGH / total) * 100;
+                const medPct = (riskCounts.MED / total) * 100;
+                const lowPct = (riskCounts.LOW / total) * 100;
+                // Create conic gradient for pie chart
+                const conicGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
+                return (
+                    <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                        <div className="font-bold text-slate-700 mb-3">Risk Distribution</div>
+                        <div className="flex justify-center">
+                            <div style={{width: '100px', height: '100px', borderRadius: '50%', background: conicGradient}}></div>
+                        </div>
+                        <div className="flex gap-2 mt-3 text-xs justify-center">
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-full"></span>HIGH ({riskCounts.HIGH})</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-600 rounded-full"></span>MED ({riskCounts.MED})</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded-full"></span>LOW ({riskCounts.LOW})</span>
+                        </div>
+                    </div>
+                );
+            }
             case 'riskDistribution': return (
                 <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
-                    <div className="font-bold text-slate-700 mb-3">Risk Distribution</div>
+                    <div className="font-bold text-slate-700 mb-3">Risk Bar Chart</div>
                     <div className="flex gap-2 items-end h-24">
                         <div className="flex-1 bg-red-500 rounded" style={{height: `${(riskCounts.HIGH / boats.length) * 100}%`}} title={`High: ${riskCounts.HIGH}`}></div>
                         <div className="flex-1 bg-amber-500 rounded" style={{height: `${(riskCounts.MED / boats.length) * 100}%`}} title={`Med: ${riskCounts.MED}`}></div>
@@ -1958,10 +1984,22 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                     <div className="text-sm">{worstVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
                 </div>
             );
+            case 'bestBoatsVph': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Best Boats by VPH</div>
+                    <div className="text-sm">{bestVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
+                </div>
+            );
             case 'worstBoatsCompliance': return (
                 <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
                     <div className="font-bold text-slate-700 mb-3">Worst by Compliance</div>
                     <div className="text-sm">{worstCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
+                </div>
+            );
+            case 'bestBoatsCompliance': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Best by Compliance</div>
+                    <div className="text-sm">{bestCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
                 </div>
             );
             case 'boatsWithBreakfix': return (
