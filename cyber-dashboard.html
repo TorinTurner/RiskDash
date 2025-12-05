@@ -9,6 +9,7 @@
     <script src="libs/babel.min.js"></script>
     <script src="libs/xlsx.full.min.js"></script>
     <script src="libs/tailwind.min.js"></script>
+    <script src="libs/chart.min.js"></script>
     <style>
         /* Fonts - using system fonts for air-gapped access */
         * { box-sizing: border-box; }
@@ -1985,6 +1986,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
 
     // Initialize Chart.js charts
     React.useEffect(() => {
+        if (typeof Chart === 'undefined') return;
+
         const initChart = (id, config) => {
             const canvas = document.getElementById(`preview-chart-${id}`);
             if (!canvas) return;
