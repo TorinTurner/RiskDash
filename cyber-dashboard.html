@@ -1166,7 +1166,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .hq-table{font-size:11pt}
 .hq-table th{font-size:10pt;padding:10px 12px}
 .hq-table td{padding:8px 12px;font-size:11pt}
-.hq-table th:first-child,.hq-table td:first-child{text-align:left}
+.hq-table th:first-child,.hq-table td:first-child{text-align:left;white-space:normal;word-wrap:break-word;min-width:120px}
 .stat-cards{display:grid;gap:16px;margin-bottom:24px;width:100%}
 .stat-card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 .stat-card h3{font-size:10pt;color:#64748b;margin-bottom:8px}
@@ -1222,6 +1222,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .summary-table thead{display:table-header-group!important}
     .summary-table tbody{display:table-row-group!important}
     .summary-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+    .hq-table th:first-child,.hq-table td:first-child{white-space:normal!important;word-wrap:break-word!important;min-width:100px!important;max-width:150px!important}
     .page-header{page-break-after:avoid!important;break-after:avoid!important}
     .page-header + .table-wrapper,.page-header + div{page-break-before:avoid!important;break-before:avoid!important}
     .table-wrapper{page-break-inside:auto!important}
@@ -1328,8 +1329,15 @@ ${isTabVisible('analytics') ? (() => {
     const statCount = visibleStatsArr.length;
     const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
     const visibleStats = visibleStatsArr.join('');
+    // Pie chart using CSS conic-gradient
+    const total = boats.length || 1;
+    const highPct = (riskCounts.HIGH / total) * 100;
+    const medPct = (riskCounts.MED / total) * 100;
+    const pieGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
+    const pieChart = `<div class="chart-box"><h3>Risk Distribution</h3><div style="display:flex;flex-direction:column;align-items:center;padding:16px;"><div style="width:120px;height:120px;border-radius:50%;background:${pieGradient};"></div><div style="display:flex;gap:12px;margin-top:12px;font-size:8pt;"><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#dc2626;border-radius:50%;"></span>HIGH (${riskCounts.HIGH})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#d97706;border-radius:50%;"></span>MED (${riskCounts.MED})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#059669;border-radius:50%;"></span>LOW (${riskCounts.LOW})</span></div></div></div>`;
     const visibleCharts = [
-        isInLayout('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
+        isInLayout('riskPieChart') ? pieChart : '',
+        isInLayout('riskDistribution') ? `<div class="chart-box"><h3>Risk Bar Chart</h3><canvas id="chart-risk-all"></canvas></div>` : '',
         isInLayout('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
         isInLayout('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
         isInLayout('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
@@ -1870,6 +1878,22 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
     const boatsBreakfix = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
 
+    // ISIC data for rankings
+    const groupByISIC = (boats) => boats.reduce((acc, b) => { acc[b.isic] = acc[b.isic] || []; acc[b.isic].push(b); return acc; }, {});
+    const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => {
+        const vphVals = ib.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+        return { isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0 };
+    });
+    const worstIsicsRisk = [...isicData].sort((a,b) => b.high - a.high).slice(0, 5);
+    const bestIsicsRisk = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, 5);
+    const worstIsicsVph = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, 5);
+
+    // TYCOM data
+    const groupByTycom = (boats) => boats.reduce((acc, b) => { const t = b.tycom || 'Unknown'; acc[t] = acc[t] || []; acc[t].push(b); return acc; }, {});
+    const tycomData = Object.entries(groupByTycom(boats)).map(([tycom, tb]) => ({
+        tycom, boats: tb.length, high: tb.filter(b=>b.riskLevel==='HIGH').length, med: tb.filter(b=>b.riskLevel==='MED').length, low: tb.filter(b=>b.riskLevel==='LOW').length
+    }));
+
     // Available elements for sidebar
     const availableElements = [
         { id: 'totalBoats', type: 'stat', label: 'Total Boats' },
@@ -1882,12 +1906,18 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         { id: 'scanExempt', type: 'stat', label: 'Scan Exempt' },
         { id: 'riskPieChart', type: 'chart', label: 'Risk Pie Chart' },
         { id: 'riskDistribution', type: 'chart', label: 'Risk Bar Chart' },
+        { id: 'riskByTycom', type: 'chart', label: 'Risk by TYCOM' },
+        { id: 'vphByIsic', type: 'chart', label: 'VPH by ISIC' },
         { id: 'highRiskTable', type: 'chart', label: 'High Risk Boats Table' },
         { id: 'worstBoatsVph', type: 'ranking', label: 'Worst Boats by VPH' },
         { id: 'bestBoatsVph', type: 'ranking', label: 'Best Boats by VPH' },
         { id: 'worstBoatsCompliance', type: 'ranking', label: 'Worst by Compliance' },
         { id: 'bestBoatsCompliance', type: 'ranking', label: 'Best by Compliance' },
         { id: 'boatsWithBreakfix', type: 'ranking', label: 'Boats with Breakfix' },
+        { id: 'worstIsicsRisk', type: 'ranking', label: 'Worst ISICs by Risk' },
+        { id: 'bestIsicsRisk', type: 'ranking', label: 'Best ISICs by Risk' },
+        { id: 'worstIsicsVph', type: 'ranking', label: 'Worst ISICs by VPH' },
+        { id: 'tycomComparison', type: 'ranking', label: 'TYCOM Comparison' },
     ];
 
     const activeIds = layout.map(l => l.id);
@@ -1899,39 +1929,86 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
     const handleDrop = (targetRow, targetCol) => {
         if (!draggedItem) return;
 
+        const draggedWidth = draggedItem.width || 1;
+        const draggedHeight = draggedItem.height || 1;
+
         // Check if target cell already has an item
         const existingItem = layout.find(l => l.row === targetRow && l.col === targetCol);
+
+        // Check if target cell is covered by a multi-cell widget
+        const isCovered = layout.some(item => {
+            if (item.id === draggedItem.id) return false;
+            const iw = item.width || 1;
+            const ih = item.height || 1;
+            const inWidthRange = targetCol >= item.col && targetCol < item.col + iw;
+            const inHeightRange = targetRow >= item.row && targetRow < item.row + ih;
+            const isOrigin = targetRow === item.row && targetCol === item.col;
+            return inWidthRange && inHeightRange && !isOrigin;
+        });
+
+        // Check if dropping widget would go off grid or overlap another widget
+        const wouldOverlap = (draggedWidth > 1 || draggedHeight > 1) && (
+            targetCol + draggedWidth > 4 ||
+            layout.some(l => {
+                if (l.id === draggedItem.id) return false;
+                const lw = l.width || 1;
+                const lh = l.height || 1;
+                // Check if any cell in the dragged widget's area would overlap with this layout item
+                for (let r = targetRow; r < targetRow + draggedHeight; r++) {
+                    for (let c = targetCol; c < targetCol + draggedWidth; c++) {
+                        if (r >= l.row && r < l.row + lh && c >= l.col && c < l.col + lw) return true;
+                    }
+                }
+                return false;
+            })
+        );
+
+        if (isCovered || wouldOverlap) {
+            setDraggedItem(null);
+            return;
+        }
 
         if (draggedItem.isNew) {
             // Adding from sidebar - only if cell is empty
             if (!existingItem) {
-                setLayout(prev => [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol }]);
+                setLayout(prev => {
+                    const newLayout = [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol, width: 1, height: 1 }];
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             }
         } else {
             // Moving existing item - swap positions if target has item
             if (existingItem && existingItem.id !== draggedItem.id) {
                 // Swap: move existing item to dragged item's old position
-                const draggedOldRow = layout.find(l => l.id === draggedItem.id)?.row;
-                const draggedOldCol = layout.find(l => l.id === draggedItem.id)?.col;
-                setLayout(prev => prev.map(item => {
-                    if (item.id === draggedItem.id) return { ...item, row: targetRow, col: targetCol };
-                    if (item.id === existingItem.id) return { ...item, row: draggedOldRow, col: draggedOldCol };
-                    return item;
-                }));
+                const draggedOld = layout.find(l => l.id === draggedItem.id);
+                setLayout(prev => {
+                    const newLayout = prev.map(item => {
+                        if (item.id === draggedItem.id) return { ...item, row: targetRow, col: targetCol };
+                        if (item.id === existingItem.id) return { ...item, row: draggedOld?.row, col: draggedOld?.col };
+                        return item;
+                    });
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             } else if (!existingItem) {
-                // Move to empty cell
-                setLayout(prev => prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item));
+                // Move to empty cell (preserve width/height)
+                setLayout(prev => {
+                    const newLayout = prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item);
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             }
         }
         setDraggedItem(null);
     };
 
-    const removeItem = (id) => setLayout(prev => prev.filter(item => item.id !== id));
-
-    const saveLayout = () => {
-        if (onLayoutChange) {
-            onLayoutChange(layout);
-        }
+    const removeItem = (id) => {
+        setLayout(prev => {
+            const newLayout = prev.filter(item => item.id !== id);
+            if (onLayoutChange) onLayoutChange(newLayout);
+            return newLayout;
+        });
     };
 
     // Render element content
@@ -2024,16 +2101,115 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                     )}
                 </div>
             );
+            case 'riskByTycom': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Risk by TYCOM</div>
+                    <div className="space-y-2">
+                        {tycomData.map(t => (
+                            <div key={t.tycom} className="flex items-center gap-2">
+                                <span className="text-xs font-medium w-20 truncate">{t.tycom}</span>
+                                <div className="flex-1 flex h-4 rounded overflow-hidden bg-slate-100">
+                                    {t.high > 0 && <div className="bg-red-500" style={{width: `${(t.high/t.boats)*100}%`}}></div>}
+                                    {t.med > 0 && <div className="bg-amber-500" style={{width: `${(t.med/t.boats)*100}%`}}></div>}
+                                    {t.low > 0 && <div className="bg-emerald-500" style={{width: `${(t.low/t.boats)*100}%`}}></div>}
+                                </div>
+                                <span className="text-xs text-slate-500">{t.boats}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+            case 'vphByIsic': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">VPH by ISIC</div>
+                    <div className="space-y-1 text-sm max-h-32 overflow-auto">
+                        {isicData.sort((a,b) => b.avgVph - a.avgVph).slice(0,8).map(i => (
+                            <div key={i.isic} className="flex justify-between">
+                                <span className="truncate">{i.isic}</span>
+                                <span className={i.avgVph > 3.5 ? 'text-red-600' : 'text-slate-600'}>{i.avgVph.toFixed(2)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+            case 'worstIsicsRisk': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Worst ISICs by Risk</div>
+                    <div className="text-sm">{worstIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.high} high</span></div>)}</div>
+                </div>
+            );
+            case 'bestIsicsRisk': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Best ISICs by Risk</div>
+                    <div className="text-sm">{bestIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-emerald-600">{i.lowPct.toFixed(0)}% low</span></div>)}</div>
+                </div>
+            );
+            case 'worstIsicsVph': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Worst ISICs by VPH</div>
+                    <div className="text-sm">{worstIsicsVph.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.avgVph.toFixed(2)}</span></div>)}</div>
+                </div>
+            );
+            case 'tycomComparison': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">TYCOM Comparison</div>
+                    <div className="text-sm">
+                        <div className="grid grid-cols-5 gap-1 text-xs font-medium text-slate-500 mb-1"><span>TYCOM</span><span>Boats</span><span>High</span><span>Med</span><span>Low</span></div>
+                        {tycomData.map(t => <div key={t.tycom} className="grid grid-cols-5 gap-1 text-xs py-1 border-b border-slate-100"><span className="truncate">{t.tycom}</span><span>{t.boats}</span><span className="text-red-600">{t.high}</span><span className="text-amber-600">{t.med}</span><span className="text-emerald-600">{t.low}</span></div>)}
+                    </div>
+                </div>
+            );
             default: return <div className="bg-slate-100 rounded-lg p-4">{item.id}</div>;
         }
     };
 
+    // Cycle through sizes: 1x1 -> 2x1 -> 1x2 -> 2x2 -> 1x1 (auto-saves)
+    const cycleSize = (id) => {
+        setLayout(prev => {
+            const newLayout = prev.map(item => {
+                if (item.id === id) {
+                    const w = item.width || 1;
+                    const h = item.height || 1;
+                    let newW = 1, newH = 1;
+                    if (w === 1 && h === 1) { newW = 2; newH = 1; }      // 1x1 -> 2x1
+                    else if (w === 2 && h === 1) { newW = 1; newH = 2; } // 2x1 -> 1x2
+                    else if (w === 1 && h === 2) { newW = 2; newH = 2; } // 1x2 -> 2x2
+                    else { newW = 1; newH = 1; }                         // 2x2 -> 1x1
+                    // Ensure we don't go off grid
+                    const maxCol = newW === 2 ? 2 : 3;
+                    const newCol = Math.min(item.col, maxCol);
+                    return { ...item, width: newW, height: newH, col: newCol };
+                }
+                return item;
+            });
+            // Auto-save to settings
+            if (onLayoutChange) onLayoutChange(newLayout);
+            return newLayout;
+        });
+    };
+
+    // Check if a cell is covered by a multi-cell widget
+    const isCellCovered = (row, col) => {
+        return layout.some(item => {
+            const iw = item.width || 1;
+            const ih = item.height || 1;
+            // Check if this cell falls within the item's area (but not the origin cell)
+            const inWidthRange = col >= item.col && col < item.col + iw;
+            const inHeightRange = row >= item.row && row < item.row + ih;
+            const isOrigin = row === item.row && col === item.col;
+            return inWidthRange && inHeightRange && !isOrigin;
+        });
+    };
+
     // Grid cells (4 columns x many rows)
-    const maxRow = Math.max(...layout.map(l => l.row), 3) + 1;
+    const maxRow = Math.max(...layout.map(l => l.row + (l.height || 1) - 1), 3) + 1;
     const gridCells = [];
     for (let row = 0; row <= maxRow; row++) {
         for (let col = 0; col < 4; col++) {
-            gridCells.push({ row, col });
+            // Skip cells that are covered by multi-cell widgets
+            if (!isCellCovered(row, col)) {
+                gridCells.push({ row, col });
+            }
         }
     }
 
@@ -2044,16 +2220,23 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                     <h3 className="text-lg font-bold text-slate-700">Analytics Preview</h3>
                     <div className="flex gap-2">
                         <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-1 bg-cyan-600 text-white rounded text-sm">{showSidebar ? 'Hide' : 'Add'} Widgets</button>
-                        <button onClick={saveLayout} className="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Save Layout</button>
+                        <span className="text-xs text-slate-400 self-center">Auto-saves</span>
                     </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3 min-h-[400px]" style={{gridAutoRows: 'minmax(100px, auto)'}}>
                     {gridCells.map(cell => {
                         const item = layout.find(l => l.row === cell.row && l.col === cell.col);
+                        const itemWidth = item?.width || 1;
+                        const itemHeight = item?.height || 1;
+                        const sizeLabel = `${itemWidth}x${itemHeight}`;
                         return (
                             <div
                                 key={`${cell.row}-${cell.col}`}
                                 className={`relative rounded border-2 border-dashed ${item ? 'border-transparent' : 'border-slate-200 bg-slate-50'} ${draggedItem ? 'hover:bg-cyan-50 hover:border-cyan-400' : ''}`}
+                                style={{
+                                    ...(itemWidth > 1 ? { gridColumn: `span ${itemWidth}` } : {}),
+                                    ...(itemHeight > 1 ? { gridRow: `span ${itemHeight}` } : {})
+                                }}
                                 onDragOver={(e) => { e.preventDefault(); }}
                                 onDrop={() => handleDrop(cell.row, cell.col)}
                             >
@@ -2065,6 +2248,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                                         className="cursor-move h-full"
                                     >
                                         <button onClick={() => removeItem(item.id)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs z-10 hover:bg-red-600">×</button>
+                                        <button onClick={() => cycleSize(item.id)} className="absolute top-1 right-7 px-1 h-5 bg-blue-500 text-white rounded text-xs z-10 hover:bg-blue-600" title="Cycle size: 1x1 → 2x1 → 1x2 → 2x2">
+                                            {sizeLabel}
+                                        </button>
                                         {renderElement(item)}
                                     </div>
                                 )}
@@ -2197,18 +2383,22 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
-    // Updated color classes based on new risk criteria
-    // Compliance: >=95% = green, <95% = red
-    const compClass = (v) => v === null ? '' : v >= 95 ? 'risk-low' : 'risk-high';
-    // VPH: <2.5 = green, 2.5-3.5 = yellow, >3.5 = red
-    const vphClass = (v) => v === null ? '' : v < 2.5 ? 'risk-low' : v <= 3.5 ? 'risk-med' : 'risk-high';
-    // Scan age: <=14 days = green, >14 days = red
+    // Updated color classes using activeThresholds for real-time updates
+    const compThreshold = activeThresholds.med_ess_compliance || 95;
+    const lowVphThreshold = activeThresholds.low_vph || 2.5;
+    const medVphThreshold = activeThresholds.med_ra_vph || 3.5;
+    const scanAgeThreshold = activeThresholds.med_scan_age_days || 14;
+    // Compliance: >=threshold = green, <threshold = red
+    const compClass = (v) => v === null ? '' : v >= compThreshold ? 'risk-low' : 'risk-high';
+    // VPH: <lowThreshold = green, <=medThreshold = yellow, >medThreshold = red
+    const vphClass = (v) => v === null ? '' : v < lowVphThreshold ? 'risk-low' : v <= medVphThreshold ? 'risk-med' : 'risk-high';
+    // Scan age: <=threshold days = green, >threshold days = red
     const scanAgeClass = (d) => {
         if (!d) return 'risk-high';
         const date = new Date(d);
         if (isNaN(date.getTime())) return 'risk-high';
         const age = Math.floor((new Date() - date) / 86400000);
-        return age <= 14 ? 'risk-low' : 'risk-high';
+        return age <= scanAgeThreshold ? 'risk-low' : 'risk-high';
     };
 
     const fieldLabels = {
