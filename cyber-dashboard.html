@@ -2941,7 +2941,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 rounded border border-blue-200">
                                 <input type="checkbox" id="nmci-checkbox" checked={editingBoat.nmci || false} onChange={(e) => setEditingBoat({...editingBoat, nmci: e.target.checked})} />
                                 <label htmlFor="nmci-checkbox" className="text-sm font-medium text-blue-800">NMCI Network (NIPR)</label>
-                                <span className="text-xs text-blue-600 ml-2">Check if this boat uses NMCI for their NIPR network instead of SUBFOR managed</span>
+                                <span className="text-xs text-blue-600 ml-2">Check if this boat uses NMCI for their NIPR network to ignore their NIPR VRAM scores for risk calculation</span>
                             </div>
                         </div>
                         <div className="flex gap-2 mt-6"><button onClick={saveBoat} className="btn-primary">Save</button><button onClick={() => setEditingBoat(null)} className="btn-secondary">Cancel</button></div>
