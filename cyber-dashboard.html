@@ -303,7 +303,23 @@ const SettingsManager = {
 
     // Ensure settings have all required fields and versioning
     ensureDefaults(settings, options = {}) {
-        if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
+        if (!settings.schemaConfig) {
+            settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
+        } else {
+            // Merge in any missing schema fields from defaults
+            for (const type of ['vram', 'ess', 'tam']) {
+                if (!settings.schemaConfig[type]) {
+                    settings.schemaConfig[type] = JSON.parse(JSON.stringify(defaultSchemaConfig[type]));
+                } else {
+                    const existingFields = new Set(settings.schemaConfig[type].map(f => f.field));
+                    for (const defaultField of defaultSchemaConfig[type]) {
+                        if (!existingFields.has(defaultField.field)) {
+                            settings.schemaConfig[type].push(JSON.parse(JSON.stringify(defaultField)));
+                        }
+                    }
+                }
+            }
+        }
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
