@@ -228,6 +228,7 @@ const defaultAnalyticsLayout = [
     { id: 'worstBoatsVph', type: 'ranking', row: 3, col: 0 },
     { id: 'worstBoatsCompliance', type: 'ranking', row: 3, col: 1 },
     { id: 'boatsWithBreakfix', type: 'ranking', row: 3, col: 2 },
+    { id: 'riskSummaryByIsic', type: 'table', row: 4, col: 0, width: 4 },
 ];
 
 // Default legend text - updated to match new risk criteria
@@ -1198,6 +1199,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .tab-content.print-active{display:block!important}
     .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:none;padding:10px;overflow:hidden!important}
     .isic-section{page-break-inside:avoid}
+    .analytics-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;grid-auto-rows:minmax(80px,auto)!important}
     .stat-cards{display:grid!important;gap:8px!important}
     .stat-card{padding:8px!important;page-break-inside:avoid;overflow:hidden!important}
     .stat-card h3{font-size:8pt!important;margin-bottom:4px!important}
@@ -1231,6 +1233,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .legend-box{page-break-inside:avoid!important;break-inside:avoid!important}
 }
 @media print and (orientation:landscape){
+    .analytics-grid{grid-template-columns:repeat(4,1fr)!important;gap:6px!important}
     .chart-grid{grid-template-columns:repeat(2,1fr)!important}
     .stat-cards{grid-template-columns:repeat(4,1fr)!important}
     .chart-box{max-height:200px!important}
@@ -1312,38 +1315,13 @@ ${hqTable(aggs.csp, 'CSP Status')}
 </div>` : ''}
 
 ${isTabVisible('analytics') ? (() => {
-    // Use analyticsLayout for visibility - if item is in layout, it's visible
+    // Use analyticsLayout for visibility and positioning
     const al = settings.analyticsLayout || defaultAnalyticsLayout;
+    const getLayoutItem = (id) => al.find(item => item.id === id);
     const isInLayout = (id) => al.some(item => item.id === id);
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
-    const visibleStatsArr = [
-        isInLayout('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
-        isInLayout('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
-        isInLayout('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
-        isInLayout('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
-        isInLayout('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
-        isInLayout('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
-        isInLayout('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
-        isInLayout('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
-    ].filter(Boolean);
-    const statCount = visibleStatsArr.length;
-    const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
-    const visibleStats = visibleStatsArr.join('');
-    // Pie chart using CSS conic-gradient
-    const total = boats.length || 1;
-    const highPct = (riskCounts.HIGH / total) * 100;
-    const medPct = (riskCounts.MED / total) * 100;
-    const pieGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
-    const pieChart = `<div class="chart-box"><h3>Risk Distribution</h3><div style="display:flex;flex-direction:column;align-items:center;padding:16px;"><div style="width:120px;height:120px;border-radius:50%;background:${pieGradient};"></div><div style="display:flex;gap:12px;margin-top:12px;font-size:8pt;"><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#dc2626;border-radius:50%;"></span>HIGH (${riskCounts.HIGH})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#d97706;border-radius:50%;"></span>MED (${riskCounts.MED})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#059669;border-radius:50%;"></span>LOW (${riskCounts.LOW})</span></div></div></div>`;
-    const visibleCharts = [
-        isInLayout('riskPieChart') ? pieChart : '',
-        isInLayout('riskDistribution') ? `<div class="chart-box"><h3>Risk Bar Chart</h3><canvas id="chart-risk-all"></canvas></div>` : '',
-        isInLayout('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
-        isInLayout('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
-        isInLayout('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
-    ].filter(Boolean).join('');
 
-    // Rankings - helper functions to properly handle NMCI boats
+    // Helper functions for boat data
     const getBoatMaxVph = (b) => {
         const nipr = b.isNmci ? null : b.vramNiprRaVph;
         const sipr = b.vramSiprRaVph;
@@ -1358,91 +1336,136 @@ ${isTabVisible('analytics') ? (() => {
     };
     const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
 
-    const rankingTables = [];
-    if (isInLayout('worstBoatsVph')) {
-        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, 5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('bestBoatsVph')) {
-        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, 5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('worstBoatsCompliance')) {
-        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, 5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('bestBoatsCompliance')) {
-        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, 5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    // ISIC data: calculate avg VPH considering both enclaves and NMCI
+    // ISIC data for rankings
     const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => {
         const vphVals = ib.flatMap(b => {
             const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph);
             if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v;
         });
-        return {isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0};
+        return {isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, med: ib.filter(b=>b.riskLevel==='MED').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0};
     });
-    if (isInLayout('worstIsicsRisk')) {
-        const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, 3);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by High Risk</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>High</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.high}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('bestIsicsRisk')) {
-        const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, 3);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best ISICs by Low Risk %</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Low %</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-low">${i.lowPct.toFixed(0)}%</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('worstIsicsVph')) {
-        const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, 3);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by Avg VPH</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Avg VPH</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.avgVph.toFixed(2)}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('boatsWithBreakfix')) {
-        const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div>`);
-    }
-    if (isInLayout('tycomComparison')) {
-        const tycomData = {};
-        boats.forEach(b => {
-            if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
-            const t=tycomData[b.tycom]; t.boats++;
-            if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
-            if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
-            if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
-            t.bfSum += getBoatTotalBreakfix(b);
-            if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
-            if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
-        });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => {
-            const avgVph = d.vphVals.length > 0 ? d.vphVals.reduce((s,v)=>s+v,0)/d.vphVals.length : 0;
-            const comp = d.compVals.length > 0 ? Math.min(100, d.compVals.reduce((s,v)=>s+v,0)/d.compVals.length) : null;
-            return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${avgVph.toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`;
-        }).join('');
-        rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
-    }
 
-    const summaryHeaders = `<th style="text-align:left">ISIC</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th>`;
-    const summaryRows = Object.entries(groupByISIC(boats)).map(([isic, isicBoats]) => {
-        const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
-        const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
-        const l = isicBoats.filter(b => b.riskLevel === 'LOW').length;
-        // VPH: avg of all values (NIPR for non-NMCI, SIPR for all)
-        const vphVals = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
-        const vph = vphVals.length > 0 ? (vphVals.reduce((s,v)=>s+v,0)/vphVals.length).toFixed(2) : '0.00';
-        // Breakfix: sum NIPR (for non-NMCI) + SIPR
-        const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
-        return `<tr><td style="text-align:left;font-weight:600">${isic}</td><td>${isicBoats.length}</td><td class="${h>0?'risk-high':''}">${h}</td><td class="${m>0?'risk-med':''}">${m}</td><td class="risk-low">${l}</td><td>${vph}</td><td class="${bf>0?'alert-red':''}">${bf}</td></tr>`;
-    }).join('');
+    // Pie chart using CSS conic-gradient
+    const total = boats.length || 1;
+    const highPct = (riskCounts.HIGH / total) * 100;
+    const medPct = (riskCounts.MED / total) * 100;
+    const pieGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
+
+    // TYCOM data
+    const tycomData = {};
+    boats.forEach(b => {
+        if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
+        const t=tycomData[b.tycom]; t.boats++;
+        if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
+        if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
+        t.bfSum += getBoatTotalBreakfix(b);
+        if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
+        if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
+    });
+
+    // Render a widget by ID
+    const renderWidget = (id) => {
+        const item = getLayoutItem(id);
+        if (!item) return '';
+        const w = item.width || 1;
+        const h = item.height || 1;
+        const style = `grid-column: span ${w}; grid-row: span ${h};`;
+
+        switch(id) {
+            case 'totalBoats': return `<div class="stat-card" style="${style}"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>`;
+            case 'highRisk': return `<div class="stat-card" style="${style}"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>`;
+            case 'medRisk': return `<div class="stat-card" style="${style}"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>`;
+            case 'lowRisk': return `<div class="stat-card" style="${style}"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>`;
+            case 'avgVph': return `<div class="stat-card" style="${style}"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>`;
+            case 'totalBreakfix': return `<div class="stat-card" style="${style}"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>`;
+            case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>`;
+            case 'scanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>`;
+            case 'riskPieChart': return `<div class="chart-box" style="${style}"><h3>Risk Distribution</h3><div style="display:flex;flex-direction:column;align-items:center;padding:16px;flex:1;justify-content:center;"><div style="width:120px;height:120px;border-radius:50%;background:${pieGradient};"></div><div style="display:flex;gap:12px;margin-top:12px;font-size:8pt;"><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#dc2626;border-radius:50%;"></span>HIGH (${riskCounts.HIGH})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#d97706;border-radius:50%;"></span>MED (${riskCounts.MED})</span><span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#059669;border-radius:50%;"></span>LOW (${riskCounts.LOW})</span></div></div></div>`;
+            case 'riskDistribution': return `<div class="chart-box" style="${style}"><h3>Risk Bar Chart</h3><div style="display:flex;gap:8px;align-items:flex-end;height:80px;padding:16px;"><div style="flex:1;background:#dc2626;border-radius:4px;height:${Math.max(5,(riskCounts.HIGH/boats.length)*100)}%;"></div><div style="flex:1;background:#d97706;border-radius:4px;height:${Math.max(5,(riskCounts.MED/boats.length)*100)}%;"></div><div style="flex:1;background:#059669;border-radius:4px;height:${Math.max(5,(riskCounts.LOW/boats.length)*100)}%;"></div></div><div style="display:flex;gap:8px;padding:0 16px;font-size:8pt;text-align:center;"><span style="flex:1;color:#dc2626;">HIGH (${riskCounts.HIGH})</span><span style="flex:1;color:#d97706;">MED (${riskCounts.MED})</span><span style="flex:1;color:#059669;">LOW (${riskCounts.LOW})</span></div></div>`;
+            case 'highRiskTable': {
+                const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH').slice(0, h > 1 ? 10 : 5);
+                return `<div class="chart-box" style="${style}"><h3>High Risk Boats (${boats.filter(b => b.riskLevel === 'HIGH').length})</h3>${highRiskBoats.length === 0 ? '<div style="color:#059669;font-weight:500;padding:16px;">No high-risk boats</div>' : `<table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td></tr>`).join('')}</tbody></table>`}</div>`;
+            }
+            case 'riskByTycom': {
+                const tycomArr = Object.entries(tycomData);
+                return `<div class="chart-box" style="${style}"><h3>Risk by TYCOM</h3><div style="padding:8px;">${tycomArr.map(([tycom,d]) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:9pt;font-weight:500;width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tycom}</span><div style="flex:1;display:flex;height:12px;border-radius:4px;overflow:hidden;background:#f1f5f9;">${d.high > 0 ? `<div style="background:#dc2626;width:${(d.high/d.boats)*100}%;"></div>` : ''}${d.med > 0 ? `<div style="background:#d97706;width:${(d.med/d.boats)*100}%;"></div>` : ''}${d.low > 0 ? `<div style="background:#059669;width:${(d.low/d.boats)*100}%;"></div>` : ''}</div><span style="font-size:8pt;color:#64748b;">${d.boats}</span></div>`).join('')}</div></div>`;
+            }
+            case 'vphByIsic': {
+                const sortedIsic = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, h > 1 ? 12 : 6);
+                return `<div class="chart-box" style="${style}"><h3>VPH by ISIC</h3><div style="padding:8px;font-size:9pt;">${sortedIsic.map(i => `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f1f5f9;"><span>${i.isic}</span><span style="color:${i.avgVph > 3.5 ? '#dc2626' : '#64748b'};">${i.avgVph.toFixed(2)}</span></div>`).join('')}</div></div>`;
+            }
+            case 'worstBoatsVph': {
+                const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, h > 1 ? 10 : 5);
+                return `<div class="ranking-box" style="${style}"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'bestBoatsVph': {
+                const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, h > 1 ? 10 : 5);
+                return `<div class="ranking-box" style="${style}"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'worstBoatsCompliance': {
+                const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, h > 1 ? 10 : 5);
+                return `<div class="ranking-box" style="${style}"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'bestBoatsCompliance': {
+                const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, h > 1 ? 10 : 5);
+                return `<div class="ranking-box" style="${style}"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'boatsWithBreakfix': {
+                const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, h > 1 ? 10 : 5);
+                return `<div class="ranking-box" style="${style}"><h4>Boats with Breakfix</h4>${sorted.length === 0 ? '<div style="color:#059669;padding:8px;">None</div>' : `<table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table>`}</div>`;
+            }
+            case 'worstIsicsRisk': {
+                const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, h > 1 ? 6 : 3);
+                return `<div class="ranking-box" style="${style}"><h4>Worst ISICs by High Risk</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>High</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.high}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'bestIsicsRisk': {
+                const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, h > 1 ? 6 : 3);
+                return `<div class="ranking-box" style="${style}"><h4>Best ISICs by Low Risk %</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Low %</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-low">${i.lowPct.toFixed(0)}%</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'worstIsicsVph': {
+                const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, h > 1 ? 6 : 3);
+                return `<div class="ranking-box" style="${style}"><h4>Worst ISICs by Avg VPH</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Avg VPH</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.avgVph.toFixed(2)}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`;
+            }
+            case 'tycomComparison': {
+                const rows = Object.entries(tycomData).map(([tycom,d]) => {
+                    const avgVph = d.vphVals.length > 0 ? d.vphVals.reduce((s,v)=>s+v,0)/d.vphVals.length : 0;
+                    const comp = d.compVals.length > 0 ? Math.min(100, d.compVals.reduce((s,v)=>s+v,0)/d.compVals.length) : null;
+                    return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${avgVph.toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`;
+                }).join('');
+                return `<div class="ranking-box" style="${style}"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            }
+            case 'riskSummaryByIsic': {
+                const summaryRows = isicData.sort((a,b) => b.high - a.high).map(i => {
+                    const isicBoats = boats.filter(b => b.isic === i.isic);
+                    const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
+                    return `<tr><td style="text-align:left;font-weight:600">${i.isic}</td><td>${i.boats}</td><td class="${i.high>0?'risk-high':''}">${i.high}</td><td class="${i.med>0?'risk-med':''}">${i.med}</td><td class="risk-low">${i.low}</td><td>${i.avgVph.toFixed(2)}</td><td class="${bf>0?'alert-red':''}">${bf}</td></tr>`;
+                }).join('');
+                return `<div class="ranking-box" style="${style}"><h4>Risk Summary by ISIC</h4><table class="mini-table"><thead><tr><th style="text-align:left">ISIC</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th></tr></thead><tbody>${summaryRows}</tbody></table></div>`;
+            }
+            default: return '';
+        }
+    };
+
+    // Sort layout items by row then col for proper grid placement
+    const sortedLayout = [...al].sort((a, b) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return a.col - b.col;
+    });
+
+    // Calculate max row for grid
+    const maxRow = Math.max(...al.map(l => l.row + (l.height || 1) - 1), 0) + 1;
+
+    // Render all widgets in order
+    const gridWidgets = sortedLayout.map(item => renderWidget(item.id)).filter(Boolean).join('');
+
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
 ${pageInfo}
-${visibleStats ? `<div class="stat-cards" style="grid-template-columns:repeat(${statCols},1fr)">${visibleStats}</div>` : ''}
-${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
-${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
-${summaryHeaders ? `<div class="page">
-<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">Risk Summary by ISIC</h3>
-<table class="summary-table"><thead><tr>${summaryHeaders}</tr></thead>
-<tbody>${summaryRows}</tbody></table>
-</div>` : ''}
+<div class="analytics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;grid-auto-rows:minmax(100px,auto);">
+${gridWidgets}
+</div>
 </div>`;
 })() : ''}
 
@@ -1918,6 +1941,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         { id: 'bestIsicsRisk', type: 'ranking', label: 'Best ISICs by Risk' },
         { id: 'worstIsicsVph', type: 'ranking', label: 'Worst ISICs by VPH' },
         { id: 'tycomComparison', type: 'ranking', label: 'TYCOM Comparison' },
+        { id: 'riskSummaryByIsic', type: 'table', label: 'Risk Summary by ISIC' },
     ];
 
     const activeIds = layout.map(l => l.id);
@@ -2013,7 +2037,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
 
     // Render element content
     const renderElement = (item) => {
-        const statStyle = "bg-white rounded-lg p-4 shadow border border-slate-200";
+        const statStyle = "bg-white rounded-lg p-4 shadow border border-slate-200 h-full";
+        const chartStyle = "bg-white rounded-lg p-4 shadow border border-slate-200 h-full flex flex-col";
         const valueStyle = "text-3xl font-bold";
         const labelStyle = "text-sm text-slate-500";
 
@@ -2034,9 +2059,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                 // Create conic gradient for pie chart
                 const conicGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
                 return (
-                    <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className={chartStyle}>
                         <div className="font-bold text-slate-700 mb-3">Risk Distribution</div>
-                        <div className="flex justify-center">
+                        <div className="flex justify-center flex-1 items-center">
                             <div style={{width: '100px', height: '100px', borderRadius: '50%', background: conicGradient}}></div>
                         </div>
                         <div className="flex gap-2 mt-3 text-xs justify-center">
@@ -2048,9 +2073,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                 );
             }
             case 'riskDistribution': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Risk Bar Chart</div>
-                    <div className="flex gap-2 items-end h-24">
+                    <div className="flex gap-2 items-end flex-1 min-h-[60px]">
                         <div className="flex-1 bg-red-500 rounded" style={{height: `${(riskCounts.HIGH / boats.length) * 100}%`}} title={`High: ${riskCounts.HIGH}`}></div>
                         <div className="flex-1 bg-amber-500 rounded" style={{height: `${(riskCounts.MED / boats.length) * 100}%`}} title={`Med: ${riskCounts.MED}`}></div>
                         <div className="flex-1 bg-emerald-500 rounded" style={{height: `${(riskCounts.LOW / boats.length) * 100}%`}} title={`Low: ${riskCounts.LOW}`}></div>
@@ -2059,52 +2084,52 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                 </div>
             );
             case 'highRiskTable': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">High Risk Boats ({highRiskBoats.length})</div>
                     {highRiskBoats.length === 0 ? <div className="text-emerald-600 font-medium">No high-risk boats</div> : (
-                        <div className="text-sm max-h-32 overflow-auto">
-                            {highRiskBoats.slice(0,5).map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-slate-500">{b.isic}</span></div>)}
-                            {highRiskBoats.length > 5 && <div className="text-slate-400 text-xs mt-1">+{highRiskBoats.length - 5} more</div>}
+                        <div className="text-sm flex-1 overflow-auto">
+                            {highRiskBoats.slice(0,10).map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-slate-500">{b.isic}</span></div>)}
+                            {highRiskBoats.length > 10 && <div className="text-slate-400 text-xs mt-1">+{highRiskBoats.length - 10} more</div>}
                         </div>
                     )}
                 </div>
             );
             case 'worstBoatsVph': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Worst Boats by VPH</div>
-                    <div className="text-sm">{worstVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{worstVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
                 </div>
             );
             case 'bestBoatsVph': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Best Boats by VPH</div>
-                    <div className="text-sm">{bestVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{bestVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
                 </div>
             );
             case 'worstBoatsCompliance': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Worst by Compliance</div>
-                    <div className="text-sm">{worstCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{worstCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
                 </div>
             );
             case 'bestBoatsCompliance': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Best by Compliance</div>
-                    <div className="text-sm">{bestCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{bestCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-emerald-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
                 </div>
             );
             case 'boatsWithBreakfix': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Boats with Breakfix</div>
                     {boatsBreakfix.length === 0 ? <div className="text-emerald-600">None</div> : (
-                        <div className="text-sm">{boatsBreakfix.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{getBoatTotalBreakfix(b)}</span></div>)}</div>
+                        <div className="text-sm flex-1 overflow-auto">{boatsBreakfix.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{getBoatTotalBreakfix(b)}</span></div>)}</div>
                     )}
                 </div>
             );
             case 'riskByTycom': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Risk by TYCOM</div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex-1 overflow-auto">
                         {tycomData.map(t => (
                             <div key={t.tycom} className="flex items-center gap-2">
                                 <span className="text-xs font-medium w-20 truncate">{t.tycom}</span>
@@ -2120,9 +2145,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                 </div>
             );
             case 'vphByIsic': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">VPH by ISIC</div>
-                    <div className="space-y-1 text-sm max-h-32 overflow-auto">
+                    <div className="space-y-1 text-sm flex-1 overflow-auto">
                         {isicData.sort((a,b) => b.avgVph - a.avgVph).slice(0,8).map(i => (
                             <div key={i.isic} className="flex justify-between">
                                 <span className="truncate">{i.isic}</span>
@@ -2133,29 +2158,43 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                 </div>
             );
             case 'worstIsicsRisk': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Worst ISICs by Risk</div>
-                    <div className="text-sm">{worstIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.high} high</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{worstIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.high} high</span></div>)}</div>
                 </div>
             );
             case 'bestIsicsRisk': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Best ISICs by Risk</div>
-                    <div className="text-sm">{bestIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-emerald-600">{i.lowPct.toFixed(0)}% low</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{bestIsicsRisk.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-emerald-600">{i.lowPct.toFixed(0)}% low</span></div>)}</div>
                 </div>
             );
             case 'worstIsicsVph': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Worst ISICs by VPH</div>
-                    <div className="text-sm">{worstIsicsVph.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.avgVph.toFixed(2)}</span></div>)}</div>
+                    <div className="text-sm flex-1 overflow-auto">{worstIsicsVph.map(i => <div key={i.isic} className="flex justify-between py-1 border-b border-slate-100"><span>{i.isic}</span><span className="text-red-600">{i.avgVph.toFixed(2)}</span></div>)}</div>
                 </div>
             );
             case 'tycomComparison': return (
-                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">TYCOM Comparison</div>
-                    <div className="text-sm">
+                    <div className="text-sm flex-1 overflow-auto">
                         <div className="grid grid-cols-5 gap-1 text-xs font-medium text-slate-500 mb-1"><span>TYCOM</span><span>Boats</span><span>High</span><span>Med</span><span>Low</span></div>
                         {tycomData.map(t => <div key={t.tycom} className="grid grid-cols-5 gap-1 text-xs py-1 border-b border-slate-100"><span className="truncate">{t.tycom}</span><span>{t.boats}</span><span className="text-red-600">{t.high}</span><span className="text-amber-600">{t.med}</span><span className="text-emerald-600">{t.low}</span></div>)}
+                    </div>
+                </div>
+            );
+            case 'riskSummaryByIsic': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-3">Risk Summary by ISIC</div>
+                    <div className="text-sm flex-1 overflow-auto">
+                        <div className="grid grid-cols-7 gap-1 text-xs font-medium text-slate-500 mb-1 sticky top-0 bg-white"><span>ISIC</span><span>Boats</span><span>High</span><span>Med</span><span>Low</span><span>VPH</span><span>BF</span></div>
+                        {isicData.sort((a,b) => b.high - a.high).map(i => {
+                            const isicBoats = boats.filter(b => b.isic === i.isic);
+                            const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
+                            const med = isicBoats.filter(b => b.riskLevel === 'MED').length;
+                            return <div key={i.isic} className="grid grid-cols-7 gap-1 text-xs py-1 border-b border-slate-100"><span className="truncate font-medium">{i.isic}</span><span>{i.boats}</span><span className={i.high > 0 ? 'text-red-600 font-bold' : ''}>{i.high}</span><span className={med > 0 ? 'text-amber-600 font-bold' : ''}>{med}</span><span className="text-emerald-600">{i.low}</span><span>{i.avgVph.toFixed(2)}</span><span className={bf > 0 ? 'text-red-600' : ''}>{bf}</span></div>;
+                        })}
                     </div>
                 </div>
             );
@@ -2163,7 +2202,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         }
     };
 
-    // Cycle through sizes: 1x1 -> 2x1 -> 1x2 -> 2x2 -> 1x1 (auto-saves)
+    // Cycle through sizes: 1x1 -> 2x1 -> 4x1 -> 1x2 -> 2x2 -> 4x2 -> 1x1 (auto-saves)
     const cycleSize = (id) => {
         setLayout(prev => {
             const newLayout = prev.map(item => {
@@ -2172,12 +2211,15 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                     const h = item.height || 1;
                     let newW = 1, newH = 1;
                     if (w === 1 && h === 1) { newW = 2; newH = 1; }      // 1x1 -> 2x1
-                    else if (w === 2 && h === 1) { newW = 1; newH = 2; } // 2x1 -> 1x2
+                    else if (w === 2 && h === 1) { newW = 4; newH = 1; } // 2x1 -> 4x1 (full width)
+                    else if (w === 4 && h === 1) { newW = 1; newH = 2; } // 4x1 -> 1x2
                     else if (w === 1 && h === 2) { newW = 2; newH = 2; } // 1x2 -> 2x2
-                    else { newW = 1; newH = 1; }                         // 2x2 -> 1x1
-                    // Ensure we don't go off grid
-                    const maxCol = newW === 2 ? 2 : 3;
-                    const newCol = Math.min(item.col, maxCol);
+                    else if (w === 2 && h === 2) { newW = 4; newH = 2; } // 2x2 -> 4x2 (full width tall)
+                    else { newW = 1; newH = 1; }                         // 4x2 -> 1x1
+                    // Ensure we don't go off grid - full width items must be at col 0
+                    let newCol = item.col;
+                    if (newW === 4) { newCol = 0; }
+                    else if (newW === 2) { newCol = Math.min(item.col, 2); }
                     return { ...item, width: newW, height: newH, col: newCol };
                 }
                 return item;
@@ -2248,7 +2290,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                                         className="cursor-move h-full"
                                     >
                                         <button onClick={() => removeItem(item.id)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs z-10 hover:bg-red-600">×</button>
-                                        <button onClick={() => cycleSize(item.id)} className="absolute top-1 right-7 px-1 h-5 bg-blue-500 text-white rounded text-xs z-10 hover:bg-blue-600" title="Cycle size: 1x1 → 2x1 → 1x2 → 2x2">
+                                        <button onClick={() => cycleSize(item.id)} className="absolute top-1 right-7 px-1 h-5 bg-blue-500 text-white rounded text-xs z-10 hover:bg-blue-600" title="Cycle size: 1x1 → 2x1 → 4x1 → 1x2 → 2x2 → 4x2">
                                             {sizeLabel}
                                         </button>
                                         {renderElement(item)}
