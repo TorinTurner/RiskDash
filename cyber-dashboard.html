@@ -133,9 +133,9 @@ const defaultSchemaConfig = {
         {field: 'assets', label: 'Asset Count', column: 'Valid Assets', visible: true},
         {field: 'raVph', label: 'RA VPH', column: 'RA VPH', visible: true},
         {field: 'raCrit', label: 'RA Critical', column: 'RA Critical', visible: false},
+        {field: 'raHigh', label: 'RA High', column: 'RA High', visible: true},
         {field: 'scanIntegrity', label: 'Scan Integrity %', column: 'Scan Integrity', visible: true},
         {field: 'scanPercent', label: 'Percent Scanned', column: 'Percent Scanned', visible: true},
-        {field: 'raHigh', label: 'RA High', column: 'RA High', visible: true},
         {field: 'scanExempt', label: 'Scan Exempt', column: 'Scan Exempt', visible: true}
     ],
     ess: [
@@ -486,7 +486,7 @@ const SettingsManager = {
 
     migrateColumnMappings(old) {
         const labels = {
-            vram: {siteName:'Site/Boat Name',scanDate:'Last Scan Date',assets:'Asset Count',raVph:'RA VPH',raCrit:'RA Critical',scanIntegrity:'Scan Integrity %',scanPercent:'Percent Scanned',raHigh:'RA High',scanExempt:'Scan Exempt'},
+            vram: {siteName:'Site/Boat Name',scanDate:'Last Scan Date',assets:'Asset Count',raVph:'RA VPH',raCrit:'RA Critical',raHigh:'RA High',scanIntegrity:'Scan Integrity %',scanPercent:'Percent Scanned',scanExempt:'Scan Exempt'},
             ess: {shipName:'Ship/Boat Name',isic:'ISIC Column',productCompliance:'Product Compliance %',policyEnforced:'Policy Enforced %',truePolicy:'True Policy % (Calculated)',breakfix:'Breakfix Count',assets:'Asset Count'},
             tam: {boatName:'Boat Name',pastDue:'Past Due Count',extensions:'Extensions Count'}
         };
@@ -540,7 +540,7 @@ const createBoatData = (name, fullName, isic, tycom, isNmci = false) => ({
 
 // Standard fields for each schema type (used to identify custom fields)
 const standardFields = {
-    vram: ['siteName', 'scanDate', 'assets', 'raVph', 'raCrit', 'scanIntegrity', 'scanPercent', 'raHigh', 'scanExempt'],
+    vram: ['siteName', 'scanDate', 'assets', 'raVph', 'raCrit', 'raHigh', 'scanIntegrity', 'scanPercent', 'scanExempt'],
     ess: ['shipName', 'isic', 'productCompliance', 'policyEnforced', 'truePolicy', 'breakfix', 'assets'],
     tam: ['boatName', 'pastDue', 'extensions']
 };
@@ -1029,9 +1029,8 @@ const generateReportHTML = (reportData, settings) => {
     const showVramScanned = isVisible('vram', 'scanPercent');
     const showVramHigh = isVisible('vram', 'raHigh');
     const showVramExempt = isVisible('vram', 'scanExempt');
-    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramCrit, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramCrit, showVramHigh, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
     const vramSiprCount = vramNiprCount;
-    const raCount = showVramHigh ? 1 : 0;
     const vramAssets = getLabel('vram', 'assets', 'Assets');
     const vramScan = getLabel('vram', 'scanDate', 'Scan');
     const vramVph = getLabel('vram', 'raVph', 'VPH');
@@ -1079,6 +1078,7 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramScan) cells += isNmci ? nmciCell : `<td class="${scanAgeClass(b.vramNiprScanDate)}">${fmtDate(b.vramNiprScanDate)}</td>`;
         if (showVramVph) cells += isNmci ? nmciCell : `<td class="${vphClass(b.vramNiprRaVph)}">${fmt(b.vramNiprRaVph,2)}</td>`;
         if (showVramCrit) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaCrit)}</td>`;
+        if (showVramHigh) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaHigh)}</td>`;
         if (showVramIntegrity) cells += isNmci ? nmciCell : `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += isNmci ? nmciCell : `<td>${fmtPct(b.vramNiprScanPercent)}</td>`;
         for (const cf of vramCustomFields) cells += isNmci ? nmciCell : `<td>${fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>`;
@@ -1087,11 +1087,10 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramScan) cells += `<td class="${scanAgeClass(b.vramSiprScanDate)}">${fmtDate(b.vramSiprScanDate)}</td>`;
         if (showVramVph) cells += `<td class="${vphClass(b.vramSiprRaVph)}">${fmt(b.vramSiprRaVph,2)}</td>`;
         if (showVramCrit) cells += `<td>${fmt(b.vramSiprRaCrit)}</td>`;
+        if (showVramHigh) cells += `<td>${fmt(b.vramSiprRaHigh)}</td>`;
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
         for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
-        // RA High - for NMCI boats show SIPR values, otherwise show NIPR values
-        if (showVramHigh) cells += `<td>${fmt(isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>`;
         // TAM - color past due if >10
         if (showTamPastDue) cells += `<td class="${(b.tamPastDue||0)>10?'risk-high':''}">${fmt(b.tamPastDue)}</td>`;
         if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
@@ -1120,7 +1119,6 @@ const generateReportHTML = (reportData, settings) => {
         if (essSiprCount > 0) hdr1 += `<th colspan="${essSiprCount}" class="col-ess-s">ESS SIPR</th>`;
         if (vramNiprCount > 0) hdr1 += `<th colspan="${vramNiprCount}" class="col-vram-n">VRAM NIPR</th>`;
         if (vramSiprCount > 0) hdr1 += `<th colspan="${vramSiprCount}" class="col-vram-s">VRAM SIPR</th>`;
-        if (raCount > 0) hdr1 += `<th colspan="${raCount}" class="col-ra">RA</th>`;
         if (tamCount > 0) hdr1 += `<th colspan="${tamCount}" class="col-tam">TAM</th>`;
         hdr1 += `<th colspan="${statusCount}" class="col-status">STATUS</th></tr>`;
         // Build header row 2 with individual column names
@@ -1144,6 +1142,7 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramScan) hdr2 += `<th class="col-vram-n">${vramScan}</th>`;
         if (showVramVph) hdr2 += `<th class="col-vram-n">${vramVph}</th>`;
         if (showVramCrit) hdr2 += `<th class="col-vram-n">${vramCrit}</th>`;
+        if (showVramHigh) hdr2 += `<th class="col-vram-n">${vramHigh}</th>`;
         if (showVramIntegrity) hdr2 += `<th class="col-vram-n">${vramIntegrity}</th>`;
         if (showVramScanned) hdr2 += `<th class="col-vram-n">${vramScanned}</th>`;
         for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-n">${cf.label || cf.field}</th>`;
@@ -1152,11 +1151,10 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramScan) hdr2 += `<th class="col-vram-s">${vramScan}</th>`;
         if (showVramVph) hdr2 += `<th class="col-vram-s">${vramVph}</th>`;
         if (showVramCrit) hdr2 += `<th class="col-vram-s">${vramCrit}</th>`;
+        if (showVramHigh) hdr2 += `<th class="col-vram-s">${vramHigh}</th>`;
         if (showVramIntegrity) hdr2 += `<th class="col-vram-s">${vramIntegrity}</th>`;
         if (showVramScanned) hdr2 += `<th class="col-vram-s">${vramScanned}</th>`;
         for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-s">${cf.label || cf.field}</th>`;
-        // RA High header
-        if (showVramHigh) hdr2 += `<th class="col-ra">${vramHigh}</th>`;
         // TAM headers
         if (showTamPastDue) hdr2 += `<th class="col-tam">${tamOverdue}</th>`;
         if (showTamExtensions) hdr2 += `<th class="col-tam">${tamExt}</th>`;
@@ -2572,9 +2570,8 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const showTamExtensions = isVisible('tam', 'extensions');
     const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy, showEssTruePolicy].filter(Boolean).length + essCustomFields.length;
     const essSiprCount = essNiprCount;
-    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramCrit, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
+    const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramCrit, showVramHigh, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
     const vramSiprCount = vramNiprCount;
-    const raCount = showVramHigh ? 1 : 0;
     const tamCount = [showTamPastDue, showTamExtensions].filter(Boolean).length + tamCustomFields.length;
     const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
 
@@ -2646,9 +2643,9 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const fieldLabels = {
         essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprPolicyEnforced: 'ESS NIPR Policy Enforced', essNiprTruePolicy: 'ESS NIPR True Policy',
         essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprPolicyEnforced: 'ESS SIPR Policy Enforced', essSiprTruePolicy: 'ESS SIPR True Policy',
-        vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
-        vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
-        vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level',
+        vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprRaCrit: 'VRAM NIPR RA Critical', vramNiprRaHigh: 'VRAM NIPR RA High', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
+        vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprRaCrit: 'VRAM SIPR RA Critical', vramSiprRaHigh: 'VRAM SIPR RA High', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
+        tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level',
         vramNiprScanExempt: 'NIPR Scan Exempt', vramSiprScanExempt: 'SIPR Scan Exempt',
         vramNiprScanDate: 'NIPR Last Scan Date', vramSiprScanDate: 'SIPR Last Scan Date'
     };
@@ -2841,7 +2838,6 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {essSiprCount > 0 && <th colSpan={essSiprCount} className="col-ess-s">ESS SIPR</th>}
                                 {vramNiprCount > 0 && <th colSpan={vramNiprCount} className="col-vram-n">VRAM NIPR</th>}
                                 {vramSiprCount > 0 && <th colSpan={vramSiprCount} className="col-vram-s">VRAM SIPR</th>}
-                                {raCount > 0 && <th colSpan={raCount} className="col-ra">RA</th>}
                                 {tamCount > 0 && <th colSpan={tamCount} className="col-tam">TAM</th>}
                                 <th colSpan={statusCount} className="col-status">STATUS</th>
                             </tr>
@@ -2862,6 +2858,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showVramScan && <th className="col-vram-n">Scan</th>}
                                 {showVramVph && <th className="col-vram-n">VPH</th>}
                                 {showVramCrit && <th className="col-vram-n">Crit</th>}
+                                {showVramHigh && <th className="col-vram-n">High</th>}
                                 {showVramIntegrity && <th className="col-vram-n">Integrity</th>}
                                 {showVramScanned && <th className="col-vram-n">Scanned</th>}
                                 {vramCustomFields.map(cf => <th key={`vramn-${cf.field}`} className="col-vram-n">{cf.label || cf.field}</th>)}
@@ -2869,10 +2866,10 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showVramScan && <th className="col-vram-s">Scan</th>}
                                 {showVramVph && <th className="col-vram-s">VPH</th>}
                                 {showVramCrit && <th className="col-vram-s">Crit</th>}
+                                {showVramHigh && <th className="col-vram-s">High</th>}
                                 {showVramIntegrity && <th className="col-vram-s">Integrity</th>}
                                 {showVramScanned && <th className="col-vram-s">Scanned</th>}
                                 {vramCustomFields.map(cf => <th key={`vrams-${cf.field}`} className="col-vram-s">{cf.label || cf.field}</th>)}
-                                {showVramHigh && <th className="col-ra">High</th>}
                                 {showTamPastDue && <th className="col-tam">Overdue</th>}
                                 {showTamExtensions && <th className="col-tam">Ext</th>}
                                 {tamCustomFields.map(cf => <th key={`tam-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
@@ -2901,6 +2898,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showVramScan && <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" className={scanAgeClass(b.vramNiprScanDate)} />}
                                 {showVramVph && <Cell boat={b} field="vramNiprRaVph" value={b.vramNiprRaVph} format="num2" className={vphClass(b.vramNiprRaVph)} />}
                                 {showVramCrit && <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />}
+                                {showVramHigh && <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />}
                                 {showVramIntegrity && <Cell boat={b} field="vramNiprScanIntegrity" value={b.vramNiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramNiprScanPercent" value={b.vramNiprScanPercent} format="pct" />}
                                 {vramCustomFields.map(cf => <td key={`vramn-${cf.field}`}>{fmtCustom(b.customFields?.vramNipr?.[cf.field])}</td>)}
@@ -2908,10 +2906,10 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showVramScan && <Cell boat={b} field="vramSiprScanDate" value={b.vramSiprScanDate} format="date" className={scanAgeClass(b.vramSiprScanDate)} />}
                                 {showVramVph && <Cell boat={b} field="vramSiprRaVph" value={b.vramSiprRaVph} format="num2" className={vphClass(b.vramSiprRaVph)} />}
                                 {showVramCrit && <Cell boat={b} field="vramSiprRaCrit" value={fmt(b.vramSiprRaCrit)} />}
+                                {showVramHigh && <Cell boat={b} field="vramSiprRaHigh" value={fmt(b.vramSiprRaHigh)} />}
                                 {showVramIntegrity && <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />}
                                 {vramCustomFields.map(cf => <td key={`vrams-${cf.field}`}>{fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>)}
-                                {showVramHigh && <td>{fmt(b.isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>}
                                 {showTamPastDue && <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} className={(b.tamPastDue||0)>10?'risk-high':''} />}
                                 {showTamExtensions && <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />}
                                 {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
