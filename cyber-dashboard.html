@@ -2328,18 +2328,22 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
-    // Updated color classes based on new risk criteria
-    // Compliance: >=95% = green, <95% = red
-    const compClass = (v) => v === null ? '' : v >= 95 ? 'risk-low' : 'risk-high';
-    // VPH: <2.5 = green, 2.5-3.5 = yellow, >3.5 = red
-    const vphClass = (v) => v === null ? '' : v < 2.5 ? 'risk-low' : v <= 3.5 ? 'risk-med' : 'risk-high';
-    // Scan age: <=14 days = green, >14 days = red
+    // Updated color classes using activeThresholds for real-time updates
+    const compThreshold = activeThresholds.med_ess_compliance || 95;
+    const lowVphThreshold = activeThresholds.low_vph || 2.5;
+    const medVphThreshold = activeThresholds.med_ra_vph || 3.5;
+    const scanAgeThreshold = activeThresholds.med_scan_age_days || 14;
+    // Compliance: >=threshold = green, <threshold = red
+    const compClass = (v) => v === null ? '' : v >= compThreshold ? 'risk-low' : 'risk-high';
+    // VPH: <lowThreshold = green, <=medThreshold = yellow, >medThreshold = red
+    const vphClass = (v) => v === null ? '' : v < lowVphThreshold ? 'risk-low' : v <= medVphThreshold ? 'risk-med' : 'risk-high';
+    // Scan age: <=threshold days = green, >threshold days = red
     const scanAgeClass = (d) => {
         if (!d) return 'risk-high';
         const date = new Date(d);
         if (isNaN(date.getTime())) return 'risk-high';
         const age = Math.floor((new Date() - date) / 86400000);
-        return age <= 14 ? 'risk-low' : 'risk-high';
+        return age <= scanAgeThreshold ? 'risk-low' : 'risk-high';
     };
 
     const fieldLabels = {
