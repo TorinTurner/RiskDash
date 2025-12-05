@@ -1879,6 +1879,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         // Initialize from settings or use default
         return settings.analyticsLayout || defaultAnalyticsLayout;
     });
+    const chartRefs = React.useRef({});
 
     // Compute analytics data
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
@@ -1948,6 +1949,75 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
 
     const activeIds = layout.map(l => l.id);
     const inactiveElements = availableElements.filter(e => !activeIds.includes(e.id));
+
+    // Initialize Chart.js charts
+    React.useEffect(() => {
+        const initChart = (id, config) => {
+            const canvas = document.getElementById(`preview-chart-${id}`);
+            if (!canvas) return;
+            if (chartRefs.current[id]) {
+                chartRefs.current[id].destroy();
+            }
+            chartRefs.current[id] = new Chart(canvas, config);
+        };
+
+        // Risk Pie Chart
+        if (activeIds.includes('riskPieChart')) {
+            initChart('riskPieChart', {
+                type: 'pie',
+                data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskCounts.HIGH, riskCounts.MED, riskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+            });
+        }
+
+        // Risk Donut Chart
+        if (activeIds.includes('riskDonutChart')) {
+            initChart('riskDonutChart', {
+                type: 'doughnut',
+                data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskCounts.HIGH, riskCounts.MED, riskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+            });
+        }
+
+        // Risk Bar Chart
+        if (activeIds.includes('riskDistribution')) {
+            initChart('riskDistribution', {
+                type: 'bar',
+                data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskCounts.HIGH, riskCounts.MED, riskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // Risk by TYCOM Chart
+        if (activeIds.includes('riskByTycom')) {
+            initChart('riskByTycom', {
+                type: 'bar',
+                data: {
+                    labels: tycomData.map(t => t.tycom),
+                    datasets: [
+                        { label: 'High', data: tycomData.map(t => t.high), backgroundColor: '#dc2626' },
+                        { label: 'Med', data: tycomData.map(t => t.med), backgroundColor: '#d97706' },
+                        { label: 'Low', data: tycomData.map(t => t.low), backgroundColor: '#059669' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            });
+        }
+
+        // VPH by ISIC Chart
+        if (activeIds.includes('vphByIsic')) {
+            const sortedIsic = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, 8);
+            initChart('vphByIsic', {
+                type: 'bar',
+                data: { labels: sortedIsic.map(i => i.isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS')), datasets: [{ label: 'Avg VPH', data: sortedIsic.map(i => i.avgVph), backgroundColor: '#3b82f6' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+            });
+        }
+
+        return () => {
+            Object.values(chartRefs.current).forEach(chart => chart?.destroy());
+        };
+    }, [layout, riskCounts.HIGH, riskCounts.MED, riskCounts.LOW, tycomData, isicData]);
 
     const handleDragStart = (item) => setDraggedItem(item);
     const handleDragEnd = () => setDraggedItem(null);
@@ -2053,60 +2123,28 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             case 'totalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${totalBreakfix > 0 ? 'text-red-600' : ''}`}>{totalBreakfix}</div></div>;
             case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg ESS Compliance</div><div className={valueStyle}>{avgCompliance}%</div></div>;
             case 'scanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{scanExemptCount}</div></div>;
-            case 'riskPieChart': {
-                const total = boats.length || 1;
-                const highPct = (riskCounts.HIGH / total) * 100;
-                const medPct = (riskCounts.MED / total) * 100;
-                const lowPct = (riskCounts.LOW / total) * 100;
-                // Create conic gradient for pie chart
-                const conicGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
-                return (
-                    <div className={chartStyle}>
-                        <div className="font-bold text-slate-700 mb-3">Risk Distribution</div>
-                        <div className="flex justify-center flex-1 items-center">
-                            <div style={{width: '100px', height: '100px', borderRadius: '50%', background: conicGradient}}></div>
-                        </div>
-                        <div className="flex gap-2 mt-3 text-xs justify-center">
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-full"></span>HIGH ({riskCounts.HIGH})</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-600 rounded-full"></span>MED ({riskCounts.MED})</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded-full"></span>LOW ({riskCounts.LOW})</span>
-                        </div>
+            case 'riskPieChart': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">Risk Pie Chart</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-riskPieChart"></canvas>
                     </div>
-                );
-            }
-            case 'riskDonutChart': {
-                const total = boats.length || 1;
-                const highPct = (riskCounts.HIGH / total) * 100;
-                const medPct = (riskCounts.MED / total) * 100;
-                const conicGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
-                return (
-                    <div className={chartStyle}>
-                        <div className="font-bold text-slate-700 mb-3">Risk Donut</div>
-                        <div className="flex justify-center flex-1 items-center">
-                            <div style={{width: '120px', height: '120px', borderRadius: '50%', background: conicGradient, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                <div style={{width: '60px', height: '60px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
-                                    <div className="text-xl font-bold text-slate-700">{boats.length}</div>
-                                    <div className="text-xs text-slate-500">Total</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex gap-2 mt-3 text-xs justify-center">
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-full"></span>HIGH ({riskCounts.HIGH})</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-600 rounded-full"></span>MED ({riskCounts.MED})</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded-full"></span>LOW ({riskCounts.LOW})</span>
-                        </div>
+                </div>
+            );
+            case 'riskDonutChart': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">Risk Donut</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-riskDonutChart"></canvas>
                     </div>
-                );
-            }
+                </div>
+            );
             case 'riskDistribution': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-3">Risk Bar Chart</div>
-                    <div className="flex gap-2 items-end flex-1 min-h-[60px]">
-                        <div className="flex-1 bg-red-500 rounded" style={{height: `${(riskCounts.HIGH / boats.length) * 100}%`}} title={`High: ${riskCounts.HIGH}`}></div>
-                        <div className="flex-1 bg-amber-500 rounded" style={{height: `${(riskCounts.MED / boats.length) * 100}%`}} title={`Med: ${riskCounts.MED}`}></div>
-                        <div className="flex-1 bg-emerald-500 rounded" style={{height: `${(riskCounts.LOW / boats.length) * 100}%`}} title={`Low: ${riskCounts.LOW}`}></div>
+                    <div className="font-bold text-slate-700 mb-2">Risk Bar Chart</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-riskDistribution"></canvas>
                     </div>
-                    <div className="flex gap-2 mt-2 text-xs"><span className="flex-1 text-center text-red-600">HIGH ({riskCounts.HIGH})</span><span className="flex-1 text-center text-amber-600">MED ({riskCounts.MED})</span><span className="flex-1 text-center text-emerald-600">LOW ({riskCounts.LOW})</span></div>
                 </div>
             );
             case 'highRiskTable': return (
@@ -2154,32 +2192,17 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             );
             case 'riskByTycom': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-3">Risk by TYCOM</div>
-                    <div className="space-y-2 flex-1 overflow-auto">
-                        {tycomData.map(t => (
-                            <div key={t.tycom} className="flex items-center gap-2">
-                                <span className="text-xs font-medium w-20 truncate">{t.tycom}</span>
-                                <div className="flex-1 flex h-4 rounded overflow-hidden bg-slate-100">
-                                    {t.high > 0 && <div className="bg-red-500" style={{width: `${(t.high/t.boats)*100}%`}}></div>}
-                                    {t.med > 0 && <div className="bg-amber-500" style={{width: `${(t.med/t.boats)*100}%`}}></div>}
-                                    {t.low > 0 && <div className="bg-emerald-500" style={{width: `${(t.low/t.boats)*100}%`}}></div>}
-                                </div>
-                                <span className="text-xs text-slate-500">{t.boats}</span>
-                            </div>
-                        ))}
+                    <div className="font-bold text-slate-700 mb-2">Risk by TYCOM</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-riskByTycom"></canvas>
                     </div>
                 </div>
             );
             case 'vphByIsic': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-3">VPH by ISIC</div>
-                    <div className="space-y-1 text-sm flex-1 overflow-auto">
-                        {isicData.sort((a,b) => b.avgVph - a.avgVph).slice(0,8).map(i => (
-                            <div key={i.isic} className="flex justify-between">
-                                <span className="truncate">{i.isic}</span>
-                                <span className={i.avgVph > 3.5 ? 'text-red-600' : 'text-slate-600'}>{i.avgVph.toFixed(2)}</span>
-                            </div>
-                        ))}
+                    <div className="font-bold text-slate-700 mb-2">VPH by ISIC</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-vphByIsic"></canvas>
                     </div>
                 </div>
             );
