@@ -36,6 +36,9 @@
         .data-table.settings-table th { font-size: 12px; padding: 10px 12px; }
         .data-table.settings-table td { padding: 8px 12px; }
         .data-table.settings-table td.boat-name { font-size: 14px; }
+        .data-table.hq-preview-table { font-size: 14px; }
+        .data-table.hq-preview-table th { font-size: 12px; padding: 12px 16px; font-weight: 600; }
+        .data-table.hq-preview-table td { padding: 10px 16px; font-size: 14px; }
         .table-scroll { overflow-x: auto; }
         .data-table td.boat-name { text-align: left; font-weight: 600; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; color: #0891b2; }
         .data-table .isic-header, .data-table .isic-cell { background: #1e293b; color: white; font-weight: 700; text-align: center; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); padding: 8px 4px; font-size: 9px; width: 28px; min-width: 28px; max-width: 28px; }
@@ -198,9 +201,38 @@ const defaultAnalyticsConfig = {
     ]
 };
 
+// Default HQ Status layout - controls which metrics are shown and their order
+const defaultHQStatusLayout = [
+    { id: 'niprProdComp', label: 'NIPR Prod Compliance', visible: true },
+    { id: 'niprPolEnf', label: 'NIPR Policy Enforced', visible: true },
+    { id: 'niprBreakfix', label: 'NIPR Breakfix', visible: true },
+    { id: 'siprProdComp', label: 'SIPR Prod Compliance', visible: true },
+    { id: 'siprPolEnf', label: 'SIPR Policy Enforced', visible: true },
+    { id: 'siprBreakfix', label: 'SIPR Breakfix', visible: true },
+    { id: 'highRisk', label: 'High Risk', visible: true },
+    { id: 'scanExempt', label: 'Scan Exempt', visible: true },
+];
+
+// Default analytics layout (drag/drop grid) - also controls generated report visibility
+const defaultAnalyticsLayout = [
+    { id: 'totalBoats', type: 'stat', row: 0, col: 0 },
+    { id: 'highRisk', type: 'stat', row: 0, col: 1 },
+    { id: 'medRisk', type: 'stat', row: 0, col: 2 },
+    { id: 'lowRisk', type: 'stat', row: 0, col: 3 },
+    { id: 'avgVph', type: 'stat', row: 1, col: 0 },
+    { id: 'totalBreakfix', type: 'stat', row: 1, col: 1 },
+    { id: 'avgCompliance', type: 'stat', row: 1, col: 2 },
+    { id: 'scanExempt', type: 'stat', row: 1, col: 3 },
+    { id: 'riskDistribution', type: 'chart', row: 2, col: 0, width: 2 },
+    { id: 'highRiskTable', type: 'chart', row: 2, col: 2, width: 2 },
+    { id: 'worstBoatsVph', type: 'ranking', row: 3, col: 0 },
+    { id: 'worstBoatsCompliance', type: 'ranking', row: 3, col: 1 },
+    { id: 'boatsWithBreakfix', type: 'ranking', row: 3, col: 2 },
+];
+
 // Default legend text - updated to match new risk criteria
 const defaultLegendText = {
-    high: 'Any asset in Breakfix, OR no VRAM scan data (unable to assess risk)',
+    high: 'Breakfix, No VRAM scan data, OR Product Compliance &lt;{high_product_compliance}%',
     med: '2+ of: VPH &gt;{med_ra_vph}, Prod/Policy compliance &lt;{med_ess_compliance}%, Scan &gt;{med_scan_age_days}d, TAM Past Due &gt;{med_tam_past_due}',
     low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_ess_compliance}%'
 };
@@ -221,8 +253,36 @@ const defaultThresholds = {
     auto_high_scan_age_days: 30,
     auto_high_scan_integrity: 80,
     high_ess_compliance: 90,
+    high_product_compliance: 50,
     high_tam_past_due: 20,
     high_scan_age_days: 30
+};
+
+// Default help modal text (? button content) - editable in settings
+const defaultHelpModalText = {
+    highItems: [
+        'Breakfix > 0 - Any asset in either enclave in breakfix',
+        'No VRAM Scan Data - Unable to assess risk without scan data',
+        'Product Compliance < {high_product_compliance}% - Critical ESS compliance failure'
+    ],
+    medItems: [
+        'VPH > {med_ra_vph} - Vulnerabilities per host above threshold',
+        'Product/Policy Compliance < {med_ess_compliance}% - ESS compliance below threshold',
+        'Scan Age > {med_scan_age_days} days - VRAM scan older than threshold',
+        'TAM Past Due > {med_tam_past_due} - Too many overdue TAMs'
+    ],
+    lowItems: [
+        'VPH < {low_vph} - Low vulnerabilities per host',
+        'Scans within {low_scan_age_days} days - Recent scan data',
+        'Compliance > {low_ess_compliance}% - High product and policy compliance',
+        'No HIGH risk triggers present'
+    ],
+    calcItems: [
+        'Scan Age = Days since last VRAM scan date',
+        'VPH = Vulnerabilities Per Host (from VRAM RA VPH column)',
+        'True Policy % = PolicyEnforced × ProductCompliance / 100'
+    ],
+    scanExempt: 'If a boat is marked Scan Exempt, HIGH risk is downgraded to MED only when HIGH is due to "No VRAM Scan Data". Breakfix-related HIGH risk is NOT affected by Scan Exempt status.'
 };
 
 // Settings Manager with localStorage
@@ -242,7 +302,10 @@ const SettingsManager = {
         if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
+        if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
+        if (!settings.hqStatusLayout) settings.hqStatusLayout = JSON.parse(JSON.stringify(defaultHQStatusLayout));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
+        if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
         // Ensure thresholds are populated with defaults if empty or missing
         if (!settings.thresholds || Object.keys(settings.thresholds).length === 0) {
             settings.thresholds = JSON.parse(JSON.stringify(defaultThresholds));
@@ -418,7 +481,10 @@ const SettingsManager = {
             schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)),
             tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}],
             analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)),
-            legendText: JSON.parse(JSON.stringify(defaultLegendText))
+            analyticsLayout: JSON.parse(JSON.stringify(defaultAnalyticsLayout)),
+            hqStatusLayout: JSON.parse(JSON.stringify(defaultHQStatusLayout)),
+            legendText: JSON.parse(JSON.stringify(defaultLegendText)),
+            helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))
         };
     }
 };
@@ -536,7 +602,7 @@ const mergeData = (sources, settings) => {
 
 // Risk Calculator
 // RISK CRITERIA:
-// HIGH: Any asset in breakfix OR no VRAM scan data (can't assess risk)
+// HIGH: Any asset in breakfix, no VRAM scan data, OR Product Compliance <50%
 // MED: 2 or more of: VPH >3.5, Product/Policy compliance <95%, Scan >14 days, TAMs past due >10
 // LOW: VPH <2.5, Scans within 14 days, Policy and Product compliance over 95%, no high triggers
 // NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
@@ -585,6 +651,17 @@ const calculateRisk = (boat, thresholds) => {
         level = 'HIGH';
         reasons.push('No VRAM data');
         highDueToNoScans = true;
+    }
+
+    // 3. ESS Product Compliance < 50% (critical compliance failure) - skip NIPR for NMCI
+    const highProductComplianceThreshold = thresholds.high_product_compliance || 50;
+    if (!isNmci && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < highProductComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
+    }
+    if (boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < highProductComplianceThreshold) {
+        level = 'HIGH';
+        reasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
     }
 
     // If not already HIGH, check MEDIUM criteria
@@ -650,16 +727,8 @@ const calculateRisk = (boat, thresholds) => {
             // (unless VPH is above the higher threshold)
         }
 
-        // Check for very high VPH (above high threshold) - auto HIGH
-        const highVphThreshold = thresholds.auto_high_ra_vph || 5;
-        if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph > highVphThreshold) {
-            level = 'HIGH';
-            reasons.push(`NIPR VPH Critical: ${boat.vramNiprRaVph.toFixed(2)}`);
-        }
-        if (boat.vramSiprRaVph !== null && boat.vramSiprRaVph > highVphThreshold) {
-            level = 'HIGH';
-            reasons.push(`SIPR VPH Critical: ${boat.vramSiprRaVph.toFixed(2)}`);
-        }
+        // Note: Per risk criteria, HIGH is ONLY for breakfix or no VRAM data
+        // VPH conditions only contribute to MED risk threshold calculation
     }
 
     // Check if LOW risk criteria are actually met (for reporting purposes)
@@ -694,10 +763,10 @@ const calculateRisk = (boat, thresholds) => {
         }
     }
 
-    // Scan Exempt: Only downgrades HIGH to MED if HIGH was due to no scans
+    // Scan Exempt: Only downgrades HIGH to MED if HIGH was SOLELY due to no VRAM data
+    // Breakfix or other HIGH reasons are NOT overridden by Scan Exempt
     if (level === 'HIGH' && (boat.vramNiprScanExempt || boat.vramSiprScanExempt)) {
-        // Only override if HIGH is solely due to no scans/scan issues
-        if (highDueToNoScans || reasons.every(r => r.includes('Scan') || r.includes('VRAM data'))) {
+        if (highDueToNoScans && reasons.every(r => r.includes('VRAM data'))) {
             level = 'MED';
             reasons.push('Scan Exempt');
         }
@@ -720,9 +789,13 @@ const aggregateByISIC = (boats, settings) => {
         let sProdSum = 0, sProdCnt = 0, sPolSum = 0, sPolCnt = 0;
         const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprProdCompAvg: 0, niprPolEnfAvg: 0, siprProdCompAvg: 0, siprPolEnfAvg: 0 };
         for (const b of g.boats) {
-            agg.niprBreakfixSum += b.essNiprBreakfix || 0; agg.siprBreakfixSum += b.essSiprBreakfix || 0;
-            if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
-            if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+            // Skip NIPR values for NMCI boats
+            if (!b.isNmci) {
+                agg.niprBreakfixSum += b.essNiprBreakfix || 0;
+                if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
+                if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+            }
+            agg.siprBreakfixSum += b.essSiprBreakfix || 0;
             if (b.essSiprProductCompliance !== null) { sProdSum += b.essSiprProductCompliance; sProdCnt++; }
             if (b.essSiprTruePolicy !== null) { sPolSum += b.essSiprTruePolicy; sPolCnt++; }
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
@@ -789,13 +862,37 @@ const generateReportHTML = (reportData, settings) => {
         }).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
 
+    // Help modal text (? button content)
+    const helpModalText = settings.helpModalText || defaultHelpModalText;
+    const formatHelpText = (text) => {
+        if (!text) return '';
+        return text.replace(/\{(\w+)\}/g, (match, key) => {
+            return settings.thresholds[key] !== undefined ? settings.thresholds[key] : match;
+        });
+    };
+
     // Stats for analytics
     const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
     const cslRiskCounts = { HIGH: cslBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cslBoats.filter(b => b.riskLevel === 'MED').length, LOW: cslBoats.filter(b => b.riskLevel === 'LOW').length };
     const cspRiskCounts = { HIGH: cspBoats.filter(b => b.riskLevel === 'HIGH').length, MED: cspBoats.filter(b => b.riskLevel === 'MED').length, LOW: cspBoats.filter(b => b.riskLevel === 'LOW').length };
-    const avgVph = boats.length > 0 ? (boats.reduce((s, b) => s + (b.vramNiprRaVph || 0) + (b.vramSiprRaVph || 0), 0) / boats.length).toFixed(2) : 0;
-    const totalBreakfix = boats.reduce((s, b) => s + (b.essNiprBreakfix || 0) + (b.essSiprBreakfix || 0), 0);
-    const avgCompliance = boats.length > 0 ? Math.min(100, boats.reduce((s, b) => s + (b.essNiprProductCompliance || 0), 0) / boats.length).toFixed(1) : 0;
+    // Avg VPH: average of all VPH values (NIPR for non-NMCI, SIPR for all) - only count non-null values
+    const vphValues = boats.flatMap(b => {
+        const vals = [];
+        if (!b.isNmci && b.vramNiprRaVph !== null) vals.push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) vals.push(b.vramSiprRaVph);
+        return vals;
+    });
+    const avgVph = vphValues.length > 0 ? (vphValues.reduce((s, v) => s + v, 0) / vphValues.length).toFixed(2) : 0;
+    // Total breakfix: sum all (NIPR only for non-NMCI boats)
+    const totalBreakfix = boats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
+    // Avg compliance: average of all compliance values (NIPR for non-NMCI, SIPR for all) - only count non-null
+    const compValues = boats.flatMap(b => {
+        const vals = [];
+        if (!b.isNmci && b.essNiprProductCompliance !== null) vals.push(b.essNiprProductCompliance);
+        if (b.essSiprProductCompliance !== null) vals.push(b.essSiprProductCompliance);
+        return vals;
+    });
+    const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : 0;
 
     // Get label and visibility from schema config
     const schema = settings.schemaConfig || defaultSchemaConfig;
@@ -891,9 +988,9 @@ const generateReportHTML = (reportData, settings) => {
         if (showVramIntegrity) cells += `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`;
         if (showVramScanned) cells += `<td>${fmtPct(b.vramSiprScanPercent)}</td>`;
         for (const cf of vramCustomFields) cells += `<td>${fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>`;
-        // RA (NIPR) - show NMCI for NMCI boats
-        if (showVramCrit) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaCrit)}</td>`;
-        if (showVramHigh) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprRaHigh)}</td>`;
+        // RA - for NMCI boats show SIPR values, otherwise show NIPR values
+        if (showVramCrit) cells += `<td>${fmt(isNmci ? b.vramSiprRaCrit : b.vramNiprRaCrit)}</td>`;
+        if (showVramHigh) cells += `<td>${fmt(isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>`;
         // TAM - color past due if >10
         if (showTamPastDue) cells += `<td class="${(b.tamPastDue||0)>10?'risk-high':''}">${fmt(b.tamPastDue)}</td>`;
         if (showTamExtensions) cells += `<td>${fmt(b.tamExtensions)}</td>`;
@@ -970,31 +1067,62 @@ const generateReportHTML = (reportData, settings) => {
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
     const thresholdChanges = reportData.thresholdChanges || [];
     const settingsHistory = settings._settingsHistory || [];
-    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0;
-    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0);
+    const dataUpdates = reportData.dataUpdates || [];
+    const hasChanges = allOverrides.length > 0 || thresholdChanges.length > 0 || settingsHistory.length > 0 || dataUpdates.length > 0;
+    const changeCount = allOverrides.length + thresholdChanges.length + (settingsHistory.length > 0 ? 1 : 0) + dataUpdates.length;
 
     // Tab visibility helpers
     const tabConfig = settings.tabConfig || [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
     const isTabVisible = (id) => { const tab = tabConfig.find(t => t.id === id); return tab ? tab.visible : true; };
     const visibleTabs = tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges));
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
+    const pageInfo = `<div class="page-info print-only">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div>`;
 
     // HQ page compliance class: >=98% green, 95-97.9% yellow, <95% red
     const hqCompClass = (v) => v === null ? '' : v >= 98 ? 'risk-low' : v >= 95 ? 'risk-med' : 'risk-high';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
+    // HQ Status table with customizable metrics based on hqStatusLayout
+    const hqLayout = settings.hqStatusLayout || defaultHQStatusLayout;
+    const visibleHqMetrics = hqLayout.filter(m => m.visible);
+    const getHqMetricRow = (metric, list) => {
+        const getValue = (a) => {
+            switch(metric.id) {
+                case 'niprProdComp': return { value: a.niprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.niprProdCompAvg) };
+                case 'niprPolEnf': return { value: a.niprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.niprPolEnfAvg) };
+                case 'niprBreakfix': return { value: a.niprBreakfixSum, className: a.niprBreakfixSum > 0 ? 'alert-red' : '' };
+                case 'siprProdComp': return { value: a.siprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.siprProdCompAvg) };
+                case 'siprPolEnf': return { value: a.siprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.siprPolEnfAvg) };
+                case 'siprBreakfix': return { value: a.siprBreakfixSum, className: a.siprBreakfixSum > 0 ? 'alert-red' : '' };
+                case 'highRisk': return { value: a.highRiskCount, className: a.highRiskCount > 0 ? 'risk-high' : '' };
+                case 'scanExempt': return { value: a.scanExemptCount, className: a.scanExemptCount > 0 ? 'alert-blue' : '' };
+                default: return { value: '-', className: '' };
+            }
+        };
+        return `<tr><td style="text-align:left;font-weight:600">${metric.label}</td>${list.map(a => { const { value, className } = getValue(a); return `<td class="${className}">${value}</td>`; }).join('')}</tr>`;
+    };
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody>${visibleHqMetrics.map(m => getHqMetricRow(m, list)).join('')}</tbody></table>`;
 
-    // High risk boats table for analytics
+    // High risk boats table for analytics - show max VPH across enclaves
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
-    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td>${fmt(b.vramNiprRaVph,2)}</td><td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${(b.essNiprBreakfix||0)+(b.essSiprBreakfix||0)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
+    const getBoatVph = (b) => {
+        const nipr = b.isNmci ? null : b.vramNiprRaVph;
+        const sipr = b.vramSiprRaVph;
+        if (nipr !== null && sipr !== null) return Math.max(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+    const highRiskTable = highRiskBoats.length === 0 ? '<p style="color:#065f46;font-weight:600;">No high-risk boats</p>' : `<table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th>ISIC</th><th>VPH</th><th>Breakfix</th><th style="text-align:left">Risk Reasons</th></tr></thead><tbody>${highRiskBoats.map(b => `<tr><td style="text-align:left;font-family:monospace;font-weight:600;">${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td>${fmt(getBoatVph(b),2)}</td><td class="${getBoatBreakfix(b)>0?'alert-red':''}">${getBoatBreakfix(b)}</td><td style="text-align:left;font-size:7pt;">${b.riskReasons?.join(', ') || '-'}</td></tr>`).join('')}</tbody></table>`;
 
-    // VPH by ISIC for bar chart
+    // VPH by ISIC for bar chart - use both enclaves, handle NMCI
     const isicVph = {};
-    boats.forEach(b => { if (!isicVph[b.isic]) isicVph[b.isic] = []; isicVph[b.isic].push(b.vramNiprRaVph || 0); });
-    const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) }));
+    boats.forEach(b => {
+        if (!isicVph[b.isic]) isicVph[b.isic] = [];
+        if (!b.isNmci && b.vramNiprRaVph !== null) isicVph[b.isic].push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) isicVph[b.isic].push(b.vramSiprRaVph);
+    });
+    const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: vphs.length > 0 ? (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) : '0' }));
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title>
-<script src="libs/xlsx.full.min.js"><\/script>
 <script src="libs/chart.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1035,6 +1163,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .risk-med{background:#fef3c7!important;color:#92400e!important;font-weight:bold}
 .risk-low{background:#d1fae5!important;color:#065f46!important}
 .alert-red{background:#fee2e2!important}.alert-amber{background:#fef3c7!important}.alert-blue{background:#dbeafe!important}
+.hq-table{font-size:11pt}
+.hq-table th{font-size:10pt;padding:10px 12px}
+.hq-table td{padding:8px 12px;font-size:11pt}
 .hq-table th:first-child,.hq-table td:first-child{text-align:left}
 .stat-cards{display:grid;gap:16px;margin-bottom:24px;width:100%}
 .stat-card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
@@ -1055,9 +1186,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 .mini-table tr:last-child td{border-bottom:none}
 .print-only{display:none}
-.print-header{background:#1e293b;color:white;padding:12px 24px;margin-bottom:16px}
-.print-header h1{font-size:14pt;font-weight:600;margin-bottom:4px}
-.print-header .date{font-size:10pt;opacity:0.9}
+.print-header{padding:0;margin-bottom:16px}
+.print-header h1{font-size:14pt;font-weight:600;color:#1e293b;margin-bottom:4px}
+.print-header .date{font-size:9pt;color:#475569}
+.page-info{font-size:9pt;color:#475569;margin-bottom:8px}
 @media print{
     .no-print{display:none!important}
     .print-only{display:block!important}
@@ -1107,14 +1239,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 </style></head><body>
 <div class="header no-print">
 <div><h1>SUBFOR Cyber Risk Dashboard</h1><div class="header-info">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div></div>
-<div style="display:flex;gap:8px;">
 <button onclick="showHelpModal()" style="background:#64748b;color:white;border:none;padding:10px 16px;border-radius:6px;font-weight:600;cursor:pointer;" title="Calculation Help">?</button>
-<button onclick="exportToExcel()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Download All Data (Excel)</button>
-</div>
-</div>
-<div class="print-only print-header">
-<h1>SUBFOR Cyber Risk Dashboard</h1>
-<div class="date">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | Version ${reportData.version}</div>
 </div>
 <div class="tabs no-print">
 ${tabConfig.filter(t => t.visible && (t.id !== 'changelog' || hasChanges)).map((t, i) => `<button class="tab-btn${i===0?' active':''}" onclick="showTab('${t.id}')">${t.id === 'changelog' ? `Changes (${changeCount})` : t.label}</button>`).join('')}
@@ -1131,7 +1256,8 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 <button onclick="printTab('csl')">Print CSL</button>
 </div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSL Cyber Summary</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSL Cyber Summary</h2>
+${pageInfo}
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -1156,7 +1282,8 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 <button onclick="printTab('csp')">Print CSP</button>
 </div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">CSP Cyber Summary</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSP Cyber Summary</h2>
+${pageInfo}
 <div class="legend"><span><span class="legend-box risk-high"></span>High</span><span><span class="legend-box risk-med"></span>Med</span><span><span class="legend-box risk-low"></span>Low</span><span><span class="legend-box alert-red"></span>Critical</span><span><span class="legend-box alert-blue"></span>Exempt</span></div>
 <div class="risk-criteria">
 <strong>Risk Criteria:</strong>
@@ -1176,87 +1303,111 @@ ${isTabVisible('hq') ? `<div id="tab-hq" class="tab-content${firstVisibleTab==='
 <h2>HQ Cyber Status</h2>
 <div class="toolbar"><button onclick="printTab('hq')">Print HQ Status</button></div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">HQ Cyber Status</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">HQ Cyber Status</h2>
+${pageInfo}
 ${hqTable(aggs.csl, 'CSL Status')}
 ${hqTable(aggs.csp, 'CSP Status')}
 </div>
 </div>` : ''}
 
 ${isTabVisible('analytics') ? (() => {
-    const ac = settings.analyticsConfig || defaultAnalyticsConfig;
-    const isStatVisible = (id) => ac.statCards?.find(s => s.id === id)?.visible !== false;
-    const isChartVisible = (id) => ac.charts?.find(c => c.id === id)?.visible !== false;
-    const isColVisible = (id) => ac.summaryColumns?.find(c => c.id === id)?.visible !== false;
-    const getRanking = (id) => ac.rankings?.find(r => r.id === id) || {visible: false, count: 5};
+    // Use analyticsLayout for visibility - if item is in layout, it's visible
+    const al = settings.analyticsLayout || defaultAnalyticsLayout;
+    const isInLayout = (id) => al.some(item => item.id === id);
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
     const visibleStatsArr = [
-        isStatVisible('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
-        isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
-        isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
-        isStatVisible('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
-        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
-        isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
-        isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
-        isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
+        isInLayout('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
+        isInLayout('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
+        isInLayout('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
+        isInLayout('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
+        isInLayout('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
+        isInLayout('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
+        isInLayout('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
+        isInLayout('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
     ].filter(Boolean);
     const statCount = visibleStatsArr.length;
     const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
     const visibleStats = visibleStatsArr.join('');
     const visibleCharts = [
-        isChartVisible('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
-        isChartVisible('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
-        isChartVisible('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
-        isChartVisible('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
+        isInLayout('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
+        isInLayout('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
+        isInLayout('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
+        isInLayout('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
     ].filter(Boolean).join('');
 
-    // Rankings
+    // Rankings - helper functions to properly handle NMCI boats
+    const getBoatMaxVph = (b) => {
+        const nipr = b.isNmci ? null : b.vramNiprRaVph;
+        const sipr = b.vramSiprRaVph;
+        if (nipr !== null && sipr !== null) return Math.max(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatMinCompliance = (b) => {
+        const nipr = b.isNmci ? null : b.essNiprProductCompliance;
+        const sipr = b.essSiprProductCompliance;
+        if (nipr !== null && sipr !== null) return Math.min(nipr, sipr);
+        return nipr !== null ? nipr : sipr;
+    };
+    const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+
     const rankingTables = [];
-    const r1 = getRanking('worstBoatsVph');
-    if (r1.visible) {
-        const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (b.vramNiprRaVph||0) - (a.vramNiprRaVph||0)).slice(0, r1.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+    if (isInLayout('worstBoatsVph')) {
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, 5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r2 = getRanking('bestBoatsVph');
-    if (r2.visible) {
-        const sorted = [...boats].filter(b => b.vramNiprRaVph != null).sort((a,b) => (a.vramNiprRaVph||0) - (b.vramNiprRaVph||0)).slice(0, r2.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(b.vramNiprRaVph||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
+    if (isInLayout('bestBoatsVph')) {
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, 5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r3 = getRanking('worstBoatsCompliance');
-    if (r3.visible) {
-        const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (a.essNiprProductCompliance||0) - (b.essNiprProductCompliance||0)).slice(0, r3.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+    if (isInLayout('worstBoatsCompliance')) {
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, 5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r4 = getRanking('bestBoatsCompliance');
-    if (r4.visible) {
-        const sorted = [...boats].filter(b => b.essNiprProductCompliance != null).sort((a,b) => (b.essNiprProductCompliance||0) - (a.essNiprProductCompliance||0)).slice(0, r4.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, b.essNiprProductCompliance||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
+    if (isInLayout('bestBoatsCompliance')) {
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, 5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => ({isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: ib.reduce((s,b)=>s+(b.vramNiprRaVph||0),0)/ib.length}));
-    const r5 = getRanking('worstIsicsRisk');
-    if (r5.visible) {
-        const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, r5.count||3);
+    // ISIC data: calculate avg VPH considering both enclaves and NMCI
+    const isicData = Object.entries(groupByISIC(boats)).map(([isic, ib]) => {
+        const vphVals = ib.flatMap(b => {
+            const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph);
+            if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v;
+        });
+        return {isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0};
+    });
+    if (isInLayout('worstIsicsRisk')) {
+        const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by High Risk</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>High</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.high}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r6 = getRanking('bestIsicsRisk');
-    if (r6.visible) {
-        const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, r6.count||3);
+    if (isInLayout('bestIsicsRisk')) {
+        const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best ISICs by Low Risk %</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Low %</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-low">${i.lowPct.toFixed(0)}%</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r7 = getRanking('worstIsicsVph');
-    if (r7.visible) {
-        const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, r7.count||3);
+    if (isInLayout('worstIsicsVph')) {
+        const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by Avg VPH</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Avg VPH</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.avgVph.toFixed(2)}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r8 = getRanking('boatsWithBreakfix');
-    if (r8.visible) {
-        const sorted = [...boats].filter(b => (b.essNiprBreakfix||0) > 0).sort((a,b) => (b.essNiprBreakfix||0) - (a.essNiprBreakfix||0)).slice(0, r8.count||5);
-        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${b.essNiprBreakfix||0}</td></tr>`).join('')}</tbody></table></div>`);
+    if (isInLayout('boatsWithBreakfix')) {
+        const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
+        if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r9 = getRanking('tycomComparison');
-    if (r9.visible) {
+    if (isInLayout('tycomComparison')) {
         const tycomData = {};
-        boats.forEach(b => { if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphSum:0,bfSum:0,compSum:0,compCount:0}; const t=tycomData[b.tycom]; t.boats++; if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++; t.vphSum+=(b.vramNiprRaVph||0); t.bfSum+=(b.essNiprBreakfix||0); if(b.essNiprProductCompliance!=null){t.compSum+=b.essNiprProductCompliance;t.compCount++;} });
-        const rows = Object.entries(tycomData).map(([tycom,d]) => { const comp = d.compCount ? Math.min(100,d.compSum/d.compCount) : null; return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${(d.vphSum/d.boats).toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`; }).join('');
+        boats.forEach(b => {
+            if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
+            const t=tycomData[b.tycom]; t.boats++;
+            if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
+            if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
+            if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
+            t.bfSum += getBoatTotalBreakfix(b);
+            if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
+            if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
+        });
+        const rows = Object.entries(tycomData).map(([tycom,d]) => {
+            const avgVph = d.vphVals.length > 0 ? d.vphVals.reduce((s,v)=>s+v,0)/d.vphVals.length : 0;
+            const comp = d.compVals.length > 0 ? Math.min(100, d.compVals.reduce((s,v)=>s+v,0)/d.compVals.length) : null;
+            return `<tr><td style="font-weight:600">${tycom}</td><td>${d.boats}</td><td class="${d.high>0?'risk-high':''}">${d.high}</td><td class="${d.med>0?'risk-med':''}">${d.med}</td><td class="risk-low">${d.low}</td><td>${avgVph.toFixed(2)}</td><td class="${d.bfSum>0?'alert-red':''}">${d.bfSum}</td><td class="${comp!==null?compClass(comp):''}">${comp!==null?comp.toFixed(1)+'%':'-'}</td></tr>`;
+        }).join('');
         rankingTables.push(`<div class="ranking-box wide"><h4>TYCOM Comparison</h4><table class="mini-table"><thead><tr><th>TYCOM</th><th>Boats</th><th>High</th><th>Med</th><th>Low</th><th>Avg VPH</th><th>Breakfix</th><th>Compliance</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
@@ -1273,8 +1424,11 @@ ${isTabVisible('analytics') ? (() => {
         const h = isicBoats.filter(b => b.riskLevel === 'HIGH').length;
         const m = isicBoats.filter(b => b.riskLevel === 'MED').length;
         const l = isicBoats.filter(b => b.riskLevel === 'LOW').length;
-        const vph = (isicBoats.reduce((s, b) => s + (b.vramNiprRaVph || 0), 0) / isicBoats.length).toFixed(2);
-        const bf = isicBoats.reduce((s, b) => s + (b.essNiprBreakfix || 0), 0);
+        // VPH: avg of all values (NIPR for non-NMCI, SIPR for all)
+        const vphVals = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+        const vph = vphVals.length > 0 ? (vphVals.reduce((s,v)=>s+v,0)/vphVals.length).toFixed(2) : '0.00';
+        // Breakfix: sum NIPR (for non-NMCI) + SIPR
+        const bf = isicBoats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
         return `<tr>${[
             isColVisible('isic') ? `<td style="text-align:left;font-weight:600">${isic}</td>` : '',
             isColVisible('boats') ? `<td>${isicBoats.length}</td>` : '',
@@ -1287,7 +1441,8 @@ ${isTabVisible('analytics') ? (() => {
     }).join('');
     return `<div id="tab-analytics" class="tab-content${firstVisibleTab==='analytics'?' active':''}">
 <div class="page-header no-print" style="margin-bottom:16px;"><h2>Analytics</h2><div class="toolbar"><button onclick="printTab('analytics')">Print Analytics</button></div></div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Analytics</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
+${pageInfo}
 ${visibleStats ? `<div class="stat-cards" style="grid-template-columns:repeat(${statCols},1fr)">${visibleStats}</div>` : ''}
 ${visibleCharts ? `<div class="chart-grid">${visibleCharts}</div>` : ''}
 ${rankingTables.length ? `<div class="rankings-grid">${rankingTables.join('')}</div>` : ''}
@@ -1302,7 +1457,8 @@ ${summaryHeaders ? `<div class="page">
 ${(hasChanges && isTabVisible('changelog')) ? `<div id="tab-changelog" class="tab-content${firstVisibleTab==='changelog'?' active':''}">
 <div class="page">
 <div class="page-header no-print"><h2>Change Log</h2><div class="toolbar"><button onclick="printTab('changelog')">Print Changes</button></div></div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:12px;">Change Log</h2>
+<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Change Log</h2>
+${pageInfo}
 
 <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
 <h4 style="font-size:10pt;color:#0369a1;margin:0 0 8px;">Current Settings</h4>
@@ -1320,6 +1476,10 @@ ${thresholdChanges.length > 0 ? `<h3 style="font-size:11pt;margin:16px 0 8px;col
 ${allOverrides.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#7c3aed;">Value Overrides</h3>
 <table class="summary-table"><thead><tr><th style="text-align:left">Boat</th><th style="text-align:left">Field</th><th>Original</th><th>New</th><th style="text-align:left">Reason</th><th>By</th><th>Time</th></tr></thead>
 <tbody>${allOverrides.map(o => `<tr><td style="text-align:left;font-family:monospace;">${o.boatName}</td><td style="text-align:left">${o.field}</td><td>${o.originalValue}</td><td style="font-weight:bold;color:#7c3aed;">${o.overrideValue}</td><td style="text-align:left">${o.reason}</td><td>${o.user}</td><td>${new Date(o.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
+
+${dataUpdates.length > 0 ? `<h3 style="font-size:11pt;margin:24px 0 8px;color:#0891b2;">Data Source Updates</h3>
+<table class="summary-table"><thead><tr><th>Update</th><th style="text-align:left">Sources</th><th style="text-align:left">Files</th><th>By</th><th>Time</th></tr></thead>
+<tbody>${dataUpdates.map((u, i) => `<tr><td style="font-weight:bold;">#${i + 1}</td><td style="text-align:left">${u.sources.join(', ')}</td><td style="text-align:left;font-size:7pt;">${u.files.join(', ')}</td><td>${u.user}</td><td>${new Date(u.timestamp).toLocaleString()}</td></tr>`).join('')}</tbody></table>` : ''}
 </div>
 </div>` : ''}
 
@@ -1355,23 +1515,6 @@ function filterISIC(p, v) {
         row.style.display = !v || currentISIC === v ? '' : 'none';
     });
 }
-function exportToExcel() {
-    const m = document.querySelector('script[type="application/x-dashboard-report"]');
-    if (!m) { alert('No data'); return; }
-    try {
-        const [h, b64] = m.textContent.trim().split(':');
-        const d = JSON.parse(decodeURIComponent(escape(atob(b64))));
-        const wb = XLSX.utils.book_new();
-        if (d.reportData.sourceData.vramNipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.vramNipr.raw), 'VRAM NIPR');
-        if (d.reportData.sourceData.vramSipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.vramSipr.raw), 'VRAM SIPR');
-        if (d.reportData.sourceData.essNipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essNipr.raw), 'ESS NIPR');
-        if (d.reportData.sourceData.essSipr?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.essSipr.raw), 'ESS SIPR');
-        if (d.reportData.sourceData.tam?.raw) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d.reportData.sourceData.tam.raw), 'TAM');
-        const calc = d.reportData.boats.map(b => ({ Boat: b.boatFullName || b.boatName, ISIC: b.isic, TYCOM: b.tycom, Risk: b.riskLevel, Reasons: b.riskReasons.join('; '), Notes: b.notes || '' }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(calc), 'Summary');
-        XLSX.writeFile(wb, 'cyber-export-' + new Date().toISOString().slice(0, 10) + '.xlsx');
-    } catch (e) { alert('Export failed: ' + e.message); }
-}
 function initCharts() {
     const el1 = document.getElementById('chart-risk-all');
     if (el1) new Chart(el1, {
@@ -1401,40 +1544,35 @@ function hideHelpModal() { document.getElementById('help-modal').style.display =
 <\/script>
 <div id="help-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideHelpModal()">
 <div style="background:white;border-radius:12px;padding:24px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
-<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Calculation Reference</h3>
+<h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Risk Calculation Reference</h3>
 <div style="font-size:10pt;">
 <div style="margin-bottom:16px;">
-<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk Triggers</h4>
+<h4 style="font-weight:bold;color:#dc2626;margin-bottom:6px;">HIGH Risk</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Breakfix > 0</strong> - Any NIPR or SIPR breakfix issues</li>
-<li><strong>Scan Age > ${settings.thresholds.auto_high_scan_age_days} days</strong> - VRAM scan too old</li>
-<li><strong>Scan Integrity < ${settings.thresholds.auto_high_scan_integrity}%</strong> - VRAM scan incomplete</li>
-<li><strong>VPH > ${settings.thresholds.auto_high_ra_vph}</strong> - Vulnerabilities per host too high</li>
-<li><strong>ESS Policy < ${settings.thresholds.high_ess_compliance}%</strong> - Policy compliance too low</li>
-<li><strong>TAM Past Due > ${settings.thresholds.high_tam_past_due}</strong> - Too many overdue TAMs</li>
+${(helpModalText.highItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div style="margin-bottom:16px;">
-<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk Triggers</h4>
+<h4 style="font-weight:bold;color:#d97706;margin-bottom:6px;">MEDIUM Risk (2 or more of the following)</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Scan Age > ${settings.thresholds.med_scan_age_days} days</strong></li>
-<li><strong>VPH > ${settings.thresholds.med_ra_vph}</strong></li>
-<li><strong>ESS Policy < ${settings.thresholds.med_ess_compliance}%</strong></li>
-<li><strong>TAM Past Due > ${settings.thresholds.med_tam_past_due}</strong></li>
+${(helpModalText.medItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
+</ul>
+</div>
+<div style="margin-bottom:16px;">
+<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
+<ul style="margin-left:20px;color:#475569;list-style:disc;">
+${(helpModalText.lowItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div style="margin-bottom:16px;">
 <h4 style="font-weight:bold;color:#334155;margin-bottom:6px;">Key Calculations</h4>
 <ul style="margin-left:20px;color:#475569;list-style:disc;">
-<li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
-<li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-<li><strong>ESS Policy %</strong> = True policy rate against all assets: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">PolicyEnforced × ProductCompliance / 100</code></li>
-<li><strong>Scan Exempt</strong> = If marked exempt, scan-only HIGH risks downgrade to MED</li>
+${(helpModalText.calcItems || []).map(item => `<li>${formatHelpText(item)}</li>`).join('')}
 </ul>
 </div>
 <div>
-<h4 style="font-weight:bold;color:#059669;margin-bottom:6px;">LOW Risk</h4>
-<p style="color:#475569;">Boats that don't trigger any HIGH or MEDIUM conditions</p>
+<h4 style="font-weight:bold;color:#0ea5e9;margin-bottom:6px;">Scan Exempt</h4>
+<p style="color:#475569;">${formatHelpText(helpModalText.scanExempt || '')}</p>
 </div>
 </div>
 <div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
@@ -1458,7 +1596,7 @@ const DragDropZone = ({ label, file, onDrop, onClear }) => {
     );
 };
 
-const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onProcess, onAlert, onReportImport }) => {
+const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, reportData, onProcess, onAlert, onReportImport }) => {
     const [reportDrag, setReportDrag] = React.useState(false);
     const handleDrop = (key) => (file) => { const r = new FileReader(); r.onload = (e) => setImportedFiles(p => ({...p, [key]: { name: file.name, data: new Uint8Array(e.target.result) }})); r.readAsArrayBuffer(file); };
 
@@ -1482,21 +1620,74 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onP
                 essSipr: importedFiles.essSipr ? parseESS(importedFiles.essSipr.data, schema.ess) : null,
                 tam: importedFiles.tam ? parseTAM(importedFiles.tam.data, schema.tam) : null
             };
-            const { boats, unregistered } = mergeData(sources, settings);
-            calculateAllRisks(boats, settings.thresholds);
-            const report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: sources, createdAt: new Date().toISOString(), createdBy: '', lastModifiedAt: new Date().toISOString(), lastModifiedBy: '', version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name } };
-            if (unregistered.length > 0) onAlert({ type: 'warning', msg: `Unregistered: ${unregistered.slice(0,5).join(', ')}${unregistered.length>5?'...':''} - Add in Settings` });
+
+            // Check if this is an update to existing report
+            const isUpdate = reportData && reportData.boats && reportData.boats.length > 0;
+            const updatedSources = Object.entries(sources).filter(([k, v]) => v !== null).map(([k]) => k);
+
+            // Strip raw data from sources to reduce file size (only keep parsed data needed for merging)
+            const stripRaw = (src) => src ? { parsed: src.parsed, customFieldDefs: src.customFieldDefs, isicMap: src.isicMap } : null;
+
+            let boats, report;
+            if (isUpdate && updatedSources.length > 0) {
+                // Merge new sources with existing source data
+                const mergedSources = { ...reportData.sourceData };
+                Object.entries(sources).forEach(([key, val]) => { if (val !== null) mergedSources[key] = stripRaw(val); });
+                const result = mergeData(mergedSources, settings);
+                boats = result.boats;
+
+                // Preserve overrides from existing boats
+                boats.forEach(newBoat => {
+                    const oldBoat = reportData.boats.find(b => b.boatName === newBoat.boatName);
+                    if (oldBoat?.overrides?.length) newBoat.overrides = [...oldBoat.overrides];
+                    if (oldBoat?.notes) newBoat.notes = oldBoat.notes;
+                });
+
+                calculateAllRisks(boats, settings.thresholds);
+
+                // Build update changelog entry
+                const sourceLabels = { vramNipr: 'VRAM NIPR', vramSipr: 'VRAM SIPR', essNipr: 'ESS NIPR', essSipr: 'ESS SIPR', tam: 'TAM' };
+                const updateEntry = { type: 'dataUpdate', sources: updatedSources.map(k => sourceLabels[k] || k), files: updatedSources.map(k => importedFiles[k]?.name).filter(Boolean), timestamp: new Date().toISOString(), user: 'User' };
+
+                report = {
+                    ...reportData,
+                    boats,
+                    sourceData: mergedSources,
+                    lastModifiedAt: new Date().toISOString(),
+                    version: (reportData.version || 1) + 1,
+                    sourceFiles: { ...reportData.sourceFiles, ...Object.fromEntries(updatedSources.map(k => [k, importedFiles[k]?.name])) },
+                    dataUpdates: [...(reportData.dataUpdates || []), updateEntry]
+                };
+                onAlert({ type: 'info', msg: `Updated ${updatedSources.map(k => sourceLabels[k]).join(', ')} - preserved ${boats.filter(b => b.overrides?.length).length} overrides` });
+            } else {
+                // Fresh report - strip raw data to reduce file size
+                const result = mergeData(sources, settings);
+                boats = result.boats;
+                calculateAllRisks(boats, settings.thresholds);
+                const strippedSources = { vramNipr: stripRaw(sources.vramNipr), vramSipr: stripRaw(sources.vramSipr), essNipr: stripRaw(sources.essNipr), essSipr: stripRaw(sources.essSipr), tam: stripRaw(sources.tam) };
+                report = { boats, settingsSnapshot: JSON.parse(JSON.stringify(settings)), sourceData: strippedSources, createdAt: new Date().toISOString(), createdBy: '', lastModifiedAt: new Date().toISOString(), lastModifiedBy: '', version: 1, sourceFiles: { vramNipr: importedFiles.vramNipr?.name, vramSipr: importedFiles.vramSipr?.name, essNipr: importedFiles.essNipr?.name, essSipr: importedFiles.essSipr?.name, tam: importedFiles.tam?.name }, dataUpdates: [] };
+                if (result.unregistered.length > 0) onAlert({ type: 'warning', msg: `Unregistered: ${result.unregistered.slice(0,5).join(', ')}${result.unregistered.length>5?'...':''} - Add in Settings` });
+            }
             onProcess(report);
         } catch (err) { onAlert({ type: 'error', msg: err.message }); }
     };
 
     const slots = [{ key: 'vramNipr', label: 'VRAM NIPR' }, { key: 'vramSipr', label: 'VRAM SIPR' }, { key: 'essNipr', label: 'ESS NIPR' }, { key: 'essSipr', label: 'ESS SIPR' }, { key: 'tam', label: 'TAM Overdue' }];
+    const hasExistingReport = reportData && reportData.boats && reportData.boats.length > 0;
+    const hasNewFiles = Object.values(importedFiles).some(f => f);
 
     return (
         <div>
+            {hasExistingReport && (
+                <div className="mb-4 p-3 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center gap-3">
+                    <span className="text-cyan-700 font-medium">Active Report: v{reportData.version || 1}</span>
+                    <span className="text-cyan-600 text-sm">({reportData.boats.length} boats)</span>
+                    <span className="text-cyan-500 text-sm">• Drop new files below to update specific data sources while preserving overrides</span>
+                </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold mb-4 text-slate-800">Import Data Files</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-slate-800">{hasExistingReport ? 'Update Data Sources' : 'Import Data Files'}</h2>
                     <div className="grid grid-cols-2 gap-3">{slots.map(s => <DragDropZone key={s.key} label={s.label} file={importedFiles[s.key]} onDrop={handleDrop(s.key)} onClear={() => setImportedFiles(p => ({...p, [s.key]: null}))} />)}</div>
                 </div>
                 <div>
@@ -1512,14 +1703,349 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, onP
                 </div>
             </div>
             <div className="flex gap-4 flex-wrap">
-                <button onClick={process} disabled={!Object.values(importedFiles).some(f=>f)} className="btn-primary">Process & Preview</button>
+                <button onClick={process} disabled={!hasNewFiles} className="btn-primary">{hasExistingReport && hasNewFiles ? 'Update & Preview' : 'Process & Preview'}</button>
                 <button onClick={() => setImportedFiles({vramNipr:null,vramSipr:null,essNipr:null,essSipr:null,tam:null})} className="btn-secondary">Clear All</button>
             </div>
         </div>
     );
 };
 
-const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
+// HQ Status Preview Component with customizable metrics
+const HQStatusPreview = ({ boats, settings, onLayoutChange }) => {
+    const [layout, setLayout] = React.useState(() => settings.hqStatusLayout || defaultHQStatusLayout);
+    const [draggedIdx, setDraggedIdx] = React.useState(null);
+    const [showAddModal, setShowAddModal] = React.useState(false);
+
+    // Compute aggregates by ISIC and TYCOM
+    const groupByISIC = (boats) => boats.reduce((acc, b) => { (acc[b.isic] = acc[b.isic] || []).push(b); return acc; }, {});
+    const compClass = (v) => v < 90 ? 'risk-high' : v < 95 ? 'risk-med' : 'risk-low';
+
+    const aggregateByISIC = (boats) => {
+        const groups = groupByISIC(boats);
+        return Object.entries(groups).map(([isic, isicBoats]) => {
+            const nProdVals = isicBoats.filter(b => !b.isNmci && b.essNiprProductCompliance !== null).map(b => b.essNiprProductCompliance);
+            const nPolVals = isicBoats.filter(b => !b.isNmci && b.essNiprTruePolicy !== null).map(b => b.essNiprTruePolicy);
+            const sProdVals = isicBoats.filter(b => b.essSiprProductCompliance !== null).map(b => b.essSiprProductCompliance);
+            const sPolVals = isicBoats.filter(b => b.essSiprTruePolicy !== null).map(b => b.essSiprTruePolicy);
+            return {
+                isicName: isic,
+                isicShort: isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS'),
+                boatCount: isicBoats.length,
+                niprProdCompAvg: nProdVals.length ? nProdVals.reduce((s,v)=>s+v,0)/nProdVals.length : 0,
+                niprPolEnfAvg: nPolVals.length ? nPolVals.reduce((s,v)=>s+v,0)/nPolVals.length : 0,
+                niprBreakfixSum: isicBoats.reduce((s,b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)), 0),
+                siprProdCompAvg: sProdVals.length ? sProdVals.reduce((s,v)=>s+v,0)/sProdVals.length : 0,
+                siprPolEnfAvg: sPolVals.length ? sPolVals.reduce((s,v)=>s+v,0)/sPolVals.length : 0,
+                siprBreakfixSum: isicBoats.reduce((s,b) => s + (b.essSiprBreakfix || 0), 0),
+                highRiskCount: isicBoats.filter(b => b.riskLevel === 'HIGH').length,
+                scanExemptCount: isicBoats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length
+            };
+        }).sort((a,b) => a.isicName.localeCompare(b.isicName));
+    };
+
+    const cslBoats = boats.filter(b => b.tycom === 'CSL');
+    const cspBoats = boats.filter(b => b.tycom === 'CSP');
+    const aggs = { csl: aggregateByISIC(cslBoats), csp: aggregateByISIC(cspBoats) };
+
+    const visibleMetrics = layout.filter(m => m.visible);
+
+    const getMetricValue = (agg, metricId) => {
+        switch(metricId) {
+            case 'niprProdComp': return { value: agg.niprProdCompAvg.toFixed(1) + '%', className: compClass(agg.niprProdCompAvg) };
+            case 'niprPolEnf': return { value: agg.niprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.niprPolEnfAvg) };
+            case 'niprBreakfix': return { value: agg.niprBreakfixSum, className: agg.niprBreakfixSum > 0 ? 'alert-red' : '' };
+            case 'siprProdComp': return { value: agg.siprProdCompAvg.toFixed(1) + '%', className: compClass(agg.siprProdCompAvg) };
+            case 'siprPolEnf': return { value: agg.siprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.siprPolEnfAvg) };
+            case 'siprBreakfix': return { value: agg.siprBreakfixSum, className: agg.siprBreakfixSum > 0 ? 'alert-red' : '' };
+            case 'highRisk': return { value: agg.highRiskCount, className: agg.highRiskCount > 0 ? 'risk-high' : '' };
+            case 'scanExempt': return { value: agg.scanExemptCount, className: agg.scanExemptCount > 0 ? 'alert-blue' : '' };
+            default: return { value: '-', className: '' };
+        }
+    };
+
+    const handleDragStart = (idx) => setDraggedIdx(idx);
+    const handleDragOver = (e) => e.preventDefault();
+    const handleDrop = (targetIdx) => {
+        if (draggedIdx === null || draggedIdx === targetIdx) return;
+        const newLayout = [...layout];
+        const [dragged] = newLayout.splice(draggedIdx, 1);
+        newLayout.splice(targetIdx, 0, dragged);
+        setLayout(newLayout);
+        setDraggedIdx(null);
+    };
+
+    const toggleVisibility = (idx) => {
+        const newLayout = [...layout];
+        newLayout[idx] = { ...newLayout[idx], visible: !newLayout[idx].visible };
+        setLayout(newLayout);
+    };
+
+    const saveLayout = () => { if (onLayoutChange) onLayoutChange(layout); };
+
+    const renderTable = (tycom, aggs) => (
+        <div className="mb-6">
+            <h3 className="text-lg font-bold mb-3 text-slate-700">{tycom} Status</h3>
+            <div className="overflow-x-auto">
+                <table className="data-table hq-preview-table">
+                    <thead>
+                        <tr>
+                            <th style={{textAlign:'left'}}>Metric</th>
+                            {aggs.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {visibleMetrics.map(metric => (
+                            <tr key={metric.id}>
+                                <td style={{textAlign:'left',fontWeight:600}}>{metric.label}</td>
+                                {aggs.map(a => {
+                                    const { value, className } = getMetricValue(a, metric.id);
+                                    return <td key={a.isicName} className={className}>{value}</td>;
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="card p-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-slate-700">HQ Status Preview</h3>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowAddModal(!showAddModal)} className="px-3 py-1 bg-cyan-600 text-white rounded text-sm">{showAddModal ? 'Hide' : 'Configure'} Metrics</button>
+                    <button onClick={saveLayout} className="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Save Layout</button>
+                </div>
+            </div>
+
+            {showAddModal && (
+                <div className="mb-4 p-4 bg-slate-50 rounded border border-slate-200">
+                    <p className="text-sm text-slate-600 mb-3">Drag to reorder, click checkbox to show/hide:</p>
+                    <div className="space-y-2">
+                        {layout.map((metric, idx) => (
+                            <div key={metric.id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={handleDragOver} onDrop={() => handleDrop(idx)}
+                                className="flex items-center gap-3 p-2 bg-white rounded border border-slate-200 cursor-move hover:bg-slate-50">
+                                <span className="text-slate-400">☰</span>
+                                <input type="checkbox" checked={metric.visible} onChange={() => toggleVisibility(idx)} />
+                                <span className={`text-sm ${metric.visible ? 'text-slate-700' : 'text-slate-400'}`}>{metric.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {renderTable('CSL', aggs.csl)}
+            {renderTable('CSP', aggs.csp)}
+        </div>
+    );
+};
+
+// Analytics Preview Component with drag/drop grid
+const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
+    const [showSidebar, setShowSidebar] = React.useState(false);
+    const [draggedItem, setDraggedItem] = React.useState(null);
+    const [layout, setLayout] = React.useState(() => {
+        // Initialize from settings or use default
+        return settings.analyticsLayout || defaultAnalyticsLayout;
+    });
+
+    // Compute analytics data
+    const riskCounts = { HIGH: boats.filter(b => b.riskLevel === 'HIGH').length, MED: boats.filter(b => b.riskLevel === 'MED').length, LOW: boats.filter(b => b.riskLevel === 'LOW').length };
+    const vphValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const avgVph = vphValues.length > 0 ? (vphValues.reduce((s, v) => s + v, 0) / vphValues.length).toFixed(2) : '0';
+    const totalBreakfix = boats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
+    const compValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprProductCompliance !== null) v.push(b.essNiprProductCompliance); if (b.essSiprProductCompliance !== null) v.push(b.essSiprProductCompliance); return v; });
+    const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : '0';
+    const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
+
+    // Helper functions
+    const getBoatMaxVph = (b) => { const nipr = b.isNmci ? null : b.vramNiprRaVph; const sipr = b.vramSiprRaVph; if (nipr !== null && sipr !== null) return Math.max(nipr, sipr); return nipr !== null ? nipr : sipr; };
+    const getBoatMinCompliance = (b) => { const nipr = b.isNmci ? null : b.essNiprProductCompliance; const sipr = b.essSiprProductCompliance; if (nipr !== null && sipr !== null) return Math.min(nipr, sipr); return nipr !== null ? nipr : sipr; };
+    const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+
+    // Rankings data
+    const worstVph = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, 5);
+    const worstCompliance = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, 5);
+    const boatsBreakfix = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
+    const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
+
+    // Available elements for sidebar
+    const availableElements = [
+        { id: 'totalBoats', type: 'stat', label: 'Total Boats' },
+        { id: 'highRisk', type: 'stat', label: 'High Risk Count' },
+        { id: 'medRisk', type: 'stat', label: 'Medium Risk Count' },
+        { id: 'lowRisk', type: 'stat', label: 'Low Risk Count' },
+        { id: 'avgVph', type: 'stat', label: 'Avg VPH' },
+        { id: 'totalBreakfix', type: 'stat', label: 'Total Breakfix' },
+        { id: 'avgCompliance', type: 'stat', label: 'Avg Compliance' },
+        { id: 'scanExempt', type: 'stat', label: 'Scan Exempt' },
+        { id: 'riskDistribution', type: 'chart', label: 'Risk Distribution Chart' },
+        { id: 'highRiskTable', type: 'chart', label: 'High Risk Boats Table' },
+        { id: 'worstBoatsVph', type: 'ranking', label: 'Worst Boats by VPH' },
+        { id: 'bestBoatsVph', type: 'ranking', label: 'Best Boats by VPH' },
+        { id: 'worstBoatsCompliance', type: 'ranking', label: 'Worst by Compliance' },
+        { id: 'bestBoatsCompliance', type: 'ranking', label: 'Best by Compliance' },
+        { id: 'boatsWithBreakfix', type: 'ranking', label: 'Boats with Breakfix' },
+    ];
+
+    const activeIds = layout.map(l => l.id);
+    const inactiveElements = availableElements.filter(e => !activeIds.includes(e.id));
+
+    const handleDragStart = (item) => setDraggedItem(item);
+    const handleDragEnd = () => setDraggedItem(null);
+
+    const handleDrop = (targetRow, targetCol) => {
+        if (!draggedItem) return;
+        if (draggedItem.isNew) {
+            // Adding from sidebar
+            setLayout(prev => [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol }]);
+        } else {
+            // Moving existing item
+            setLayout(prev => prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item));
+        }
+        setDraggedItem(null);
+    };
+
+    const removeItem = (id) => setLayout(prev => prev.filter(item => item.id !== id));
+
+    const saveLayout = () => {
+        if (onLayoutChange) {
+            onLayoutChange(layout);
+        }
+    };
+
+    // Render element content
+    const renderElement = (item) => {
+        const statStyle = "bg-white rounded-lg p-4 shadow border border-slate-200";
+        const valueStyle = "text-3xl font-bold";
+        const labelStyle = "text-sm text-slate-500";
+
+        switch(item.id) {
+            case 'totalBoats': return <div className={statStyle}><div className={labelStyle}>Total Boats</div><div className={valueStyle}>{boats.length}</div></div>;
+            case 'highRisk': return <div className={statStyle}><div className={labelStyle}>High Risk</div><div className={`${valueStyle} text-red-600`}>{riskCounts.HIGH}</div></div>;
+            case 'medRisk': return <div className={statStyle}><div className={labelStyle}>Medium Risk</div><div className={`${valueStyle} text-amber-600`}>{riskCounts.MED}</div></div>;
+            case 'lowRisk': return <div className={statStyle}><div className={labelStyle}>Low Risk</div><div className={`${valueStyle} text-emerald-600`}>{riskCounts.LOW}</div></div>;
+            case 'avgVph': return <div className={statStyle}><div className={labelStyle}>Avg RA VPH</div><div className={valueStyle}>{avgVph}</div></div>;
+            case 'totalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${totalBreakfix > 0 ? 'text-red-600' : ''}`}>{totalBreakfix}</div></div>;
+            case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg ESS Compliance</div><div className={valueStyle}>{avgCompliance}%</div></div>;
+            case 'scanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{scanExemptCount}</div></div>;
+            case 'riskDistribution': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Risk Distribution</div>
+                    <div className="flex gap-2 items-end h-24">
+                        <div className="flex-1 bg-red-500 rounded" style={{height: `${(riskCounts.HIGH / boats.length) * 100}%`}} title={`High: ${riskCounts.HIGH}`}></div>
+                        <div className="flex-1 bg-amber-500 rounded" style={{height: `${(riskCounts.MED / boats.length) * 100}%`}} title={`Med: ${riskCounts.MED}`}></div>
+                        <div className="flex-1 bg-emerald-500 rounded" style={{height: `${(riskCounts.LOW / boats.length) * 100}%`}} title={`Low: ${riskCounts.LOW}`}></div>
+                    </div>
+                    <div className="flex gap-2 mt-2 text-xs"><span className="flex-1 text-center text-red-600">HIGH ({riskCounts.HIGH})</span><span className="flex-1 text-center text-amber-600">MED ({riskCounts.MED})</span><span className="flex-1 text-center text-emerald-600">LOW ({riskCounts.LOW})</span></div>
+                </div>
+            );
+            case 'highRiskTable': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">High Risk Boats ({highRiskBoats.length})</div>
+                    {highRiskBoats.length === 0 ? <div className="text-emerald-600 font-medium">No high-risk boats</div> : (
+                        <div className="text-sm max-h-32 overflow-auto">
+                            {highRiskBoats.slice(0,5).map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-slate-500">{b.isic}</span></div>)}
+                            {highRiskBoats.length > 5 && <div className="text-slate-400 text-xs mt-1">+{highRiskBoats.length - 5} more</div>}
+                        </div>
+                    )}
+                </div>
+            );
+            case 'worstBoatsVph': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Worst Boats by VPH</div>
+                    <div className="text-sm">{worstVph.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMaxVph(b)||0).toFixed(2)}</span></div>)}</div>
+                </div>
+            );
+            case 'worstBoatsCompliance': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Worst by Compliance</div>
+                    <div className="text-sm">{worstCompliance.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{(getBoatMinCompliance(b)||0).toFixed(1)}%</span></div>)}</div>
+                </div>
+            );
+            case 'boatsWithBreakfix': return (
+                <div className="bg-white rounded-lg p-4 shadow border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-3">Boats with Breakfix</div>
+                    {boatsBreakfix.length === 0 ? <div className="text-emerald-600">None</div> : (
+                        <div className="text-sm">{boatsBreakfix.map(b => <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100"><span className="font-mono text-cyan-600">{b.boatName}</span><span className="text-red-600">{getBoatTotalBreakfix(b)}</span></div>)}</div>
+                    )}
+                </div>
+            );
+            default: return <div className="bg-slate-100 rounded-lg p-4">{item.id}</div>;
+        }
+    };
+
+    // Grid cells (4 columns x many rows)
+    const maxRow = Math.max(...layout.map(l => l.row), 3) + 1;
+    const gridCells = [];
+    for (let row = 0; row <= maxRow; row++) {
+        for (let col = 0; col < 4; col++) {
+            gridCells.push({ row, col });
+        }
+    }
+
+    return (
+        <div className="flex gap-4">
+            <div className="flex-1">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-slate-700">Analytics Preview</h3>
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-1 bg-cyan-600 text-white rounded text-sm">{showSidebar ? 'Hide' : 'Add'} Widgets</button>
+                        <button onClick={saveLayout} className="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Save Layout</button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 gap-3 min-h-[400px]" style={{gridAutoRows: 'minmax(100px, auto)'}}>
+                    {gridCells.map(cell => {
+                        const item = layout.find(l => l.row === cell.row && l.col === cell.col);
+                        return (
+                            <div
+                                key={`${cell.row}-${cell.col}`}
+                                className={`relative rounded border-2 border-dashed ${item ? 'border-transparent' : 'border-slate-200 bg-slate-50'} ${draggedItem ? 'hover:bg-cyan-50 hover:border-cyan-400' : ''}`}
+                                onDragOver={(e) => { e.preventDefault(); }}
+                                onDrop={() => handleDrop(cell.row, cell.col)}
+                            >
+                                {item && (
+                                    <div
+                                        draggable
+                                        onDragStart={() => handleDragStart(item)}
+                                        onDragEnd={handleDragEnd}
+                                        className="cursor-move h-full"
+                                    >
+                                        <button onClick={() => removeItem(item.id)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs z-10 hover:bg-red-600">×</button>
+                                        {renderElement(item)}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            {showSidebar && (
+                <div className="w-64 bg-slate-100 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-700 mb-3">Available Widgets</h4>
+                    <p className="text-xs text-slate-500 mb-3">Drag widgets to the grid to add them</p>
+                    <div className="space-y-2">
+                        {inactiveElements.map(el => (
+                            <div
+                                key={el.id}
+                                draggable
+                                onDragStart={() => handleDragStart({ ...el, isNew: true })}
+                                onDragEnd={handleDragEnd}
+                                className="p-2 bg-white rounded border border-slate-200 cursor-move hover:bg-cyan-50 hover:border-cyan-400 text-sm"
+                            >
+                                {el.label}
+                            </div>
+                        ))}
+                        {inactiveElements.length === 0 && <div className="text-slate-400 text-sm">All widgets are on the grid</div>}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const PreviewTab = ({ reportData, setReportData, settings, setSettings, onRequestName }) => {
     const [subTab, setSubTab] = React.useState('csl');
     const [selectedISIC, setSelectedISIC] = React.useState('');
     const [overrideModal, setOverrideModal] = React.useState(null);
@@ -1775,17 +2301,14 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
             )}
 
             <div className="flex gap-2 mb-4">
-                {['csl', 'csp', 'hq'].map(t => <button key={t} onClick={() => { setSubTab(t); setSelectedISIC(''); }} className={`px-4 py-2 rounded font-medium uppercase text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'hq' ? 'HQ Status' : `${t} Summary`}</button>)}
+                {['csl', 'csp', 'hq', 'analytics'].map(t => <button key={t} onClick={() => { setSubTab(t); setSelectedISIC(''); }} className={`px-4 py-2 rounded font-medium uppercase text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'hq' ? 'HQ Status' : t === 'analytics' ? 'Analytics' : `${t} Summary`}</button>)}
             </div>
             {(subTab === 'csl' || subTab === 'csp') && <div className="mb-4"><select value={selectedISIC} onChange={(e) => setSelectedISIC(e.target.value)} className="px-4 py-2 rounded"><option value="">All Squadrons</option>{isics.map(i => <option key={i} value={i}>{i}</option>)}</select><span className="ml-4 text-sm text-slate-500">Click any cell to override</span></div>}
 
             {subTab === 'hq' ? (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
-                    <div className="overflow-x-auto mb-6"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csl.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
-                    <div className="overflow-x-auto"><table className="data-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csp.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
-                </div>
+                <HQStatusPreview boats={boats} settings={settings} onLayoutChange={(newLayout) => setSettings(prev => ({ ...prev, hqStatusLayout: newLayout }))} />
+            ) : subTab === 'analytics' ? (
+                <AnalyticsPreview boats={boats} settings={settings} onLayoutChange={(newLayout) => setSettings(prev => ({ ...prev, analyticsLayout: newLayout }))} />
             ) : (
                 <div className="card p-4 overflow-x-auto">
                     <table className="data-table">
@@ -1860,8 +2383,8 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                                 {showVramIntegrity && <Cell boat={b} field="vramSiprScanIntegrity" value={b.vramSiprScanIntegrity} format="pct" />}
                                 {showVramScanned && <Cell boat={b} field="vramSiprScanPercent" value={b.vramSiprScanPercent} format="pct" />}
                                 {vramCustomFields.map(cf => <td key={`vrams-${cf.field}`}>{fmtCustom(b.customFields?.vramSipr?.[cf.field])}</td>)}
-                                {showVramCrit && <Cell boat={b} field="vramNiprRaCrit" value={fmt(b.vramNiprRaCrit)} />}
-                                {showVramHigh && <Cell boat={b} field="vramNiprRaHigh" value={fmt(b.vramNiprRaHigh)} />}
+                                {showVramCrit && <td>{fmt(b.isNmci ? b.vramSiprRaCrit : b.vramNiprRaCrit)}</td>}
+                                {showVramHigh && <td>{fmt(b.isNmci ? b.vramSiprRaHigh : b.vramNiprRaHigh)}</td>}
                                 {showTamPastDue && <Cell boat={b} field="tamPastDue" value={fmt(b.tamPastDue)} className={(b.tamPastDue||0)>10?'risk-high':''} />}
                                 {showTamExtensions && <Cell boat={b} field="tamExtensions" value={fmt(b.tamExtensions)} />}
                                 {tamCustomFields.map(cf => <td key={`tam-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
@@ -2109,6 +2632,32 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
         setSettings(prev => ({ ...prev, legendText: { ...prev.legendText, [key]: value } }));
     };
 
+    // Help modal text helpers (? button content)
+    const helpModal = settings.helpModalText || JSON.parse(JSON.stringify(defaultHelpModalText));
+    const updateHelpModal = (key, value) => {
+        setSettings(prev => ({ ...prev, helpModalText: { ...prev.helpModalText, [key]: value } }));
+    };
+    const updateHelpModalItem = (key, index, value) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key])];
+            items[index] = value;
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+    const addHelpModalItem = (key) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key]), ''];
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+    const removeHelpModalItem = (key, index) => {
+        setSettings(prev => {
+            const items = [...(prev.helpModalText?.[key] || defaultHelpModalText[key])];
+            items.splice(index, 1);
+            return { ...prev, helpModalText: { ...prev.helpModalText, [key]: items } };
+        });
+    };
+
     // Schema config helpers
     const schema = settings.schemaConfig || JSON.parse(JSON.stringify(defaultSchemaConfig));
     const [newFieldModal, setNewFieldModal] = React.useState(null);
@@ -2142,14 +2691,6 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
     const schemaTypeLabels = { vram: 'VRAM Files', ess: 'ESS Files', tam: 'TAM Files' };
     const schemaTypeColors = { vram: 'text-cyan-700', ess: 'text-indigo-700', tam: 'text-orange-700' };
 
-    // Analytics config helpers
-    const analytics = settings.analyticsConfig || JSON.parse(JSON.stringify(defaultAnalyticsConfig));
-    const updateAnalyticsItem = (section, idx, updates) => {
-        const newConfig = JSON.parse(JSON.stringify(analytics));
-        newConfig[section][idx] = { ...newConfig[section][idx], ...updates };
-        setSettings(prev => ({ ...prev, analyticsConfig: newConfig }));
-    };
-
     return (
         <div>
             {/* Warning Box */}
@@ -2181,7 +2722,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 </div>
             </div>
 
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -2206,30 +2747,91 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
             )}
 
             {subTab === 'legend' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Legend Text</h3>
-                    <p className="text-sm text-slate-500 mb-4">Customize the legend text shown on CSL/CSP summary pages. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values (e.g., <code className="bg-slate-100 px-1 rounded">{'{auto_high_scan_age_days}'}</code> becomes the actual value).</p>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Criteria</label>
-                            <textarea value={legend.high} onChange={(e) => updateLegend('high', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Breakfix > 0, Scan > {auto_high_scan_age_days}d" />
+                <div className="space-y-6">
+                    <div className="card p-4">
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Legend Text (Table)</h3>
+                        <p className="text-sm text-slate-500 mb-4">Customize the legend text shown on CSL/CSP summary pages. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Criteria</label>
+                                <textarea value={legend.high} onChange={(e) => updateLegend('high', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Breakfix > 0, Scan > {auto_high_scan_age_days}d" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Criteria</label>
+                                <textarea value={legend.med} onChange={(e) => updateLegend('med', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Scan > {med_scan_age_days}d, VPH > {med_ra_vph}" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Criteria</label>
+                                <textarea value={legend.low} onChange={(e) => updateLegend('low', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., No criteria met" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Criteria</label>
-                            <textarea value={legend.med} onChange={(e) => updateLegend('med', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., Scan > {med_scan_age_days}d, VPH > {med_ra_vph}" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Criteria</label>
-                            <textarea value={legend.low} onChange={(e) => updateLegend('low', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={2} placeholder="e.g., No criteria met" />
-                        </div>
+                        <button onClick={() => setSettings(p => ({...p, legendText: JSON.parse(JSON.stringify(defaultLegendText))}))} className="btn-secondary mt-4 text-sm">Reset Table Legend</button>
                     </div>
-                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
+
+                    <div className="card p-4">
+                        <h3 className="text-lg font-bold mb-2 text-slate-700">Help Modal Content (? Button)</h3>
+                        <p className="text-sm text-slate-500 mb-4">Customize the content shown when clicking the ? button. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values. Each item becomes a bullet point.</p>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Items</label>
+                                {(helpModal.highItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('highItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., Breakfix > 0 - Any asset in breakfix" />
+                                        <button onClick={() => removeHelpModalItem('highItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('highItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Items (2+ triggers MED)</label>
+                                {(helpModal.medItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('medItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH > {med_ra_vph} - Vulnerabilities per host" />
+                                        <button onClick={() => removeHelpModalItem('medItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('medItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Items</label>
+                                {(helpModal.lowItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('lowItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH < {low_vph} - Low vulnerabilities" />
+                                        <button onClick={() => removeHelpModalItem('lowItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('lowItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Key Calculations</label>
+                                {(helpModal.calcItems || []).map((item, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" value={item} onChange={(e) => updateHelpModalItem('calcItems', i, e.target.value)} className="flex-1 p-2 border border-slate-300 rounded text-sm font-mono" placeholder="e.g., VPH = Vulnerabilities Per Host" />
+                                        <button onClick={() => removeHelpModalItem('calcItems', i)} className="text-red-500 hover:text-red-700 px-2">×</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => addHelpModalItem('calcItems')} className="text-xs text-cyan-600 hover:text-cyan-800">+ Add Item</button>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Scan Exempt Explanation</label>
+                                <textarea value={helpModal.scanExempt || ''} onChange={(e) => updateHelpModal('scanExempt', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={3} placeholder="Explain when Scan Exempt applies..." />
+                            </div>
+                        </div>
+
+                        <button onClick={() => setSettings(p => ({...p, helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))}))} className="btn-secondary mt-4 text-sm">Reset Help Modal</button>
+                    </div>
+
+                    <div className="card p-4">
                         <h4 className="text-sm font-semibold text-slate-600 mb-2">Available Threshold Variables:</h4>
                         <div className="text-xs text-slate-500 font-mono flex flex-wrap gap-2">
                             {Object.keys(settings.thresholds).map(k => <span key={k} className="bg-slate-200 px-2 py-1 rounded">{`{${k}}`}</span>)}
                         </div>
                     </div>
-                    <button onClick={() => setSettings(p => ({...p, legendText: JSON.parse(JSON.stringify(defaultLegendText))}))} className="btn-secondary mt-4 text-sm">Reset to Default</button>
                 </div>
             )}
 
@@ -2285,64 +2887,6 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                         <div className="flex gap-2 mt-6">
                             <button onClick={() => { if (newFieldModal.field && newFieldModal.column) { addSchemaField(newFieldModal.type, newFieldModal.field, newFieldModal.label || newFieldModal.field, newFieldModal.column); setNewFieldModal(null); } }} className="btn-primary">Add Field</button>
                             <button onClick={() => setNewFieldModal(null)} className="btn-secondary">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {subTab === 'analytics' && (
-                <div className="space-y-6">
-                    <div className="card p-4">
-                        <h3 className="text-lg font-bold mb-2 text-slate-700">Analytics Page Configuration</h3>
-                        <p className="text-sm text-slate-500 mb-4">Select which items to display on the Analytics tab of generated reports.</p>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-purple-700 mb-3">Stat Cards</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {(analytics.statCards || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('statCards', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-emerald-700 mb-3">Charts & Visualizations</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {(analytics.charts || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('charts', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-cyan-700 mb-3">Rankings (Top/Bottom Performers)</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {(analytics.rankings || []).map((item, idx) => (
-                                    <div key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('rankings', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700 flex-1">{item.label}</span>
-                                        <input type="number" min="1" max="10" value={item.count || 5} onChange={(e) => updateAnalyticsItem('rankings', idx, { count: parseInt(e.target.value) || 5 })} className="w-14 text-center text-sm p-1" title="Number of items to show" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold text-amber-700 mb-3">Summary Table Columns</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {(analytics.summaryColumns || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('summaryColumns', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -2611,8 +3155,8 @@ function App() {
             <nav className="border-b border-slate-200 px-6 bg-white"><div className="flex gap-1 max-w-[95vw] mx-auto">{['import', 'preview', 'settings'].map(tab => <button key={tab} onClick={() => setCurrentTab(tab)} className={`tab-btn ${currentTab === tab ? 'active' : ''}`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}</div></nav>
 
             <main className="max-w-[95vw] mx-auto p-6">
-                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
-                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
+                {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} reportData={reportData} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
+                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} setSettings={setSettings} onRequestName={requestName} />}
                 {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
 
