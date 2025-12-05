@@ -1930,18 +1930,40 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         if (!draggedItem) return;
 
         const draggedWidth = draggedItem.width || 1;
+        const draggedHeight = draggedItem.height || 1;
 
-        // Check if target cell already has an item (or is covered by wide widget)
+        // Check if target cell already has an item
         const existingItem = layout.find(l => l.row === targetRow && l.col === targetCol);
-        const isCoveredByWide = layout.some(l => l.row === targetRow && l.col < targetCol && (l.col + (l.width || 1)) > targetCol);
 
-        // Check if dropping a wide widget would go off grid or overlap another widget
-        const wouldOverlap = draggedWidth > 1 && (
+        // Check if target cell is covered by a multi-cell widget
+        const isCovered = layout.some(item => {
+            if (item.id === draggedItem.id) return false;
+            const iw = item.width || 1;
+            const ih = item.height || 1;
+            const inWidthRange = targetCol >= item.col && targetCol < item.col + iw;
+            const inHeightRange = targetRow >= item.row && targetRow < item.row + ih;
+            const isOrigin = targetRow === item.row && targetCol === item.col;
+            return inWidthRange && inHeightRange && !isOrigin;
+        });
+
+        // Check if dropping widget would go off grid or overlap another widget
+        const wouldOverlap = (draggedWidth > 1 || draggedHeight > 1) && (
             targetCol + draggedWidth > 4 ||
-            layout.some(l => l.id !== draggedItem.id && l.row === targetRow && l.col > targetCol && l.col < targetCol + draggedWidth)
+            layout.some(l => {
+                if (l.id === draggedItem.id) return false;
+                const lw = l.width || 1;
+                const lh = l.height || 1;
+                // Check if any cell in the dragged widget's area would overlap with this layout item
+                for (let r = targetRow; r < targetRow + draggedHeight; r++) {
+                    for (let c = targetCol; c < targetCol + draggedWidth; c++) {
+                        if (r >= l.row && r < l.row + lh && c >= l.col && c < l.col + lw) return true;
+                    }
+                }
+                return false;
+            })
         );
 
-        if (isCoveredByWide || wouldOverlap) {
+        if (isCovered || wouldOverlap) {
             setDraggedItem(null);
             return;
         }
@@ -1949,32 +1971,44 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         if (draggedItem.isNew) {
             // Adding from sidebar - only if cell is empty
             if (!existingItem) {
-                setLayout(prev => [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol, width: 1 }]);
+                setLayout(prev => {
+                    const newLayout = [...prev, { id: draggedItem.id, type: draggedItem.type, row: targetRow, col: targetCol, width: 1, height: 1 }];
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             }
         } else {
             // Moving existing item - swap positions if target has item
             if (existingItem && existingItem.id !== draggedItem.id) {
                 // Swap: move existing item to dragged item's old position
                 const draggedOld = layout.find(l => l.id === draggedItem.id);
-                setLayout(prev => prev.map(item => {
-                    if (item.id === draggedItem.id) return { ...item, row: targetRow, col: targetCol };
-                    if (item.id === existingItem.id) return { ...item, row: draggedOld?.row, col: draggedOld?.col };
-                    return item;
-                }));
+                setLayout(prev => {
+                    const newLayout = prev.map(item => {
+                        if (item.id === draggedItem.id) return { ...item, row: targetRow, col: targetCol };
+                        if (item.id === existingItem.id) return { ...item, row: draggedOld?.row, col: draggedOld?.col };
+                        return item;
+                    });
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             } else if (!existingItem) {
-                // Move to empty cell (preserve width)
-                setLayout(prev => prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item));
+                // Move to empty cell (preserve width/height)
+                setLayout(prev => {
+                    const newLayout = prev.map(item => item.id === draggedItem.id ? { ...item, row: targetRow, col: targetCol } : item);
+                    if (onLayoutChange) onLayoutChange(newLayout);
+                    return newLayout;
+                });
             }
         }
         setDraggedItem(null);
     };
 
-    const removeItem = (id) => setLayout(prev => prev.filter(item => item.id !== id));
-
-    const saveLayout = () => {
-        if (onLayoutChange) {
-            onLayoutChange(layout);
-        }
+    const removeItem = (id) => {
+        setLayout(prev => {
+            const newLayout = prev.filter(item => item.id !== id);
+            if (onLayoutChange) onLayoutChange(newLayout);
+            return newLayout;
+        });
     };
 
     // Render element content
@@ -2129,32 +2163,51 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         }
     };
 
-    // Toggle width of an item (1 or 2 columns)
-    const toggleWidth = (id) => {
-        setLayout(prev => prev.map(item => {
-            if (item.id === id) {
-                const newWidth = (item.width || 1) === 1 ? 2 : 1;
-                // Make sure we're not going past column 3 when expanding
-                const maxCol = newWidth === 2 ? 2 : 3;
-                const newCol = Math.min(item.col, maxCol);
-                return { ...item, width: newWidth, col: newCol };
-            }
-            return item;
-        }));
+    // Cycle through sizes: 1x1 -> 2x1 -> 1x2 -> 2x2 -> 1x1 (auto-saves)
+    const cycleSize = (id) => {
+        setLayout(prev => {
+            const newLayout = prev.map(item => {
+                if (item.id === id) {
+                    const w = item.width || 1;
+                    const h = item.height || 1;
+                    let newW = 1, newH = 1;
+                    if (w === 1 && h === 1) { newW = 2; newH = 1; }      // 1x1 -> 2x1
+                    else if (w === 2 && h === 1) { newW = 1; newH = 2; } // 2x1 -> 1x2
+                    else if (w === 1 && h === 2) { newW = 2; newH = 2; } // 1x2 -> 2x2
+                    else { newW = 1; newH = 1; }                         // 2x2 -> 1x1
+                    // Ensure we don't go off grid
+                    const maxCol = newW === 2 ? 2 : 3;
+                    const newCol = Math.min(item.col, maxCol);
+                    return { ...item, width: newW, height: newH, col: newCol };
+                }
+                return item;
+            });
+            // Auto-save to settings
+            if (onLayoutChange) onLayoutChange(newLayout);
+            return newLayout;
+        });
     };
 
-    // Check if a cell is occupied by a wide widget starting from a previous column
-    const isCellCoveredByWideWidget = (row, col) => {
-        return layout.some(item => item.row === row && item.col < col && (item.col + (item.width || 1)) > col);
+    // Check if a cell is covered by a multi-cell widget
+    const isCellCovered = (row, col) => {
+        return layout.some(item => {
+            const iw = item.width || 1;
+            const ih = item.height || 1;
+            // Check if this cell falls within the item's area (but not the origin cell)
+            const inWidthRange = col >= item.col && col < item.col + iw;
+            const inHeightRange = row >= item.row && row < item.row + ih;
+            const isOrigin = row === item.row && col === item.col;
+            return inWidthRange && inHeightRange && !isOrigin;
+        });
     };
 
     // Grid cells (4 columns x many rows)
-    const maxRow = Math.max(...layout.map(l => l.row), 3) + 1;
+    const maxRow = Math.max(...layout.map(l => l.row + (l.height || 1) - 1), 3) + 1;
     const gridCells = [];
     for (let row = 0; row <= maxRow; row++) {
         for (let col = 0; col < 4; col++) {
-            // Skip cells that are covered by wide widgets
-            if (!isCellCoveredByWideWidget(row, col)) {
+            // Skip cells that are covered by multi-cell widgets
+            if (!isCellCovered(row, col)) {
                 gridCells.push({ row, col });
             }
         }
@@ -2167,19 +2220,23 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                     <h3 className="text-lg font-bold text-slate-700">Analytics Preview</h3>
                     <div className="flex gap-2">
                         <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-1 bg-cyan-600 text-white rounded text-sm">{showSidebar ? 'Hide' : 'Add'} Widgets</button>
-                        <button onClick={saveLayout} className="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Save Layout</button>
+                        <span className="text-xs text-slate-400 self-center">Auto-saves</span>
                     </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3 min-h-[400px]" style={{gridAutoRows: 'minmax(100px, auto)'}}>
                     {gridCells.map(cell => {
                         const item = layout.find(l => l.row === cell.row && l.col === cell.col);
                         const itemWidth = item?.width || 1;
-                        const canExpand = item && cell.col <= 2 && !layout.some(l => l.row === cell.row && l.col === cell.col + 1);
+                        const itemHeight = item?.height || 1;
+                        const sizeLabel = `${itemWidth}x${itemHeight}`;
                         return (
                             <div
                                 key={`${cell.row}-${cell.col}`}
                                 className={`relative rounded border-2 border-dashed ${item ? 'border-transparent' : 'border-slate-200 bg-slate-50'} ${draggedItem ? 'hover:bg-cyan-50 hover:border-cyan-400' : ''}`}
-                                style={itemWidth > 1 ? { gridColumn: `span ${itemWidth}` } : {}}
+                                style={{
+                                    ...(itemWidth > 1 ? { gridColumn: `span ${itemWidth}` } : {}),
+                                    ...(itemHeight > 1 ? { gridRow: `span ${itemHeight}` } : {})
+                                }}
                                 onDragOver={(e) => { e.preventDefault(); }}
                                 onDrop={() => handleDrop(cell.row, cell.col)}
                             >
@@ -2191,11 +2248,9 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                                         className="cursor-move h-full"
                                     >
                                         <button onClick={() => removeItem(item.id)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs z-10 hover:bg-red-600">×</button>
-                                        {(canExpand || itemWidth > 1) && (
-                                            <button onClick={() => toggleWidth(item.id)} className="absolute top-1 right-7 w-5 h-5 bg-blue-500 text-white rounded-full text-xs z-10 hover:bg-blue-600" title={itemWidth > 1 ? 'Shrink' : 'Expand'}>
-                                                {itemWidth > 1 ? '↔' : '⬌'}
-                                            </button>
-                                        )}
+                                        <button onClick={() => cycleSize(item.id)} className="absolute top-1 right-7 px-1 h-5 bg-blue-500 text-white rounded text-xs z-10 hover:bg-blue-600" title="Cycle size: 1x1 → 2x1 → 1x2 → 2x2">
+                                            {sizeLabel}
+                                        </button>
                                         {renderElement(item)}
                                     </div>
                                 )}
