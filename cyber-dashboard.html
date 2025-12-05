@@ -142,6 +142,7 @@ const defaultSchemaConfig = {
         {field: 'isic', label: 'ISIC Column', column: 'ISICs', visible: true},
         {field: 'productCompliance', label: 'Product Compliance %', column: 'Product Compliance', visible: true},
         {field: 'policyEnforced', label: 'Policy Enforced %', column: 'Policy Enforced', visible: true},
+        {field: 'truePolicy', label: 'True Policy % (Calculated)', column: '[CALCULATED - NOT IN ESS SHEET]', visible: false},
         {field: 'breakfix', label: 'Breakfix Count', column: 'Assets in Breakfix', visible: true},
         {field: 'assets', label: 'Asset Count', column: 'Asset Count', visible: true}
     ],
@@ -454,7 +455,7 @@ const SettingsManager = {
     migrateColumnMappings(old) {
         const labels = {
             vram: {siteName:'Site/Boat Name',scanDate:'Last Scan Date',assets:'Asset Count',raVph:'RA VPH',scanIntegrity:'Scan Integrity %',scanPercent:'Percent Scanned',raHigh:'RA High',scanExempt:'Scan Exempt'},
-            ess: {shipName:'Ship/Boat Name',isic:'ISIC Column',productCompliance:'Product Compliance %',policyEnforced:'Policy Enforced %',breakfix:'Breakfix Count',assets:'Asset Count'},
+            ess: {shipName:'Ship/Boat Name',isic:'ISIC Column',productCompliance:'Product Compliance %',policyEnforced:'Policy Enforced %',truePolicy:'True Policy % (Calculated)',breakfix:'Breakfix Count',assets:'Asset Count'},
             tam: {boatName:'Boat Name',pastDue:'Past Due Count',extensions:'Extensions Count'}
         };
         const result = {};
@@ -497,8 +498,8 @@ const SettingsManager = {
 // Data Models
 const createBoatData = (name, fullName, isic, tycom, isNmci = false) => ({
     boatName: name, boatFullName: fullName, isic, tycom, isNmci,
-    essNiprAssets: null, essNiprBreakfix: null, essNiprProductCompliance: null, essNiprTruePolicy: null,
-    essSiprAssets: null, essSiprBreakfix: null, essSiprProductCompliance: null, essSiprTruePolicy: null,
+    essNiprAssets: null, essNiprBreakfix: null, essNiprProductCompliance: null, essNiprPolicyEnforced: null, essNiprTruePolicy: null,
+    essSiprAssets: null, essSiprBreakfix: null, essSiprProductCompliance: null, essSiprPolicyEnforced: null, essSiprTruePolicy: null,
     vramNiprAssets: null, vramNiprScanDate: null, vramNiprRaVph: null, vramNiprScanIntegrity: null, vramNiprScanPercent: null, vramNiprRaHigh: null, vramNiprScanExempt: false,
     vramSiprAssets: null, vramSiprScanDate: null, vramSiprRaVph: null, vramSiprScanIntegrity: null, vramSiprScanPercent: null, vramSiprRaHigh: null, vramSiprScanExempt: false,
     tamPastDue: null, tamExtensions: null, riskLevel: 'LOW', riskReasons: [], overrides: [], notes: '',
@@ -508,7 +509,7 @@ const createBoatData = (name, fullName, isic, tycom, isNmci = false) => ({
 // Standard fields for each schema type (used to identify custom fields)
 const standardFields = {
     vram: ['siteName', 'scanDate', 'assets', 'raVph', 'scanIntegrity', 'scanPercent', 'raHigh', 'scanExempt'],
-    ess: ['shipName', 'isic', 'productCompliance', 'policyEnforced', 'breakfix', 'assets'],
+    ess: ['shipName', 'isic', 'productCompliance', 'policyEnforced', 'truePolicy', 'breakfix', 'assets'],
     tam: ['boatName', 'pastDue', 'extensions']
 };
 
@@ -557,7 +558,7 @@ const parseESS = (data, schemaArr) => {
         for (const cf of customFieldDefs) {
             if (m[cf.field]) custom[cf.field] = parseNumber(row[m[cf.field]]) ?? row[m[cf.field]] ?? null;
         }
-        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, truePolicy, custom };
+        parsed[name] = { assets: parseNumber(row[m.assets]), breakfix: parseNumber(row[m.breakfix]), productCompliance: prodComp, policyEnforced: polEnf, truePolicy, custom };
     }
     return { parsed, isicMap, raw: rows, customFieldDefs };
 };
@@ -594,10 +595,10 @@ const mergeData = (sources, settings) => {
         // For NMCI boats, skip NIPR data entirely - mark columns as NMCI
         if (!boat.isNmci) {
             const vn = vramNipr?.parsed?.[name]; if (vn) { boat.vramNiprAssets = vn.assets; boat.vramNiprScanDate = vn.scanDate; boat.vramNiprRaVph = vn.raVph; boat.vramNiprScanIntegrity = vn.scanIntegrity; boat.vramNiprScanPercent = vn.scanPercent; boat.vramNiprRaHigh = vn.raHigh; boat.vramNiprScanExempt = vn.scanExempt; if (vn.custom) boat.customFields.vramNipr = vn.custom; }
-            const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
+            const en = essNipr?.parsed?.[name]; if (en) { boat.essNiprAssets = en.assets; boat.essNiprBreakfix = en.breakfix; boat.essNiprProductCompliance = en.productCompliance; boat.essNiprPolicyEnforced = en.policyEnforced; boat.essNiprTruePolicy = en.truePolicy; if (en.custom) boat.customFields.essNipr = en.custom; }
         }
         const vs = vramSipr?.parsed?.[name]; if (vs) { boat.vramSiprAssets = vs.assets; boat.vramSiprScanDate = vs.scanDate; boat.vramSiprRaVph = vs.raVph; boat.vramSiprScanIntegrity = vs.scanIntegrity; boat.vramSiprScanPercent = vs.scanPercent; boat.vramSiprRaHigh = vs.raHigh; boat.vramSiprScanExempt = vs.scanExempt; if (vs.custom) boat.customFields.vramSipr = vs.custom; }
-        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprTruePolicy = es.truePolicy; if (es.custom) boat.customFields.essSipr = es.custom; }
+        const es = essSipr?.parsed?.[name]; if (es) { boat.essSiprAssets = es.assets; boat.essSiprBreakfix = es.breakfix; boat.essSiprProductCompliance = es.productCompliance; boat.essSiprPolicyEnforced = es.policyEnforced; boat.essSiprTruePolicy = es.truePolicy; if (es.custom) boat.customFields.essSipr = es.custom; }
         const t = tam?.parsed?.[name]; if (t) { boat.tamPastDue = t.pastDue; boat.tamExtensions = t.extensions; if (t.custom) boat.customFields.tam = t.custom; }
         boats.push(boat);
     }
@@ -961,12 +962,14 @@ const generateReportHTML = (reportData, settings) => {
     const showEssBreakfix = isVisible('ess', 'breakfix');
     const showEssProdComp = isVisible('ess', 'productCompliance');
     const showEssPolicy = isVisible('ess', 'policyEnforced');
-    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
+    const showEssTruePolicy = isVisible('ess', 'truePolicy');
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy, showEssTruePolicy].filter(Boolean).length + essCustomFields.length;
     const essSiprCount = essNiprCount;
     const essAssets = getLabel('ess', 'assets', 'Assets');
     const essBreakfix = getLabel('ess', 'breakfix', 'Breakfix');
     const essProdCompliance = getLabel('ess', 'productCompliance', 'Prod%');
     const essPolicyEnforced = getLabel('ess', 'policyEnforced', 'Policy%');
+    const essTruePolicy = getLabel('ess', 'truePolicy', 'TruePol%');
 
     // VRAM column visibility and labels
     const showVramAssets = isVisible('vram', 'assets');
@@ -1010,13 +1013,15 @@ const generateReportHTML = (reportData, settings) => {
         if (showEssAssets) cells += isNmci ? nmciCell : `<td>${fmt(b.essNiprAssets)}</td>`;
         if (showEssBreakfix) cells += isNmci ? nmciCell : `<td class="${(b.essNiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essNiprBreakfix)}</td>`;
         if (showEssProdComp) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprProductCompliance)}">${fmtPct(b.essNiprProductCompliance)}</td>`;
-        if (showEssPolicy) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprTruePolicy)}">${fmtPct(b.essNiprTruePolicy)}</td>`;
+        if (showEssPolicy) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprPolicyEnforced)}">${fmtPct(b.essNiprPolicyEnforced)}</td>`;
+        if (showEssTruePolicy) cells += isNmci ? nmciCell : `<td class="${compClass(b.essNiprTruePolicy)}">${fmtPct(b.essNiprTruePolicy)}</td>`;
         for (const cf of essCustomFields) cells += isNmci ? nmciCell : `<td>${fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>`;
         // ESS SIPR - with compliance coloring
         if (showEssAssets) cells += `<td>${fmt(b.essSiprAssets)}</td>`;
         if (showEssBreakfix) cells += `<td class="${(b.essSiprBreakfix||0)>0?'alert-red':''}">${fmt(b.essSiprBreakfix)}</td>`;
         if (showEssProdComp) cells += `<td class="${compClass(b.essSiprProductCompliance)}">${fmtPct(b.essSiprProductCompliance)}</td>`;
-        if (showEssPolicy) cells += `<td class="${compClass(b.essSiprTruePolicy)}">${fmtPct(b.essSiprTruePolicy)}</td>`;
+        if (showEssPolicy) cells += `<td class="${compClass(b.essSiprPolicyEnforced)}">${fmtPct(b.essSiprPolicyEnforced)}</td>`;
+        if (showEssTruePolicy) cells += `<td class="${compClass(b.essSiprTruePolicy)}">${fmtPct(b.essSiprTruePolicy)}</td>`;
         for (const cf of essCustomFields) cells += `<td>${fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>`;
         // VRAM NIPR - with VPH and scan age coloring (show NMCI for NMCI boats)
         if (showVramAssets) cells += isNmci ? nmciCell : `<td>${fmt(b.vramNiprAssets)}</td>`;
@@ -1072,12 +1077,14 @@ const generateReportHTML = (reportData, settings) => {
         if (showEssBreakfix) hdr2 += `<th class="col-ess-n">${essBreakfix}</th>`;
         if (showEssProdComp) hdr2 += `<th class="col-ess-n">${essProdCompliance}</th>`;
         if (showEssPolicy) hdr2 += `<th class="col-ess-n">${essPolicyEnforced}</th>`;
+        if (showEssTruePolicy) hdr2 += `<th class="col-ess-n">${essTruePolicy}</th>`;
         for (const cf of essCustomFields) hdr2 += `<th class="col-ess-n">${cf.label || cf.field}</th>`;
         // ESS SIPR headers
         if (showEssAssets) hdr2 += `<th class="col-ess-s">${essAssets}</th>`;
         if (showEssBreakfix) hdr2 += `<th class="col-ess-s">${essBreakfix}</th>`;
         if (showEssProdComp) hdr2 += `<th class="col-ess-s">${essProdCompliance}</th>`;
         if (showEssPolicy) hdr2 += `<th class="col-ess-s">${essPolicyEnforced}</th>`;
+        if (showEssTruePolicy) hdr2 += `<th class="col-ess-s">${essTruePolicy}</th>`;
         for (const cf of essCustomFields) hdr2 += `<th class="col-ess-s">${cf.label || cf.field}</th>`;
         // VRAM NIPR headers
         if (showVramAssets) hdr2 += `<th class="col-vram-n">${vramAssets}</th>`;
@@ -2487,6 +2494,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const showEssBreakfix = isVisible('ess', 'breakfix');
     const showEssProdComp = isVisible('ess', 'productCompliance');
     const showEssPolicy = isVisible('ess', 'policyEnforced');
+    const showEssTruePolicy = isVisible('ess', 'truePolicy');
     const showVramAssets = isVisible('vram', 'assets');
     const showVramScan = isVisible('vram', 'scanDate');
     const showVramVph = isVisible('vram', 'raVph');
@@ -2501,7 +2509,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
     const showTamPastDue = isVisible('tam', 'pastDue');
     const showTamExtensions = isVisible('tam', 'extensions');
-    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy].filter(Boolean).length + essCustomFields.length;
+    const essNiprCount = [showEssAssets, showEssBreakfix, showEssProdComp, showEssPolicy, showEssTruePolicy].filter(Boolean).length + essCustomFields.length;
     const essSiprCount = essNiprCount;
     const vramNiprCount = [showVramAssets, showVramScan, showVramVph, showVramIntegrity, showVramScanned].filter(Boolean).length + vramCustomFields.length;
     const vramSiprCount = vramNiprCount;
@@ -2569,8 +2577,8 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     };
 
     const fieldLabels = {
-        essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprTruePolicy: 'ESS NIPR True Policy',
-        essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprTruePolicy: 'ESS SIPR True Policy',
+        essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprPolicyEnforced: 'ESS NIPR Policy Enforced', essNiprTruePolicy: 'ESS NIPR True Policy',
+        essSiprAssets: 'ESS SIPR Assets', essSiprBreakfix: 'ESS SIPR Breakfix', essSiprProductCompliance: 'ESS SIPR Compliance', essSiprPolicyEnforced: 'ESS SIPR Policy Enforced', essSiprTruePolicy: 'ESS SIPR True Policy',
         vramNiprAssets: 'VRAM NIPR Assets', vramNiprRaVph: 'VRAM NIPR VPH', vramNiprScanIntegrity: 'VRAM NIPR Integrity', vramNiprScanPercent: 'VRAM NIPR Percent',
         vramSiprAssets: 'VRAM SIPR Assets', vramSiprRaVph: 'VRAM SIPR VPH', vramSiprScanIntegrity: 'VRAM SIPR Integrity', vramSiprScanPercent: 'VRAM SIPR Percent',
         vramNiprRaHigh: 'NIPR RA High', tamPastDue: 'TAM Past Due', tamExtensions: 'TAM Extensions', riskLevel: 'Risk Level',
@@ -2775,11 +2783,13 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showEssBreakfix && <th className="col-ess-n">Breakfix</th>}
                                 {showEssProdComp && <th className="col-ess-n">Prod%</th>}
                                 {showEssPolicy && <th className="col-ess-n">Policy%</th>}
+                                {showEssTruePolicy && <th className="col-ess-n">TruePol%</th>}
                                 {essCustomFields.map(cf => <th key={`essn-${cf.field}`} className="col-ess-n">{cf.label || cf.field}</th>)}
                                 {showEssAssets && <th className="col-ess-s">Assets</th>}
                                 {showEssBreakfix && <th className="col-ess-s">Breakfix</th>}
                                 {showEssProdComp && <th className="col-ess-s">Prod%</th>}
                                 {showEssPolicy && <th className="col-ess-s">Policy%</th>}
+                                {showEssTruePolicy && <th className="col-ess-s">TruePol%</th>}
                                 {essCustomFields.map(cf => <th key={`esss-${cf.field}`} className="col-ess-s">{cf.label || cf.field}</th>)}
                                 {showVramAssets && <th className="col-vram-n">Assets</th>}
                                 {showVramScan && <th className="col-vram-n">Scan</th>}
@@ -2809,12 +2819,14 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {showEssAssets && <Cell boat={b} field="essNiprAssets" value={fmt(b.essNiprAssets)} />}
                                 {showEssBreakfix && <Cell boat={b} field="essNiprBreakfix" value={fmt(b.essNiprBreakfix)} className={(b.essNiprBreakfix||0)>0?'alert-red':''} />}
                                 {showEssProdComp && <Cell boat={b} field="essNiprProductCompliance" value={b.essNiprProductCompliance} format="pct" className={compClass(b.essNiprProductCompliance)} />}
-                                {showEssPolicy && <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" className={compClass(b.essNiprTruePolicy)} />}
+                                {showEssPolicy && <Cell boat={b} field="essNiprPolicyEnforced" value={b.essNiprPolicyEnforced} format="pct" className={compClass(b.essNiprPolicyEnforced)} />}
+                                {showEssTruePolicy && <Cell boat={b} field="essNiprTruePolicy" value={b.essNiprTruePolicy} format="pct" className={compClass(b.essNiprTruePolicy)} />}
                                 {essCustomFields.map(cf => <td key={`essn-${cf.field}`}>{fmtCustom(b.customFields?.essNipr?.[cf.field])}</td>)}
                                 {showEssAssets && <Cell boat={b} field="essSiprAssets" value={fmt(b.essSiprAssets)} />}
                                 {showEssBreakfix && <Cell boat={b} field="essSiprBreakfix" value={fmt(b.essSiprBreakfix)} className={(b.essSiprBreakfix||0)>0?'alert-red':''} />}
                                 {showEssProdComp && <Cell boat={b} field="essSiprProductCompliance" value={b.essSiprProductCompliance} format="pct" className={compClass(b.essSiprProductCompliance)} />}
-                                {showEssPolicy && <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" className={compClass(b.essSiprTruePolicy)} />}
+                                {showEssPolicy && <Cell boat={b} field="essSiprPolicyEnforced" value={b.essSiprPolicyEnforced} format="pct" className={compClass(b.essSiprPolicyEnforced)} />}
+                                {showEssTruePolicy && <Cell boat={b} field="essSiprTruePolicy" value={b.essSiprTruePolicy} format="pct" className={compClass(b.essSiprTruePolicy)} />}
                                 {essCustomFields.map(cf => <td key={`esss-${cf.field}`}>{fmtCustom(b.customFields?.essSipr?.[cf.field])}</td>)}
                                 {showVramAssets && <Cell boat={b} field="vramNiprAssets" value={fmt(b.vramNiprAssets)} />}
                                 {showVramScan && <Cell boat={b} field="vramNiprScanDate" value={b.vramNiprScanDate} format="date" className={scanAgeClass(b.vramNiprScanDate)} />}
