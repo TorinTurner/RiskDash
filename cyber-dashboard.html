@@ -1069,15 +1069,6 @@ const generateReportHTML = (reportData, settings) => {
         extensions: (b) => `<td>${fmt(b.tamExtensions)}</td>`
     };
 
-    // Short labels for headers
-    const shortLabels = {
-        assets: 'Assets', scanDate: 'Scan', raVph: 'VPH', raCrit: 'Crit', raHigh: 'High',
-        scanIntegrity: 'Integrity', scanPercent: 'Scanned', scanExempt: 'Exempt',
-        breakfix: 'Breakfix', productCompliance: 'Prod%', policyEnforced: 'Policy%', truePolicy: 'TruePol%',
-        pastDue: 'Overdue', extensions: 'Ext'
-    };
-    const getShortLabel = (f) => f.label?.split(' ').pop() || shortLabels[f.field] || f.field;
-
     // Helper to format custom field value
     const fmtCustom = (v) => v === null || v === undefined ? '-' : (typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v));
 
@@ -1143,26 +1134,26 @@ const generateReportHTML = (reportData, settings) => {
         if (vramSiprCount > 0) hdr1 += `<th colspan="${vramSiprCount}" class="col-vram-s">VRAM SIPR</th>`;
         if (tamCount > 0) hdr1 += `<th colspan="${tamCount}" class="col-tam">TAM</th>`;
         hdr1 += `<th colspan="${statusCount}" class="col-status">STATUS</th></tr>`;
-        // Build header row 2 with individual column names (in schema order)
+        // Build header row 2 with individual column names (in schema order, using label from schema config)
         let hdr2 = '<tr>';
         // ESS NIPR headers - in schema order
-        for (const f of essVisibleFields) hdr2 += `<th class="col-ess-n">${getShortLabel(f)}</th>`;
+        for (const f of essVisibleFields) hdr2 += `<th class="col-ess-n">${f.label || f.field}</th>`;
         for (const cf of essCustomFields) hdr2 += `<th class="col-ess-n">${cf.label || cf.field}</th>`;
         // ESS SIPR headers - in schema order
-        for (const f of essVisibleFields) hdr2 += `<th class="col-ess-s">${getShortLabel(f)}</th>`;
+        for (const f of essVisibleFields) hdr2 += `<th class="col-ess-s">${f.label || f.field}</th>`;
         for (const cf of essCustomFields) hdr2 += `<th class="col-ess-s">${cf.label || cf.field}</th>`;
         // VRAM NIPR headers - in schema order
-        for (const f of vramVisibleFields) hdr2 += `<th class="col-vram-n">${getShortLabel(f)}</th>`;
+        for (const f of vramVisibleFields) hdr2 += `<th class="col-vram-n">${f.label || f.field}</th>`;
         for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-n">${cf.label || cf.field}</th>`;
         // VRAM SIPR headers - in schema order
-        for (const f of vramVisibleFields) hdr2 += `<th class="col-vram-s">${getShortLabel(f)}</th>`;
+        for (const f of vramVisibleFields) hdr2 += `<th class="col-vram-s">${f.label || f.field}</th>`;
         for (const cf of vramCustomFields) hdr2 += `<th class="col-vram-s">${cf.label || cf.field}</th>`;
         // TAM headers - in schema order
-        for (const f of tamVisibleFields) hdr2 += `<th class="col-tam">${getShortLabel(f)}</th>`;
+        for (const f of tamVisibleFields) hdr2 += `<th class="col-tam">${f.label || f.field}</th>`;
         for (const cf of tamCustomFields) hdr2 += `<th class="col-tam">${cf.label || cf.field}</th>`;
         // Status headers
         hdr2 += '<th class="col-status">Risk</th>';
-        if (showVramExempt) hdr2 += `<th class="col-status">${shortLabels.scanExempt}</th>`;
+        if (showVramExempt) hdr2 += '<th class="col-status">Scan Exempt</th>';
         hdr2 += '<th class="col-status">Notes</th></tr>';
         return `<table class="summary-table"><thead>${hdr1}${hdr2}</thead><tbody>${bodyRows}</tbody></table>`;
     };
@@ -2577,15 +2568,6 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const showVramExempt = isVisible('vram', 'scanExempt');
     const statusCount = 1 + (showVramExempt ? 1 : 0) + 1;
 
-    // Short labels for headers
-    const shortLabels = {
-        assets: 'Assets', scanDate: 'Scan', raVph: 'VPH', raCrit: 'Crit', raHigh: 'High',
-        scanIntegrity: 'Integrity', scanPercent: 'Scanned', scanExempt: 'Exempt',
-        breakfix: 'Breakfix', productCompliance: 'Prod%', policyEnforced: 'Policy%', truePolicy: 'TruePol%',
-        pastDue: 'Overdue', extensions: 'Ext'
-    };
-    const getShortLabel = (f) => f.label?.split(' ').pop() || shortLabels[f.field] || f.field;
-
     const allOverrides = boats.flatMap(b => (b.overrides || []).map(o => ({ ...o, boatName: b.boatName })));
 
     const generate = () => {
@@ -2891,23 +2873,23 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 <th colSpan={statusCount} className="col-status">STATUS</th>
                             </tr>
                             <tr>
-                                {/* ESS NIPR headers - in schema order */}
-                                {essVisibleFields.map(f => <th key={`essn-${f.field}`} className="col-ess-n">{getShortLabel(f)}</th>)}
+                                {/* ESS NIPR headers - in schema order (using label from schema config) */}
+                                {essVisibleFields.map(f => <th key={`essn-${f.field}`} className="col-ess-n">{f.label || f.field}</th>)}
                                 {essCustomFields.map(cf => <th key={`essn-c-${cf.field}`} className="col-ess-n">{cf.label || cf.field}</th>)}
                                 {/* ESS SIPR headers - in schema order */}
-                                {essVisibleFields.map(f => <th key={`esss-${f.field}`} className="col-ess-s">{getShortLabel(f)}</th>)}
+                                {essVisibleFields.map(f => <th key={`esss-${f.field}`} className="col-ess-s">{f.label || f.field}</th>)}
                                 {essCustomFields.map(cf => <th key={`esss-c-${cf.field}`} className="col-ess-s">{cf.label || cf.field}</th>)}
                                 {/* VRAM NIPR headers - in schema order */}
-                                {vramVisibleFields.map(f => <th key={`vramn-${f.field}`} className="col-vram-n">{getShortLabel(f)}</th>)}
+                                {vramVisibleFields.map(f => <th key={`vramn-${f.field}`} className="col-vram-n">{f.label || f.field}</th>)}
                                 {vramCustomFields.map(cf => <th key={`vramn-c-${cf.field}`} className="col-vram-n">{cf.label || cf.field}</th>)}
                                 {/* VRAM SIPR headers - in schema order */}
-                                {vramVisibleFields.map(f => <th key={`vrams-${f.field}`} className="col-vram-s">{getShortLabel(f)}</th>)}
+                                {vramVisibleFields.map(f => <th key={`vrams-${f.field}`} className="col-vram-s">{f.label || f.field}</th>)}
                                 {vramCustomFields.map(cf => <th key={`vrams-c-${cf.field}`} className="col-vram-s">{cf.label || cf.field}</th>)}
                                 {/* TAM headers - in schema order */}
-                                {tamVisibleFields.map(f => <th key={`tam-${f.field}`} className="col-tam">{getShortLabel(f)}</th>)}
+                                {tamVisibleFields.map(f => <th key={`tam-${f.field}`} className="col-tam">{f.label || f.field}</th>)}
                                 {tamCustomFields.map(cf => <th key={`tam-c-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
                                 <th className="col-status">Risk</th>
-                                {showVramExempt && <th className="col-status">Exempt</th>}
+                                {showVramExempt && <th className="col-status">Scan Exempt</th>}
                                 <th className="col-status">Notes</th>
                             </tr>
                         </thead>
