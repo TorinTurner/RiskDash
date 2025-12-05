@@ -1405,13 +1405,14 @@ ${isTabVisible('analytics') ? (() => {
         if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
     });
 
-    // Render a widget by ID
+    // Render a widget by ID with explicit grid positioning
     const renderWidget = (id) => {
         const item = getLayoutItem(id);
         if (!item) return '';
         const w = item.width || 1;
         const h = item.height || 1;
-        const style = `grid-column: span ${w}; grid-row: span ${h};`;
+        // Use explicit grid positioning to ensure consistent order with preview
+        const style = `grid-column: ${item.col + 1} / span ${w}; grid-row: ${item.row + 1} / span ${h};`;
 
         switch(id) {
             case 'totalBoats': return `<div class="stat-card" style="${style}"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>`;
@@ -2401,8 +2402,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
                                 key={`${cell.row}-${cell.col}`}
                                 className={`relative rounded border-2 border-dashed ${item ? 'border-transparent' : 'border-slate-200 bg-slate-50'} ${draggedItem ? 'hover:bg-cyan-50 hover:border-cyan-400' : ''}`}
                                 style={{
-                                    ...(itemWidth > 1 ? { gridColumn: `span ${itemWidth}` } : {}),
-                                    ...(itemHeight > 1 ? { gridRow: `span ${itemHeight}` } : {})
+                                    gridColumn: `${cell.col + 1} / span ${itemWidth}`,
+                                    gridRow: `${cell.row + 1} / span ${itemHeight}`
                                 }}
                                 onDragOver={(e) => { e.preventDefault(); }}
                                 onDrop={() => handleDrop(cell.row, cell.col)}
