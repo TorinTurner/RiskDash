@@ -896,6 +896,19 @@ const generateReportHTML = (reportData, settings) => {
     });
     const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : 0;
 
+    // TYCOM data for charts (defined at outer scope so it's available for the script section)
+    const tycomData = {};
+    boats.forEach(b => {
+        if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
+        const t=tycomData[b.tycom]; t.boats++;
+        if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
+        if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
+        if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
+        t.bfSum += (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+        if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
+        if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
+    });
+
     // Get label and visibility from schema config
     const schema = settings.schemaConfig || defaultSchemaConfig;
     const getLabel = (type, field, fallback) => {
@@ -1351,19 +1364,6 @@ ${isTabVisible('analytics') ? (() => {
     const highPct = (riskCounts.HIGH / total) * 100;
     const medPct = (riskCounts.MED / total) * 100;
     const pieGradient = `conic-gradient(#dc2626 0% ${highPct}%, #d97706 ${highPct}% ${highPct + medPct}%, #059669 ${highPct + medPct}% 100%)`;
-
-    // TYCOM data
-    const tycomData = {};
-    boats.forEach(b => {
-        if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
-        const t=tycomData[b.tycom]; t.boats++;
-        if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
-        if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
-        if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
-        t.bfSum += getBoatTotalBreakfix(b);
-        if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
-        if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
-    });
 
     // Render a widget by ID
     const renderWidget = (id) => {
