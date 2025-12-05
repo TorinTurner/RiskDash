@@ -205,10 +205,12 @@ const defaultAnalyticsConfig = {
 // Default HQ Status layout - controls which metrics are shown and their order
 const defaultHQStatusLayout = [
     { id: 'niprProdComp', label: 'NIPR Prod Compliance', visible: true },
-    { id: 'niprPolEnf', label: 'NIPR Policy Enforced', visible: true },
+    { id: 'niprPolEnf', label: 'NIPR True Policy', visible: true },
+    { id: 'niprPolRaw', label: 'NIPR Policy Enforced (Raw)', visible: false },
     { id: 'niprBreakfix', label: 'NIPR Breakfix', visible: true },
     { id: 'siprProdComp', label: 'SIPR Prod Compliance', visible: true },
-    { id: 'siprPolEnf', label: 'SIPR Policy Enforced', visible: true },
+    { id: 'siprPolEnf', label: 'SIPR True Policy', visible: true },
+    { id: 'siprPolRaw', label: 'SIPR Policy Enforced (Raw)', visible: false },
     { id: 'siprBreakfix', label: 'SIPR Breakfix', visible: true },
     { id: 'highRisk', label: 'High Risk', visible: true },
     { id: 'scanExempt', label: 'Scan Exempt', visible: true },
@@ -323,7 +325,17 @@ const SettingsManager = {
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
-        if (!settings.hqStatusLayout) settings.hqStatusLayout = JSON.parse(JSON.stringify(defaultHQStatusLayout));
+        if (!settings.hqStatusLayout) {
+            settings.hqStatusLayout = JSON.parse(JSON.stringify(defaultHQStatusLayout));
+        } else {
+            // Merge in any missing HQ metrics from defaults
+            const existingIds = new Set(settings.hqStatusLayout.map(m => m.id));
+            for (const defaultMetric of defaultHQStatusLayout) {
+                if (!existingIds.has(defaultMetric.id)) {
+                    settings.hqStatusLayout.push(JSON.parse(JSON.stringify(defaultMetric)));
+                }
+            }
+        }
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
         if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
         // Ensure thresholds are populated with defaults if empty or missing
@@ -851,26 +863,30 @@ const aggregateByISIC = (boats, settings) => {
         groups[b.isic].boats.push(b);
     }
     const aggs = Object.values(groups).map(g => {
-        let nProdSum = 0, nProdCnt = 0, nPolSum = 0, nPolCnt = 0;
-        let sProdSum = 0, sProdCnt = 0, sPolSum = 0, sPolCnt = 0;
-        const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprProdCompAvg: 0, niprPolEnfAvg: 0, siprProdCompAvg: 0, siprPolEnfAvg: 0 };
+        let nProdSum = 0, nProdCnt = 0, nPolSum = 0, nPolCnt = 0, nPolRawSum = 0, nPolRawCnt = 0;
+        let sProdSum = 0, sProdCnt = 0, sPolSum = 0, sPolCnt = 0, sPolRawSum = 0, sPolRawCnt = 0;
+        const agg = { isicName: g.isic_name, isicShort: g.isic_short, tycom: g.tycom, boatCount: g.boats.length, niprBreakfixSum: 0, siprBreakfixSum: 0, highRiskCount: 0, scanExemptCount: 0, niprProdCompAvg: 0, niprPolEnfAvg: 0, niprPolRawAvg: 0, siprProdCompAvg: 0, siprPolEnfAvg: 0, siprPolRawAvg: 0 };
         for (const b of g.boats) {
             // Skip NIPR values for NMCI boats
             if (!b.isNmci) {
                 agg.niprBreakfixSum += b.essNiprBreakfix || 0;
                 if (b.essNiprProductCompliance !== null) { nProdSum += b.essNiprProductCompliance; nProdCnt++; }
                 if (b.essNiprTruePolicy !== null) { nPolSum += b.essNiprTruePolicy; nPolCnt++; }
+                if (b.essNiprPolicyEnforced !== null) { nPolRawSum += b.essNiprPolicyEnforced; nPolRawCnt++; }
             }
             agg.siprBreakfixSum += b.essSiprBreakfix || 0;
             if (b.essSiprProductCompliance !== null) { sProdSum += b.essSiprProductCompliance; sProdCnt++; }
             if (b.essSiprTruePolicy !== null) { sPolSum += b.essSiprTruePolicy; sPolCnt++; }
+            if (b.essSiprPolicyEnforced !== null) { sPolRawSum += b.essSiprPolicyEnforced; sPolRawCnt++; }
             if (b.riskLevel === 'HIGH') agg.highRiskCount++;
             if (b.vramNiprScanExempt || b.vramSiprScanExempt) agg.scanExemptCount++;
         }
         agg.niprProdCompAvg = nProdCnt > 0 ? Math.min(100, nProdSum / nProdCnt) : 0;
         agg.niprPolEnfAvg = nPolCnt > 0 ? Math.min(100, nPolSum / nPolCnt) : 0;
+        agg.niprPolRawAvg = nPolRawCnt > 0 ? Math.min(100, nPolRawSum / nPolRawCnt) : 0;
         agg.siprProdCompAvg = sProdCnt > 0 ? Math.min(100, sProdSum / sProdCnt) : 0;
         agg.siprPolEnfAvg = sPolCnt > 0 ? Math.min(100, sPolSum / sPolCnt) : 0;
+        agg.siprPolRawAvg = sPolRawCnt > 0 ? Math.min(100, sPolRawSum / sPolRawCnt) : 0;
         return agg;
     });
     return { csl: aggs.filter(a => a.tycom === 'CSL'), csp: aggs.filter(a => a.tycom === 'CSP') };
@@ -1170,9 +1186,11 @@ const generateReportHTML = (reportData, settings) => {
             switch(metric.id) {
                 case 'niprProdComp': return { value: a.niprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.niprProdCompAvg) };
                 case 'niprPolEnf': return { value: a.niprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.niprPolEnfAvg) };
+                case 'niprPolRaw': return { value: a.niprPolRawAvg.toFixed(1) + '%', className: hqCompClass(a.niprPolRawAvg) };
                 case 'niprBreakfix': return { value: a.niprBreakfixSum, className: a.niprBreakfixSum > 0 ? 'alert-red' : '' };
                 case 'siprProdComp': return { value: a.siprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.siprProdCompAvg) };
                 case 'siprPolEnf': return { value: a.siprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.siprPolEnfAvg) };
+                case 'siprPolRaw': return { value: a.siprPolRawAvg.toFixed(1) + '%', className: hqCompClass(a.siprPolRawAvg) };
                 case 'siprBreakfix': return { value: a.siprBreakfixSum, className: a.siprBreakfixSum > 0 ? 'alert-red' : '' };
                 case 'highRisk': return { value: a.highRiskCount, className: a.highRiskCount > 0 ? 'risk-high' : '' };
                 case 'scanExempt': return { value: a.scanExemptCount, className: a.scanExemptCount > 0 ? 'alert-blue' : '' };
@@ -1869,17 +1887,21 @@ const HQStatusPreview = ({ boats, settings, onLayoutChange }) => {
         return Object.entries(groups).map(([isic, isicBoats]) => {
             const nProdVals = isicBoats.filter(b => !b.isNmci && b.essNiprProductCompliance !== null).map(b => b.essNiprProductCompliance);
             const nPolVals = isicBoats.filter(b => !b.isNmci && b.essNiprTruePolicy !== null).map(b => b.essNiprTruePolicy);
+            const nPolRawVals = isicBoats.filter(b => !b.isNmci && b.essNiprPolicyEnforced !== null).map(b => b.essNiprPolicyEnforced);
             const sProdVals = isicBoats.filter(b => b.essSiprProductCompliance !== null).map(b => b.essSiprProductCompliance);
             const sPolVals = isicBoats.filter(b => b.essSiprTruePolicy !== null).map(b => b.essSiprTruePolicy);
+            const sPolRawVals = isicBoats.filter(b => b.essSiprPolicyEnforced !== null).map(b => b.essSiprPolicyEnforced);
             return {
                 isicName: isic,
                 isicShort: isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS'),
                 boatCount: isicBoats.length,
                 niprProdCompAvg: nProdVals.length ? nProdVals.reduce((s,v)=>s+v,0)/nProdVals.length : 0,
                 niprPolEnfAvg: nPolVals.length ? nPolVals.reduce((s,v)=>s+v,0)/nPolVals.length : 0,
+                niprPolRawAvg: nPolRawVals.length ? nPolRawVals.reduce((s,v)=>s+v,0)/nPolRawVals.length : 0,
                 niprBreakfixSum: isicBoats.reduce((s,b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)), 0),
                 siprProdCompAvg: sProdVals.length ? sProdVals.reduce((s,v)=>s+v,0)/sProdVals.length : 0,
                 siprPolEnfAvg: sPolVals.length ? sPolVals.reduce((s,v)=>s+v,0)/sPolVals.length : 0,
+                siprPolRawAvg: sPolRawVals.length ? sPolRawVals.reduce((s,v)=>s+v,0)/sPolRawVals.length : 0,
                 siprBreakfixSum: isicBoats.reduce((s,b) => s + (b.essSiprBreakfix || 0), 0),
                 highRiskCount: isicBoats.filter(b => b.riskLevel === 'HIGH').length,
                 scanExemptCount: isicBoats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length
@@ -1897,9 +1919,11 @@ const HQStatusPreview = ({ boats, settings, onLayoutChange }) => {
         switch(metricId) {
             case 'niprProdComp': return { value: agg.niprProdCompAvg.toFixed(1) + '%', className: compClass(agg.niprProdCompAvg) };
             case 'niprPolEnf': return { value: agg.niprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.niprPolEnfAvg) };
+            case 'niprPolRaw': return { value: agg.niprPolRawAvg.toFixed(1) + '%', className: compClass(agg.niprPolRawAvg) };
             case 'niprBreakfix': return { value: agg.niprBreakfixSum, className: agg.niprBreakfixSum > 0 ? 'alert-red' : '' };
             case 'siprProdComp': return { value: agg.siprProdCompAvg.toFixed(1) + '%', className: compClass(agg.siprProdCompAvg) };
             case 'siprPolEnf': return { value: agg.siprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.siprPolEnfAvg) };
+            case 'siprPolRaw': return { value: agg.siprPolRawAvg.toFixed(1) + '%', className: compClass(agg.siprPolRawAvg) };
             case 'siprBreakfix': return { value: agg.siprBreakfixSum, className: agg.siprBreakfixSum > 0 ? 'alert-red' : '' };
             case 'highRisk': return { value: agg.highRiskCount, className: agg.highRiskCount > 0 ? 'risk-high' : '' };
             case 'scanExempt': return { value: agg.scanExemptCount, className: agg.scanExemptCount > 0 ? 'alert-blue' : '' };
