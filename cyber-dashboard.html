@@ -201,6 +201,18 @@ const defaultAnalyticsConfig = {
     ]
 };
 
+// Default HQ Status layout - controls which metrics are shown and their order
+const defaultHQStatusLayout = [
+    { id: 'niprProdComp', label: 'NIPR Prod Compliance', visible: true },
+    { id: 'niprPolEnf', label: 'NIPR Policy Enforced', visible: true },
+    { id: 'niprBreakfix', label: 'NIPR Breakfix', visible: true },
+    { id: 'siprProdComp', label: 'SIPR Prod Compliance', visible: true },
+    { id: 'siprPolEnf', label: 'SIPR Policy Enforced', visible: true },
+    { id: 'siprBreakfix', label: 'SIPR Breakfix', visible: true },
+    { id: 'highRisk', label: 'High Risk', visible: true },
+    { id: 'scanExempt', label: 'Scan Exempt', visible: true },
+];
+
 // Default analytics layout (drag/drop grid) - also controls generated report visibility
 const defaultAnalyticsLayout = [
     { id: 'totalBoats', type: 'stat', row: 0, col: 0 },
@@ -291,6 +303,7 @@ const SettingsManager = {
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
+        if (!settings.hqStatusLayout) settings.hqStatusLayout = JSON.parse(JSON.stringify(defaultHQStatusLayout));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
         if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
         // Ensure thresholds are populated with defaults if empty or missing
@@ -469,6 +482,7 @@ const SettingsManager = {
             tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}],
             analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)),
             analyticsLayout: JSON.parse(JSON.stringify(defaultAnalyticsLayout)),
+            hqStatusLayout: JSON.parse(JSON.stringify(defaultHQStatusLayout)),
             legendText: JSON.parse(JSON.stringify(defaultLegendText)),
             helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))
         };
@@ -1067,7 +1081,26 @@ const generateReportHTML = (reportData, settings) => {
     // HQ page compliance class: >=98% green, 95-97.9% yellow, <95% red
     const hqCompClass = (v) => v === null ? '' : v >= 98 ? 'risk-low' : v >= 95 ? 'risk-med' : 'risk-high';
 
-    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody><tr><td style="text-align:left;font-weight:600">NIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.niprProdCompAvg)}">${a.niprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.niprPolEnfAvg)}">${a.niprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">NIPR Breakfix</td>${list.map(a=>`<td class="${a.niprBreakfixSum>0?'alert-red':''}">${a.niprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Prod Compliance</td>${list.map(a=>`<td class="${hqCompClass(a.siprProdCompAvg)}">${a.siprProdCompAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Policy Enforced</td>${list.map(a=>`<td class="${hqCompClass(a.siprPolEnfAvg)}">${a.siprPolEnfAvg.toFixed(1)}%</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">SIPR Breakfix</td>${list.map(a=>`<td class="${a.siprBreakfixSum>0?'alert-red':''}">${a.siprBreakfixSum}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">High Risk</td>${list.map(a=>`<td class="${a.highRiskCount>0?'risk-high':''}">${a.highRiskCount}</td>`).join('')}</tr><tr><td style="text-align:left;font-weight:600">Scan Exempt</td>${list.map(a=>`<td class="${a.scanExemptCount>0?'alert-blue':''}">${a.scanExemptCount}</td>`).join('')}</tr></tbody></table>`;
+    // HQ Status table with customizable metrics based on hqStatusLayout
+    const hqLayout = settings.hqStatusLayout || defaultHQStatusLayout;
+    const visibleHqMetrics = hqLayout.filter(m => m.visible);
+    const getHqMetricRow = (metric, list) => {
+        const getValue = (a) => {
+            switch(metric.id) {
+                case 'niprProdComp': return { value: a.niprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.niprProdCompAvg) };
+                case 'niprPolEnf': return { value: a.niprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.niprPolEnfAvg) };
+                case 'niprBreakfix': return { value: a.niprBreakfixSum, className: a.niprBreakfixSum > 0 ? 'alert-red' : '' };
+                case 'siprProdComp': return { value: a.siprProdCompAvg.toFixed(1) + '%', className: hqCompClass(a.siprProdCompAvg) };
+                case 'siprPolEnf': return { value: a.siprPolEnfAvg.toFixed(1) + '%', className: hqCompClass(a.siprPolEnfAvg) };
+                case 'siprBreakfix': return { value: a.siprBreakfixSum, className: a.siprBreakfixSum > 0 ? 'alert-red' : '' };
+                case 'highRisk': return { value: a.highRiskCount, className: a.highRiskCount > 0 ? 'risk-high' : '' };
+                case 'scanExempt': return { value: a.scanExemptCount, className: a.scanExemptCount > 0 ? 'alert-blue' : '' };
+                default: return { value: '-', className: '' };
+            }
+        };
+        return `<tr><td style="text-align:left;font-weight:600">${metric.label}</td>${list.map(a => { const { value, className } = getValue(a); return `<td class="${className}">${value}</td>`; }).join('')}</tr>`;
+    };
+    const hqTable = (list, label) => list.length === 0 ? '<p>No data</p>' : `<h3 style="font-size:11pt;margin:16px 0 8px;color:#1e293b;">${label}</h3><table class="summary-table hq-table"><thead><tr><th style="text-align:left;width:150px">Metric</th>${list.map(a=>`<th>${a.isicShort} (${a.boatCount})</th>`).join('')}</tr></thead><tbody>${visibleHqMetrics.map(m => getHqMetricRow(m, list)).join('')}</tbody></table>`;
 
     // High risk boats table for analytics - show max VPH across enclaves
     const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -1677,6 +1710,137 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, rep
     );
 };
 
+// HQ Status Preview Component with customizable metrics
+const HQStatusPreview = ({ boats, settings, onLayoutChange }) => {
+    const [layout, setLayout] = React.useState(() => settings.hqStatusLayout || defaultHQStatusLayout);
+    const [draggedIdx, setDraggedIdx] = React.useState(null);
+    const [showAddModal, setShowAddModal] = React.useState(false);
+
+    // Compute aggregates by ISIC and TYCOM
+    const groupByISIC = (boats) => boats.reduce((acc, b) => { (acc[b.isic] = acc[b.isic] || []).push(b); return acc; }, {});
+    const compClass = (v) => v < 90 ? 'risk-high' : v < 95 ? 'risk-med' : 'risk-low';
+
+    const aggregateByISIC = (boats) => {
+        const groups = groupByISIC(boats);
+        return Object.entries(groups).map(([isic, isicBoats]) => {
+            const nProdVals = isicBoats.filter(b => !b.isNmci && b.essNiprProductCompliance !== null).map(b => b.essNiprProductCompliance);
+            const nPolVals = isicBoats.filter(b => !b.isNmci && b.essNiprTruePolicy !== null).map(b => b.essNiprTruePolicy);
+            const sProdVals = isicBoats.filter(b => b.essSiprProductCompliance !== null).map(b => b.essSiprProductCompliance);
+            const sPolVals = isicBoats.filter(b => b.essSiprTruePolicy !== null).map(b => b.essSiprTruePolicy);
+            return {
+                isicName: isic,
+                isicShort: isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS'),
+                boatCount: isicBoats.length,
+                niprProdCompAvg: nProdVals.length ? nProdVals.reduce((s,v)=>s+v,0)/nProdVals.length : 0,
+                niprPolEnfAvg: nPolVals.length ? nPolVals.reduce((s,v)=>s+v,0)/nPolVals.length : 0,
+                niprBreakfixSum: isicBoats.reduce((s,b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)), 0),
+                siprProdCompAvg: sProdVals.length ? sProdVals.reduce((s,v)=>s+v,0)/sProdVals.length : 0,
+                siprPolEnfAvg: sPolVals.length ? sPolVals.reduce((s,v)=>s+v,0)/sPolVals.length : 0,
+                siprBreakfixSum: isicBoats.reduce((s,b) => s + (b.essSiprBreakfix || 0), 0),
+                highRiskCount: isicBoats.filter(b => b.riskLevel === 'HIGH').length,
+                scanExemptCount: isicBoats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length
+            };
+        }).sort((a,b) => a.isicName.localeCompare(b.isicName));
+    };
+
+    const cslBoats = boats.filter(b => b.tycom === 'CSL');
+    const cspBoats = boats.filter(b => b.tycom === 'CSP');
+    const aggs = { csl: aggregateByISIC(cslBoats), csp: aggregateByISIC(cspBoats) };
+
+    const visibleMetrics = layout.filter(m => m.visible);
+
+    const getMetricValue = (agg, metricId) => {
+        switch(metricId) {
+            case 'niprProdComp': return { value: agg.niprProdCompAvg.toFixed(1) + '%', className: compClass(agg.niprProdCompAvg) };
+            case 'niprPolEnf': return { value: agg.niprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.niprPolEnfAvg) };
+            case 'niprBreakfix': return { value: agg.niprBreakfixSum, className: agg.niprBreakfixSum > 0 ? 'alert-red' : '' };
+            case 'siprProdComp': return { value: agg.siprProdCompAvg.toFixed(1) + '%', className: compClass(agg.siprProdCompAvg) };
+            case 'siprPolEnf': return { value: agg.siprPolEnfAvg.toFixed(1) + '%', className: compClass(agg.siprPolEnfAvg) };
+            case 'siprBreakfix': return { value: agg.siprBreakfixSum, className: agg.siprBreakfixSum > 0 ? 'alert-red' : '' };
+            case 'highRisk': return { value: agg.highRiskCount, className: agg.highRiskCount > 0 ? 'risk-high' : '' };
+            case 'scanExempt': return { value: agg.scanExemptCount, className: agg.scanExemptCount > 0 ? 'alert-blue' : '' };
+            default: return { value: '-', className: '' };
+        }
+    };
+
+    const handleDragStart = (idx) => setDraggedIdx(idx);
+    const handleDragOver = (e) => e.preventDefault();
+    const handleDrop = (targetIdx) => {
+        if (draggedIdx === null || draggedIdx === targetIdx) return;
+        const newLayout = [...layout];
+        const [dragged] = newLayout.splice(draggedIdx, 1);
+        newLayout.splice(targetIdx, 0, dragged);
+        setLayout(newLayout);
+        setDraggedIdx(null);
+    };
+
+    const toggleVisibility = (idx) => {
+        const newLayout = [...layout];
+        newLayout[idx] = { ...newLayout[idx], visible: !newLayout[idx].visible };
+        setLayout(newLayout);
+    };
+
+    const saveLayout = () => { if (onLayoutChange) onLayoutChange(layout); };
+
+    const renderTable = (tycom, aggs) => (
+        <div className="mb-6">
+            <h3 className="text-lg font-bold mb-3 text-slate-700">{tycom} Status</h3>
+            <div className="overflow-x-auto">
+                <table className="data-table hq-preview-table">
+                    <thead>
+                        <tr>
+                            <th style={{textAlign:'left'}}>Metric</th>
+                            {aggs.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {visibleMetrics.map(metric => (
+                            <tr key={metric.id}>
+                                <td style={{textAlign:'left',fontWeight:600}}>{metric.label}</td>
+                                {aggs.map(a => {
+                                    const { value, className } = getMetricValue(a, metric.id);
+                                    return <td key={a.isicName} className={className}>{value}</td>;
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="card p-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-slate-700">HQ Status Preview</h3>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowAddModal(!showAddModal)} className="px-3 py-1 bg-cyan-600 text-white rounded text-sm">{showAddModal ? 'Hide' : 'Configure'} Metrics</button>
+                    <button onClick={saveLayout} className="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Save Layout</button>
+                </div>
+            </div>
+
+            {showAddModal && (
+                <div className="mb-4 p-4 bg-slate-50 rounded border border-slate-200">
+                    <p className="text-sm text-slate-600 mb-3">Drag to reorder, click checkbox to show/hide:</p>
+                    <div className="space-y-2">
+                        {layout.map((metric, idx) => (
+                            <div key={metric.id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={handleDragOver} onDrop={() => handleDrop(idx)}
+                                className="flex items-center gap-3 p-2 bg-white rounded border border-slate-200 cursor-move hover:bg-slate-50">
+                                <span className="text-slate-400">☰</span>
+                                <input type="checkbox" checked={metric.visible} onChange={() => toggleVisibility(idx)} />
+                                <span className={`text-sm ${metric.visible ? 'text-slate-700' : 'text-slate-400'}`}>{metric.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {renderTable('CSL', aggs.csl)}
+            {renderTable('CSP', aggs.csp)}
+        </div>
+    );
+};
+
 // Analytics Preview Component with drag/drop grid
 const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
     const [showSidebar, setShowSidebar] = React.useState(false);
@@ -2142,12 +2306,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
             {(subTab === 'csl' || subTab === 'csp') && <div className="mb-4"><select value={selectedISIC} onChange={(e) => setSelectedISIC(e.target.value)} className="px-4 py-2 rounded"><option value="">All Squadrons</option>{isics.map(i => <option key={i} value={i}>{i}</option>)}</select><span className="ml-4 text-sm text-slate-500">Click any cell to override</span></div>}
 
             {subTab === 'hq' ? (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSL Status</h3>
-                    <div className="overflow-x-auto mb-6"><table className="data-table hq-preview-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csl.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csl.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csl.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csl.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csl.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">CSP Status</h3>
-                    <div className="overflow-x-auto"><table className="data-table hq-preview-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csp.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
-                </div>
+                <HQStatusPreview boats={boats} settings={settings} onLayoutChange={(newLayout) => setSettings(prev => ({ ...prev, hqStatusLayout: newLayout }))} />
             ) : subTab === 'analytics' ? (
                 <AnalyticsPreview boats={boats} settings={settings} onLayoutChange={(newLayout) => setSettings(prev => ({ ...prev, analyticsLayout: newLayout }))} />
             ) : (
