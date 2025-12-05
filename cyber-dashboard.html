@@ -1620,10 +1620,24 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, rep
                 const result = mergeData(mergedSources, settings);
                 boats = result.boats;
 
-                // Preserve overrides from existing boats
+                // Preserve overrides only for fields NOT being updated by new data
+                // Map sources to the fields they update
+                const sourceFields = {
+                    vramNipr: ['vramNiprScanDate', 'vramNiprAssets', 'vramNiprRaVph'],
+                    vramSipr: ['vramSiprScanDate', 'vramSiprAssets', 'vramSiprRaVph'],
+                    essNipr: ['essNiprProductCompliance', 'essNiprPolicyEnforced', 'essNiprBreakfix', 'essNiprAssets'],
+                    essSipr: ['essSiprProductCompliance', 'essSiprPolicyEnforced', 'essSiprBreakfix', 'essSiprAssets'],
+                    tam: ['tamPastDue', 'tamExtensions']
+                };
+                // Get all fields being updated by new sources
+                const updatedFields = new Set(updatedSources.flatMap(src => sourceFields[src] || []));
+
                 boats.forEach(newBoat => {
                     const oldBoat = reportData.boats.find(b => b.boatName === newBoat.boatName);
-                    if (oldBoat?.overrides?.length) newBoat.overrides = [...oldBoat.overrides];
+                    // Only keep overrides for fields NOT being updated
+                    if (oldBoat?.overrides?.length) {
+                        newBoat.overrides = oldBoat.overrides.filter(o => !updatedFields.has(o.field));
+                    }
                     if (oldBoat?.notes) newBoat.notes = oldBoat.notes;
                 });
 
@@ -1642,7 +1656,7 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, rep
                     sourceFiles: { ...reportData.sourceFiles, ...Object.fromEntries(updatedSources.map(k => [k, importedFiles[k]?.name])) },
                     dataUpdates: [...(reportData.dataUpdates || []), updateEntry]
                 };
-                onAlert({ type: 'info', msg: `Updated ${updatedSources.map(k => sourceLabels[k]).join(', ')} - preserved ${boats.filter(b => b.overrides?.length).length} overrides` });
+                onAlert({ type: 'info', msg: `Updated ${updatedSources.map(k => sourceLabels[k]).join(', ')} - overrides for updated fields were replaced with new data` });
             } else {
                 // Fresh report - strip raw data to reduce file size
                 const result = mergeData(sources, settings);
@@ -1666,7 +1680,7 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, rep
                 <div className="mb-4 p-3 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center gap-3">
                     <span className="text-cyan-700 font-medium">Active Report: v{reportData.version || 1}</span>
                     <span className="text-cyan-600 text-sm">({reportData.boats.length} boats)</span>
-                    <span className="text-cyan-500 text-sm">• Drop new files below to update specific data sources while preserving overrides</span>
+                    <span className="text-cyan-500 text-sm">• Drop new files below to update data sources (overrides for updated fields will be replaced)</span>
                 </div>
             )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
