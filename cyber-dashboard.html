@@ -234,7 +234,7 @@ const defaultAnalyticsLayout = [
 
 // Default legend text - updated to match new risk criteria
 const defaultLegendText = {
-    high: 'Breakfix, No VRAM scan data, OR Product Compliance &lt;{high_product_compliance}%',
+    high: 'Breakfix, No VRAM, Prod &lt;{high_product_compliance}%, VPH &gt;{auto_high_ra_vph}, Scan &gt;{auto_high_scan_age_days}d, Policy &lt;{high_ess_compliance}%, TAM &gt;{high_tam_past_due}',
     med: '2+ of: VPH &gt;{med_ra_vph}, Prod/Policy compliance &lt;{med_ess_compliance}%, Scan &gt;{med_scan_age_days}d, TAM Past Due &gt;{med_tam_past_due}',
     low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_ess_compliance}%'
 };
@@ -253,11 +253,9 @@ const defaultThresholds = {
     // HIGH risk thresholds (auto-HIGH if exceeded)
     auto_high_ra_vph: 5,
     auto_high_scan_age_days: 30,
-    auto_high_scan_integrity: 80,
     high_ess_compliance: 90,
     high_product_compliance: 50,
-    high_tam_past_due: 20,
-    high_scan_age_days: 30
+    high_tam_past_due: 20
 };
 
 // Default help modal text (? button content) - editable in settings
@@ -884,8 +882,8 @@ const generateReportHTML = (reportData, settings) => {
     const cslByISIC = groupByISIC(cslBoats); const cspByISIC = groupByISIC(cspBoats);
     const embedded = compressAndEncode({ reportData, settingsSnapshot: settings, generatedAt: new Date().toISOString() });
 
-    const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
+    const fmt = (v, d=0) => v == null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
+    const fmtPct = (v) => v == null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
     // Updated color classes based on new risk criteria
     // Compliance: >=95% = green, <95% = red
@@ -2568,8 +2566,8 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     // Update the current user name for overrides
     const [currentUserName, setCurrentUserName] = React.useState('');
 
-    const fmt = (v, d=0) => v === null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
-    const fmtPct = (v) => v === null ? '-' : Math.min(100, v).toFixed(1) + '%';
+    const fmt = (v, d=0) => v == null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
+    const fmtPct = (v) => v == null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
     // Updated color classes using activeThresholds for real-time updates
     const compThreshold = activeThresholds.med_ess_compliance || 95;
