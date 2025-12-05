@@ -142,7 +142,7 @@ const defaultSchemaConfig = {
         {field: 'isic', label: 'ISIC Column', column: 'ISICs', visible: true},
         {field: 'productCompliance', label: 'Product Compliance %', column: 'Product Compliance', visible: true},
         {field: 'policyEnforced', label: 'Policy Enforced %', column: 'Policy Enforced', visible: true},
-        {field: 'truePolicy', label: 'True Policy % (Calculated)', column: '[CALCULATED - NOT IN ESS SHEET]', visible: false},
+        {field: 'truePolicy', label: 'True Policy % (Calculated)', column: '[CALCULATED - NOT IN ESS SHEET]', visible: true},
         {field: 'breakfix', label: 'Breakfix Count', column: 'Assets in Breakfix', visible: true},
         {field: 'assets', label: 'Asset Count', column: 'Asset Count', visible: true}
     ],
@@ -303,7 +303,23 @@ const SettingsManager = {
 
     // Ensure settings have all required fields and versioning
     ensureDefaults(settings, options = {}) {
-        if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
+        if (!settings.schemaConfig) {
+            settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
+        } else {
+            // Merge in any missing schema fields from defaults
+            for (const type of ['vram', 'ess', 'tam']) {
+                if (!settings.schemaConfig[type]) {
+                    settings.schemaConfig[type] = JSON.parse(JSON.stringify(defaultSchemaConfig[type]));
+                } else {
+                    const existingFields = new Set(settings.schemaConfig[type].map(f => f.field));
+                    for (const defaultField of defaultSchemaConfig[type]) {
+                        if (!existingFields.has(defaultField.field)) {
+                            settings.schemaConfig[type].push(JSON.parse(JSON.stringify(defaultField)));
+                        }
+                    }
+                }
+            }
+        }
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
         if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
@@ -319,6 +335,11 @@ const SettingsManager = {
                 if (settings.thresholds[key] === undefined) {
                     settings.thresholds[key] = defaultThresholds[key];
                 }
+            }
+            // Remove obsolete threshold keys (e.g., ra_crit was removed)
+            const obsoleteKeys = ['auto_high_ra_crit', 'high_ra_crit', 'med_ra_crit', 'low_ra_crit', 'auto_high_scan_integrity', 'high_scan_age_days'];
+            for (const key of obsoleteKeys) {
+                delete settings.thresholds[key];
             }
         }
 
@@ -3553,16 +3574,18 @@ function App() {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
+            // Always ensure defaults to clean up obsolete keys and add missing ones
+            const cleanedSettings = SettingsManager.ensureDefaults(result.settings);
             if (fromSetup) {
                 // From first-time setup: save settings to localStorage permanently
-                SettingsManager.save(result.settings);
-                setSettings(result.settings);
+                SettingsManager.save(cleanedSettings);
+                setSettings(cleanedSettings);
                 setShowFirstTimeSetup(false);
-                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${cleanedSettings.boats?.length || 0} boats, ${cleanedSettings.isics?.length || 0} ISICs` }]);
             } else {
                 // Normal import: use for session only
                 setIsUsingImportedSettings(true);
-                setSettings(result.settings);
+                setSettings(cleanedSettings);
                 setReportData(result.reportData);
                 setCurrentTab('preview');
                 setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
