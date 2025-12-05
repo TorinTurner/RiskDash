@@ -3574,16 +3574,18 @@ function App() {
         const result = await importReportHTML(file);
         if (result.error) { setAlerts([{ type: 'error', msg: result.error }]); }
         else {
+            // Always ensure defaults to clean up obsolete keys and add missing ones
+            const cleanedSettings = SettingsManager.ensureDefaults(result.settings);
             if (fromSetup) {
                 // From first-time setup: save settings to localStorage permanently
-                SettingsManager.save(result.settings);
-                setSettings(result.settings);
+                SettingsManager.save(cleanedSettings);
+                setSettings(cleanedSettings);
                 setShowFirstTimeSetup(false);
-                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${result.settings.boats?.length || 0} boats, ${result.settings.isics?.length || 0} ISICs` }]);
+                setAlerts([{ type: 'info', msg: `✓ Settings saved! Extracted from report: ${cleanedSettings.boats?.length || 0} boats, ${cleanedSettings.isics?.length || 0} ISICs` }]);
             } else {
                 // Normal import: use for session only
                 setIsUsingImportedSettings(true);
-                setSettings(result.settings);
+                setSettings(cleanedSettings);
                 setReportData(result.reportData);
                 setCurrentTab('preview');
                 setAlerts([{ type: 'info', msg: `Loaded report v${result.reportData.version} with ${result.reportData.boats.length} boats` }]);
