@@ -201,6 +201,23 @@ const defaultAnalyticsConfig = {
     ]
 };
 
+// Default analytics layout (drag/drop grid) - also controls generated report visibility
+const defaultAnalyticsLayout = [
+    { id: 'totalBoats', type: 'stat', row: 0, col: 0 },
+    { id: 'highRisk', type: 'stat', row: 0, col: 1 },
+    { id: 'medRisk', type: 'stat', row: 0, col: 2 },
+    { id: 'lowRisk', type: 'stat', row: 0, col: 3 },
+    { id: 'avgVph', type: 'stat', row: 1, col: 0 },
+    { id: 'totalBreakfix', type: 'stat', row: 1, col: 1 },
+    { id: 'avgCompliance', type: 'stat', row: 1, col: 2 },
+    { id: 'scanExempt', type: 'stat', row: 1, col: 3 },
+    { id: 'riskDistribution', type: 'chart', row: 2, col: 0, width: 2 },
+    { id: 'highRiskTable', type: 'chart', row: 2, col: 2, width: 2 },
+    { id: 'worstBoatsVph', type: 'ranking', row: 3, col: 0 },
+    { id: 'worstBoatsCompliance', type: 'ranking', row: 3, col: 1 },
+    { id: 'boatsWithBreakfix', type: 'ranking', row: 3, col: 2 },
+];
+
 // Default legend text - updated to match new risk criteria
 const defaultLegendText = {
     high: 'Breakfix, No VRAM scan data, OR Product Compliance &lt;{high_product_compliance}%',
@@ -273,6 +290,7 @@ const SettingsManager = {
         if (!settings.schemaConfig) settings.schemaConfig = JSON.parse(JSON.stringify(defaultSchemaConfig));
         if (!settings.tabConfig) settings.tabConfig = [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}];
         if (!settings.analyticsConfig) settings.analyticsConfig = JSON.parse(JSON.stringify(defaultAnalyticsConfig));
+        if (!settings.analyticsLayout) settings.analyticsLayout = JSON.parse(JSON.stringify(defaultAnalyticsLayout));
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
         if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
         // Ensure thresholds are populated with defaults if empty or missing
@@ -450,6 +468,7 @@ const SettingsManager = {
             schemaConfig: JSON.parse(JSON.stringify(defaultSchemaConfig)),
             tabConfig: [{id:'csl',label:'CSL Summary',visible:true},{id:'csp',label:'CSP Summary',visible:true},{id:'hq',label:'HQ Status',visible:true},{id:'analytics',label:'Analytics',visible:true},{id:'changelog',label:'Changes',visible:true}],
             analyticsConfig: JSON.parse(JSON.stringify(defaultAnalyticsConfig)),
+            analyticsLayout: JSON.parse(JSON.stringify(defaultAnalyticsLayout)),
             legendText: JSON.parse(JSON.stringify(defaultLegendText)),
             helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))
         };
@@ -1259,30 +1278,28 @@ ${hqTable(aggs.csp, 'CSP Status')}
 </div>` : ''}
 
 ${isTabVisible('analytics') ? (() => {
-    const ac = settings.analyticsConfig || defaultAnalyticsConfig;
-    const isStatVisible = (id) => ac.statCards?.find(s => s.id === id)?.visible !== false;
-    const isChartVisible = (id) => ac.charts?.find(c => c.id === id)?.visible !== false;
-    const isColVisible = (id) => ac.summaryColumns?.find(c => c.id === id)?.visible !== false;
-    const getRanking = (id) => ac.rankings?.find(r => r.id === id) || {visible: false, count: 5};
+    // Use analyticsLayout for visibility - if item is in layout, it's visible
+    const al = settings.analyticsLayout || defaultAnalyticsLayout;
+    const isInLayout = (id) => al.some(item => item.id === id);
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
     const visibleStatsArr = [
-        isStatVisible('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
-        isStatVisible('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
-        isStatVisible('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
-        isStatVisible('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
-        isStatVisible('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
-        isStatVisible('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
-        isStatVisible('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
-        isStatVisible('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
+        isInLayout('totalBoats') ? `<div class="stat-card"><h3>Total Boats</h3><div class="value">${boats.length}</div></div>` : '',
+        isInLayout('highRisk') ? `<div class="stat-card"><h3>High Risk</h3><div class="value high">${riskCounts.HIGH}</div></div>` : '',
+        isInLayout('medRisk') ? `<div class="stat-card"><h3>Medium Risk</h3><div class="value med">${riskCounts.MED}</div></div>` : '',
+        isInLayout('lowRisk') ? `<div class="stat-card"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>` : '',
+        isInLayout('avgVph') ? `<div class="stat-card"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>` : '',
+        isInLayout('totalBreakfix') ? `<div class="stat-card"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>` : '',
+        isInLayout('avgCompliance') ? `<div class="stat-card"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>` : '',
+        isInLayout('scanExempt') ? `<div class="stat-card"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>` : ''
     ].filter(Boolean);
     const statCount = visibleStatsArr.length;
     const statCols = statCount <= 4 ? statCount : Math.ceil(statCount / 2);
     const visibleStats = visibleStatsArr.join('');
     const visibleCharts = [
-        isChartVisible('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
-        isChartVisible('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
-        isChartVisible('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
-        isChartVisible('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
+        isInLayout('riskDistribution') ? `<div class="chart-box"><h3>Risk Distribution - All</h3><canvas id="chart-risk-all"></canvas></div>` : '',
+        isInLayout('riskByTycom') ? `<div class="chart-box"><h3>Risk by TYCOM</h3><canvas id="chart-risk-tycom"></canvas></div>` : '',
+        isInLayout('vphByIsic') ? `<div class="chart-box"><h3>Average VPH by ISIC</h3><canvas id="chart-vph-isic"></canvas></div>` : '',
+        isInLayout('highRiskTable') ? `<div class="chart-box"><h3>High Risk Boats</h3>${highRiskTable}</div>` : ''
     ].filter(Boolean).join('');
 
     // Rankings - helper functions to properly handle NMCI boats
@@ -1301,24 +1318,20 @@ ${isTabVisible('analytics') ? (() => {
     const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
 
     const rankingTables = [];
-    const r1 = getRanking('worstBoatsVph');
-    if (r1.visible) {
-        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, r1.count||5);
+    if (isInLayout('worstBoatsVph')) {
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(b)||0) - (getBoatMaxVph(a)||0)).slice(0, 5);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r2 = getRanking('bestBoatsVph');
-    if (r2.visible) {
-        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, r2.count||5);
+    if (isInLayout('bestBoatsVph')) {
+        const sorted = [...boats].filter(b => getBoatMaxVph(b) != null).sort((a,b) => (getBoatMaxVph(a)||0) - (getBoatMaxVph(b)||0)).slice(0, 5);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>VPH</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r3 = getRanking('worstBoatsCompliance');
-    if (r3.visible) {
-        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, r3.count||5);
+    if (isInLayout('worstBoatsCompliance')) {
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(a)||0) - (getBoatMinCompliance(b)||0)).slice(0, 5);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-high">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r4 = getRanking('bestBoatsCompliance');
-    if (r4.visible) {
-        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, r4.count||5);
+    if (isInLayout('bestBoatsCompliance')) {
+        const sorted = [...boats].filter(b => getBoatMinCompliance(b) != null).sort((a,b) => (getBoatMinCompliance(b)||0) - (getBoatMinCompliance(a)||0)).slice(0, 5);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best Boats by Compliance</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Compliance</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="risk-low">${Math.min(100, getBoatMinCompliance(b)||0).toFixed(1)}%</td></tr>`).join('')}</tbody></table></div>`);
     }
     // ISIC data: calculate avg VPH considering both enclaves and NMCI
@@ -1329,28 +1342,23 @@ ${isTabVisible('analytics') ? (() => {
         });
         return {isic, boats: ib.length, high: ib.filter(b=>b.riskLevel==='HIGH').length, low: ib.filter(b=>b.riskLevel==='LOW').length, lowPct: ib.length ? (ib.filter(b=>b.riskLevel==='LOW').length/ib.length*100) : 0, avgVph: vphVals.length > 0 ? vphVals.reduce((s,v)=>s+v,0)/vphVals.length : 0};
     });
-    const r5 = getRanking('worstIsicsRisk');
-    if (r5.visible) {
-        const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, r5.count||3);
+    if (isInLayout('worstIsicsRisk')) {
+        const sorted = [...isicData].sort((a,b) => b.high - a.high).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by High Risk</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>High</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.high}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r6 = getRanking('bestIsicsRisk');
-    if (r6.visible) {
-        const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, r6.count||3);
+    if (isInLayout('bestIsicsRisk')) {
+        const sorted = [...isicData].sort((a,b) => b.lowPct - a.lowPct).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Best ISICs by Low Risk %</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Low %</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-low">${i.lowPct.toFixed(0)}%</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r7 = getRanking('worstIsicsVph');
-    if (r7.visible) {
-        const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, r7.count||3);
+    if (isInLayout('worstIsicsVph')) {
+        const sorted = [...isicData].sort((a,b) => b.avgVph - a.avgVph).slice(0, 3);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Worst ISICs by Avg VPH</h4><table class="mini-table"><thead><tr><th>ISIC</th><th>Avg VPH</th><th>Boats</th></tr></thead><tbody>${sorted.map(i => `<tr><td>${i.isic}</td><td class="risk-high">${i.avgVph.toFixed(2)}</td><td>${i.boats}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r8 = getRanking('boatsWithBreakfix');
-    if (r8.visible) {
-        const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, r8.count||5);
+    if (isInLayout('boatsWithBreakfix')) {
+        const sorted = [...boats].filter(b => getBoatTotalBreakfix(b) > 0).sort((a,b) => getBoatTotalBreakfix(b) - getBoatTotalBreakfix(a)).slice(0, 5);
         if (sorted.length) rankingTables.push(`<div class="ranking-box"><h4>Boats with Breakfix</h4><table class="mini-table"><thead><tr><th>Boat</th><th>ISIC</th><th>Breakfix</th></tr></thead><tbody>${sorted.map(b => `<tr><td>${b.boatFullName || b.boatName}</td><td>${b.isic}</td><td class="alert-red">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div>`);
     }
-    const r9 = getRanking('tycomComparison');
-    if (r9.visible) {
+    if (isInLayout('tycomComparison')) {
         const tycomData = {};
         boats.forEach(b => {
             if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
@@ -1670,25 +1678,12 @@ const ImportTab = ({ importedFiles, setImportedFiles, settings, setSettings, rep
 };
 
 // Analytics Preview Component with drag/drop grid
-const AnalyticsPreview = ({ boats, settings }) => {
+const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
     const [showSidebar, setShowSidebar] = React.useState(false);
     const [draggedItem, setDraggedItem] = React.useState(null);
     const [layout, setLayout] = React.useState(() => {
         // Initialize from settings or use default
-        return settings.analyticsLayout || [
-            { id: 'totalBoats', type: 'stat', row: 0, col: 0 },
-            { id: 'highRisk', type: 'stat', row: 0, col: 1 },
-            { id: 'medRisk', type: 'stat', row: 0, col: 2 },
-            { id: 'lowRisk', type: 'stat', row: 0, col: 3 },
-            { id: 'avgVph', type: 'stat', row: 1, col: 0 },
-            { id: 'totalBreakfix', type: 'stat', row: 1, col: 1 },
-            { id: 'avgCompliance', type: 'stat', row: 1, col: 2 },
-            { id: 'riskDistribution', type: 'chart', row: 2, col: 0, width: 2 },
-            { id: 'highRiskTable', type: 'chart', row: 2, col: 2, width: 2 },
-            { id: 'worstBoatsVph', type: 'ranking', row: 3, col: 0 },
-            { id: 'worstBoatsCompliance', type: 'ranking', row: 3, col: 1 },
-            { id: 'boatsWithBreakfix', type: 'ranking', row: 3, col: 2 },
-        ];
+        return settings.analyticsLayout || defaultAnalyticsLayout;
     });
 
     // Compute analytics data
@@ -1751,10 +1746,9 @@ const AnalyticsPreview = ({ boats, settings }) => {
     const removeItem = (id) => setLayout(prev => prev.filter(item => item.id !== id));
 
     const saveLayout = () => {
-        // This would need to be passed up to parent to save to settings
-        // For now, store in localStorage as a workaround
-        localStorage.setItem('analyticsLayout', JSON.stringify(layout));
-        alert('Layout saved! It will persist in this browser.');
+        if (onLayoutChange) {
+            onLayoutChange(layout);
+        }
     };
 
     // Render element content
@@ -1887,7 +1881,7 @@ const AnalyticsPreview = ({ boats, settings }) => {
     );
 };
 
-const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
+const PreviewTab = ({ reportData, setReportData, settings, setSettings, onRequestName }) => {
     const [subTab, setSubTab] = React.useState('csl');
     const [selectedISIC, setSelectedISIC] = React.useState('');
     const [overrideModal, setOverrideModal] = React.useState(null);
@@ -2155,7 +2149,7 @@ const PreviewTab = ({ reportData, setReportData, settings, onRequestName }) => {
                     <div className="overflow-x-auto"><table className="data-table hq-preview-table"><thead><tr><th style={{textAlign:'left'}}>Metric</th>{aggs.csp.map(a => <th key={a.isicName}>{a.isicShort} ({a.boatCount})</th>)}</tr></thead><tbody><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprProdCompAvg)}>{a.niprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.niprPolEnfAvg)}>{a.niprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>NIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.niprBreakfixSum>0?'alert-red':''}>{a.niprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Prod Compliance</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprProdCompAvg)}>{a.siprProdCompAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Policy Enforced</td>{aggs.csp.map(a => <td key={a.isicName} className={compClass(a.siprPolEnfAvg)}>{a.siprPolEnfAvg.toFixed(1)}%</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>SIPR Breakfix</td>{aggs.csp.map(a => <td key={a.isicName} className={a.siprBreakfixSum>0?'alert-red':''}>{a.siprBreakfixSum}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>High Risk</td>{aggs.csp.map(a => <td key={a.isicName} className={a.highRiskCount>0?'risk-high':''}>{a.highRiskCount}</td>)}</tr><tr><td style={{textAlign:'left',fontWeight:600}}>Scan Exempt</td>{aggs.csp.map(a => <td key={a.isicName} className={a.scanExemptCount>0?'alert-blue':''}>{a.scanExemptCount}</td>)}</tr></tbody></table></div>
                 </div>
             ) : subTab === 'analytics' ? (
-                <AnalyticsPreview boats={boats} settings={settings} />
+                <AnalyticsPreview boats={boats} settings={settings} onLayoutChange={(newLayout) => setSettings(prev => ({ ...prev, analyticsLayout: newLayout }))} />
             ) : (
                 <div className="card p-4 overflow-x-auto">
                     <table className="data-table">
@@ -2538,14 +2532,6 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
     const schemaTypeLabels = { vram: 'VRAM Files', ess: 'ESS Files', tam: 'TAM Files' };
     const schemaTypeColors = { vram: 'text-cyan-700', ess: 'text-indigo-700', tam: 'text-orange-700' };
 
-    // Analytics config helpers
-    const analytics = settings.analyticsConfig || JSON.parse(JSON.stringify(defaultAnalyticsConfig));
-    const updateAnalyticsItem = (section, idx, updates) => {
-        const newConfig = JSON.parse(JSON.stringify(analytics));
-        newConfig[section][idx] = { ...newConfig[section][idx], ...updates };
-        setSettings(prev => ({ ...prev, analyticsConfig: newConfig }));
-    };
-
     return (
         <div>
             {/* Warning Box */}
@@ -2577,7 +2563,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 </div>
             </div>
 
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns', 'analytics'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'analytics' ? 'Analytics' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'thresholds', 'legend', 'columns'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'legend' ? 'Risk Legend' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -2742,64 +2728,6 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                         <div className="flex gap-2 mt-6">
                             <button onClick={() => { if (newFieldModal.field && newFieldModal.column) { addSchemaField(newFieldModal.type, newFieldModal.field, newFieldModal.label || newFieldModal.field, newFieldModal.column); setNewFieldModal(null); } }} className="btn-primary">Add Field</button>
                             <button onClick={() => setNewFieldModal(null)} className="btn-secondary">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {subTab === 'analytics' && (
-                <div className="space-y-6">
-                    <div className="card p-4">
-                        <h3 className="text-lg font-bold mb-2 text-slate-700">Analytics Page Configuration</h3>
-                        <p className="text-sm text-slate-500 mb-4">Select which items to display on the Analytics tab of generated reports.</p>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-purple-700 mb-3">Stat Cards</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {(analytics.statCards || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('statCards', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-emerald-700 mb-3">Charts & Visualizations</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {(analytics.charts || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('charts', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h4 className="font-bold text-cyan-700 mb-3">Rankings (Top/Bottom Performers)</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {(analytics.rankings || []).map((item, idx) => (
-                                    <div key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('rankings', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700 flex-1">{item.label}</span>
-                                        <input type="number" min="1" max="10" value={item.count || 5} onChange={(e) => updateAnalyticsItem('rankings', idx, { count: parseInt(e.target.value) || 5 })} className="w-14 text-center text-sm p-1" title="Number of items to show" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold text-amber-700 mb-3">Summary Table Columns</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {(analytics.summaryColumns || []).map((item, idx) => (
-                                    <label key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
-                                        <input type="checkbox" checked={item.visible !== false} onChange={(e) => updateAnalyticsItem('summaryColumns', idx, { visible: e.target.checked })} />
-                                        <span className="text-sm text-slate-700">{item.label}</span>
-                                    </label>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -3069,7 +2997,7 @@ function App() {
 
             <main className="max-w-[95vw] mx-auto p-6">
                 {currentTab === 'import' && <ImportTab importedFiles={importedFiles} setImportedFiles={setImportedFiles} settings={settings} setSettings={setSettings} reportData={reportData} onProcess={(d) => { setReportData(d); setCurrentTab('preview'); }} onAlert={(a) => setAlerts(p => [...p, a])} onReportImport={handleReportImport} />}
-                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} onRequestName={requestName} />}
+                {currentTab === 'preview' && <PreviewTab reportData={reportData} setReportData={setReportData} settings={settings} setSettings={setSettings} onRequestName={requestName} />}
                 {currentTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} onAlert={(a) => setAlerts(p => [...p, a])} isUsingImportedSettings={isUsingImportedSettings} onSaveToMySettings={() => setIsUsingImportedSettings(false)} />}
             </main>
 
