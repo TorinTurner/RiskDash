@@ -262,23 +262,29 @@ const defaultThresholds = {
     high_raw_policy_compliance: 0,   // Disabled - Raw Policy compliance doesn't auto-trigger HIGH
     high_product_compliance: 0,      // Disabled - Low product compliance doesn't auto-trigger HIGH
     high_tam_past_due: 20,           // Optional - TAMs > 20 triggers HIGH (can be adjusted)
-    // MED risk - raw policy toggle (true policy uses med_ess_compliance)
-    med_raw_policy_compliance: 95,   // Raw policy threshold for MED
+    // MED risk - policy toggles (both can be enabled/disabled independently)
+    med_true_policy_compliance: 95,  // True policy threshold for MED (0 = disabled)
+    med_raw_policy_compliance: 0,    // Raw policy threshold for MED (0 = disabled)
     // Color scale thresholds for tables (green/yellow/red)
     // Product Compliance colors
     color_product_green: 95,    // >=95% = green
-    color_product_yellow: 90,   // >=90% = yellow, <90% = red
+    color_product_yellow: 90,   // >=90% = yellow
+    color_product_red: 90,      // <90% = red
     // Policy Compliance colors (True Policy)
     color_policy_green: 95,     // >=95% = green
-    color_policy_yellow: 90,    // >=90% = yellow, <90% = red
+    color_policy_yellow: 90,    // >=90% = yellow
+    color_policy_red: 90,       // <90% = red
     // Policy Enforced Raw colors
     color_policy_raw_green: 95, // >=95% = green
-    color_policy_raw_yellow: 90,// >=90% = yellow, <90% = red
+    color_policy_raw_yellow: 90,// >=90% = yellow
+    color_policy_raw_red: 90,   // <90% = red
     // VPH colors
     color_vph_green: 2.5,       // <2.5 = green
-    color_vph_yellow: 3.5,      // <3.5 = yellow, >=3.5 = red
+    color_vph_yellow: 3.5,      // <3.5 = yellow
+    color_vph_red: 3.5,         // >=3.5 = red
     // Scan age colors (days)
-    color_scan_green: 14,       // <=14 days = green, >14 = red
+    color_scan_green: 14,       // <=14 days = green
+    color_scan_red: 14,         // >14 days = red
 };
 
 // Default help modal text (? button content) - editable in settings
@@ -791,26 +797,31 @@ const calculateRisk = (boat, thresholds) => {
             medReasons.push(`SIPR VPH: ${boat.vramSiprRaVph.toFixed(2)}`);
         }
 
-        // Condition 2: Any enclave Product or True Policy compliance < threshold - skip NIPR for NMCI
+        // Condition 2: Product Compliance - always enabled - skip NIPR for NMCI
         const complianceThreshold = thresholds.med_ess_compliance || 95;
         if (!isNmci && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < complianceThreshold) {
             medConditionCount++;
             medReasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
         }
-        if (!isNmci && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < complianceThreshold) {
-            medConditionCount++;
-            medReasons.push(`NIPR True Policy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
-        }
         if (boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < complianceThreshold) {
             medConditionCount++;
             medReasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
         }
-        if (boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < complianceThreshold) {
-            medConditionCount++;
-            medReasons.push(`SIPR True Policy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
+
+        // Condition 2b: True Policy compliance check (toggleable) - skip NIPR for NMCI
+        const truePolicyThreshold = thresholds.med_true_policy_compliance || 0;
+        if (truePolicyThreshold > 0) {
+            if (!isNmci && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < truePolicyThreshold) {
+                medConditionCount++;
+                medReasons.push(`NIPR True Policy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
+            }
+            if (boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < truePolicyThreshold) {
+                medConditionCount++;
+                medReasons.push(`SIPR True Policy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
+            }
         }
 
-        // Condition 2b: Raw Policy compliance check (optional) - skip NIPR for NMCI
+        // Condition 2c: Raw Policy compliance check (toggleable) - skip NIPR for NMCI
         const rawPolicyThreshold = thresholds.med_raw_policy_compliance || 0;
         if (rawPolicyThreshold > 0) {
             if (!isNmci && boat.essNiprPolicyEnforced !== null && boat.essNiprPolicyEnforced < rawPolicyThreshold) {
@@ -983,23 +994,23 @@ const generateReportHTML = (reportData, settings) => {
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
     // Color classes using configurable thresholds from settings
     const sth = settings.thresholds || defaultThresholds;
-    // Product Compliance: green/yellow/red
-    const prodCompClass = (v) => v === null ? '' : v >= (sth.color_product_green || 95) ? 'risk-low' : v >= (sth.color_product_yellow || 90) ? 'risk-med' : 'risk-high';
-    // Policy Compliance (True Policy): green/yellow/red
-    const policyCompClass = (v) => v === null ? '' : v >= (sth.color_policy_green || 95) ? 'risk-low' : v >= (sth.color_policy_yellow || 90) ? 'risk-med' : 'risk-high';
-    // Policy Enforced Raw: green/yellow/red
-    const policyRawClass = (v) => v === null ? '' : v >= (sth.color_policy_raw_green || 95) ? 'risk-low' : v >= (sth.color_policy_raw_yellow || 90) ? 'risk-med' : 'risk-high';
+    // Product Compliance: green >= threshold, red < threshold, else yellow
+    const prodCompClass = (v) => v === null ? '' : v >= (sth.color_product_green || 95) ? 'risk-low' : v < (sth.color_product_red || 90) ? 'risk-high' : 'risk-med';
+    // Policy Compliance (True Policy): green >= threshold, red < threshold, else yellow
+    const policyCompClass = (v) => v === null ? '' : v >= (sth.color_policy_green || 95) ? 'risk-low' : v < (sth.color_policy_red || 90) ? 'risk-high' : 'risk-med';
+    // Policy Enforced Raw: green >= threshold, red < threshold, else yellow
+    const policyRawClass = (v) => v === null ? '' : v >= (sth.color_policy_raw_green || 95) ? 'risk-low' : v < (sth.color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
     // Generic compliance class (backward compat)
     const compClass = prodCompClass;
-    // VPH: <lowThreshold = green, <medThreshold = yellow, >=medThreshold = red
-    const vphClass = (v) => v === null ? '' : v < (sth.color_vph_green || 2.5) ? 'risk-low' : v < (sth.color_vph_yellow || 3.5) ? 'risk-med' : 'risk-high';
-    // Scan age: <=threshold days = green, >threshold days = red
+    // VPH: green < threshold, red >= threshold, else yellow
+    const vphClass = (v) => v === null ? '' : v < (sth.color_vph_green || 2.5) ? 'risk-low' : v >= (sth.color_vph_red || 3.5) ? 'risk-high' : 'risk-med';
+    // Scan age: green <= threshold, red > threshold
     const scanAgeClass = (d) => {
         if (!d) return 'risk-high';
         const date = new Date(d);
         if (isNaN(date.getTime())) return 'risk-high';
         const age = Math.floor((new Date() - date) / 86400000);
-        return age <= (sth.color_scan_green || 14) ? 'risk-low' : 'risk-high';
+        return age <= (sth.color_scan_green || 14) ? 'risk-low' : age > (sth.color_scan_red || 14) ? 'risk-high' : 'risk-med';
     };
 
     // Format legend text by substituting threshold values
@@ -1239,9 +1250,9 @@ const generateReportHTML = (reportData, settings) => {
 
     // HQ page compliance class functions using configurable thresholds (matching preview)
     const th = settings.thresholds || defaultThresholds;
-    const hqProdClass = (v) => v === null ? '' : v >= (th.color_product_green || 95) ? 'risk-low' : v >= (th.color_product_yellow || 90) ? 'risk-med' : 'risk-high';
-    const hqPolicyClass = (v) => v === null ? '' : v >= (th.color_policy_green || 95) ? 'risk-low' : v >= (th.color_policy_yellow || 90) ? 'risk-med' : 'risk-high';
-    const hqPolicyRawClass = (v) => v === null ? '' : v >= (th.color_policy_raw_green || 95) ? 'risk-low' : v >= (th.color_policy_raw_yellow || 90) ? 'risk-med' : 'risk-high';
+    const hqProdClass = (v) => v === null ? '' : v >= (th.color_product_green || 95) ? 'risk-low' : v < (th.color_product_red || 90) ? 'risk-high' : 'risk-med';
+    const hqPolicyClass = (v) => v === null ? '' : v >= (th.color_policy_green || 95) ? 'risk-low' : v < (th.color_policy_red || 90) ? 'risk-high' : 'risk-med';
+    const hqPolicyRawClass = (v) => v === null ? '' : v >= (th.color_policy_raw_green || 95) ? 'risk-low' : v < (th.color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
 
     // HQ Status table with customizable metrics based on hqStatusLayout
     const hqLayout = settings.hqStatusLayout || defaultHQStatusLayout;
@@ -1954,9 +1965,9 @@ const HQStatusPreview = ({ boats, settings, onLayoutChange }) => {
     const groupByISIC = (boats) => boats.reduce((acc, b) => { (acc[b.isic] = acc[b.isic] || []).push(b); return acc; }, {});
 
     // Color class functions using configurable thresholds
-    const prodCompClass = (v) => v === null ? '' : v >= (th.color_product_green || 95) ? 'risk-low' : v >= (th.color_product_yellow || 90) ? 'risk-med' : 'risk-high';
-    const policyCompClass = (v) => v === null ? '' : v >= (th.color_policy_green || 95) ? 'risk-low' : v >= (th.color_policy_yellow || 90) ? 'risk-med' : 'risk-high';
-    const policyRawClass = (v) => v === null ? '' : v >= (th.color_policy_raw_green || 95) ? 'risk-low' : v >= (th.color_policy_raw_yellow || 90) ? 'risk-med' : 'risk-high';
+    const prodCompClass = (v) => v === null ? '' : v >= (th.color_product_green || 95) ? 'risk-low' : v < (th.color_product_red || 90) ? 'risk-high' : 'risk-med';
+    const policyCompClass = (v) => v === null ? '' : v >= (th.color_policy_green || 95) ? 'risk-low' : v < (th.color_policy_red || 90) ? 'risk-high' : 'risk-med';
+    const policyRawClass = (v) => v === null ? '' : v >= (th.color_policy_raw_green || 95) ? 'risk-low' : v < (th.color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
 
     const aggregateByISIC = (boats) => {
         const groups = groupByISIC(boats);
@@ -2709,22 +2720,22 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
     // Updated color classes using activeThresholds for real-time updates with separate thresholds per metric
     // Product Compliance: green/yellow/red
-    const prodCompClass = (v) => v === null ? '' : v >= (activeThresholds.color_product_green || 95) ? 'risk-low' : v >= (activeThresholds.color_product_yellow || 90) ? 'risk-med' : 'risk-high';
+    const prodCompClass = (v) => v === null ? '' : v >= (activeThresholds.color_product_green || 95) ? 'risk-low' : v < (activeThresholds.color_product_red || 90) ? 'risk-high' : 'risk-med';
     // Policy Compliance (True Policy): green/yellow/red
-    const policyCompClass = (v) => v === null ? '' : v >= (activeThresholds.color_policy_green || 95) ? 'risk-low' : v >= (activeThresholds.color_policy_yellow || 90) ? 'risk-med' : 'risk-high';
+    const policyCompClass = (v) => v === null ? '' : v >= (activeThresholds.color_policy_green || 95) ? 'risk-low' : v < (activeThresholds.color_policy_red || 90) ? 'risk-high' : 'risk-med';
     // Policy Enforced Raw: green/yellow/red
-    const policyRawClass = (v) => v === null ? '' : v >= (activeThresholds.color_policy_raw_green || 95) ? 'risk-low' : v >= (activeThresholds.color_policy_raw_yellow || 90) ? 'risk-med' : 'risk-high';
+    const policyRawClass = (v) => v === null ? '' : v >= (activeThresholds.color_policy_raw_green || 95) ? 'risk-low' : v < (activeThresholds.color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
     // Generic compliance class (backward compat, uses product thresholds)
     const compClass = prodCompClass;
-    // VPH: <lowThreshold = green, <medThreshold = yellow, >=medThreshold = red
-    const vphClass = (v) => v === null ? '' : v < (activeThresholds.color_vph_green || 2.5) ? 'risk-low' : v < (activeThresholds.color_vph_yellow || 3.5) ? 'risk-med' : 'risk-high';
-    // Scan age: <=threshold days = green, >threshold days = red
+    // VPH: green < threshold, red >= threshold, else yellow
+    const vphClass = (v) => v === null ? '' : v < (activeThresholds.color_vph_green || 2.5) ? 'risk-low' : v >= (activeThresholds.color_vph_red || 3.5) ? 'risk-high' : 'risk-med';
+    // Scan age: green <= threshold, red > threshold
     const scanAgeClass = (d) => {
         if (!d) return 'risk-high';
         const date = new Date(d);
         if (isNaN(date.getTime())) return 'risk-high';
         const age = Math.floor((new Date() - date) / 86400000);
-        return age <= (activeThresholds.color_scan_green || 14) ? 'risk-low' : 'risk-high';
+        return age <= (activeThresholds.color_scan_green || 14) ? 'risk-low' : age > (activeThresholds.color_scan_red || 14) ? 'risk-high' : 'risk-med';
     };
 
     const fieldLabels = {
@@ -3460,10 +3471,10 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 </div>
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <input type="checkbox" checked={(settings.thresholds.med_true_policy_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_true_policy_compliance: e.target.checked ? 95 : 0}}))} />
                                         <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.med_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    {(settings.thresholds.med_true_policy_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.med_true_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_true_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
                                     <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-amber-200">
@@ -3577,14 +3588,13 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
-                                <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_product_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
-                                <span className="text-sm text-slate-400">%</span>
+                                <label className="text-sm text-slate-500 flex-1">Yellow between</label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-high"></span>
                                 <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
-                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_product_yellow || 90}%</span>
+                                <input type="number" value={settings.thresholds.color_product_red || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_red: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
+                                <span className="text-sm text-slate-400">%</span>
                             </div>
                         </div>
                     </div>
@@ -3601,14 +3611,13 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
-                                <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
-                                <span className="text-sm text-slate-400">%</span>
+                                <label className="text-sm text-slate-500 flex-1">Yellow between</label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-high"></span>
                                 <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
-                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_policy_yellow || 90}%</span>
+                                <input type="number" value={settings.thresholds.color_policy_red || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_red: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
+                                <span className="text-sm text-slate-400">%</span>
                             </div>
                         </div>
                     </div>
@@ -3625,14 +3634,13 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
-                                <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_raw_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
-                                <span className="text-sm text-slate-400">%</span>
+                                <label className="text-sm text-slate-500 flex-1">Yellow between</label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-high"></span>
                                 <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
-                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_policy_raw_yellow || 90}%</span>
+                                <input type="number" value={settings.thresholds.color_policy_raw_red || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_red: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
+                                <span className="text-sm text-slate-400">%</span>
                             </div>
                         </div>
                     </div>
@@ -3648,13 +3656,12 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
-                                <label className="text-sm text-slate-500 flex-1">Yellow if &lt;</label>
-                                <input type="number" value={settings.thresholds.color_vph_yellow || 3.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_yellow: parseFloat(e.target.value) || 3.5}}))} className="w-16 text-right" />
+                                <label className="text-sm text-slate-500 flex-1">Yellow between</label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-high"></span>
                                 <label className="text-sm text-slate-500 flex-1">Red if ≥</label>
-                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_vph_yellow || 3.5}</span>
+                                <input type="number" value={settings.thresholds.color_vph_red || 3.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_red: parseFloat(e.target.value) || 3.5}}))} className="w-16 text-right" />
                             </div>
                         </div>
                     </div>
@@ -3669,20 +3676,21 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <input type="number" value={settings.thresholds.color_scan_green || 14} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scan_green: parseFloat(e.target.value) || 14}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">days</span>
                             </div>
-                            <div className="flex items-center gap-2 opacity-50">
-                                <span className="inline-block w-4 h-4 rounded bg-slate-200"></span>
-                                <span className="text-sm text-slate-400 italic">No yellow state</span>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-med"></span>
+                                <label className="text-sm text-slate-500 flex-1">Yellow between</label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-high"></span>
                                 <label className="text-sm text-slate-500 flex-1">Red if &gt;</label>
-                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_scan_green || 14} days</span>
+                                <input type="number" value={settings.thresholds.color_scan_red || 14} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scan_red: parseFloat(e.target.value) || 14}}))} className="w-16 text-right" />
+                                <span className="text-sm text-slate-400">days</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-6 flex gap-2">
-                        <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: 95, color_product_yellow: 90, color_policy_green: 95, color_policy_yellow: 90, color_policy_raw_green: 95, color_policy_raw_yellow: 90, color_vph_green: 2.5, color_vph_yellow: 3.5, color_scan_green: 14}}))} className="btn-secondary text-sm">Reset to Defaults</button>
+                        <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: 95, color_product_red: 90, color_policy_green: 95, color_policy_red: 90, color_policy_raw_green: 95, color_policy_raw_red: 90, color_vph_green: 2.5, color_vph_red: 3.5, color_scan_green: 14, color_scan_red: 14}}))} className="btn-secondary text-sm">Reset to Defaults</button>
                     </div>
 
                     <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
