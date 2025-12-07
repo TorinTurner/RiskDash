@@ -2580,12 +2580,12 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const [showHelp, setShowHelp] = React.useState(false);
     const [showGenerateConfirm, setShowGenerateConfirm] = React.useState(false);
 
-    // Initialize preview thresholds from settings if not set
+    // Sync preview thresholds when settings change
     React.useEffect(() => {
-        if (reportData && !previewThresholds) {
+        if (reportData) {
             setPreviewThresholds({ ...settings.thresholds });
         }
-    }, [reportData, settings.thresholds]);
+    }, [reportData, JSON.stringify(settings.thresholds)]);
 
     if (!reportData) return <div className="text-center py-12 text-slate-400">No data loaded. Import files or drop a report.</div>;
 
@@ -3309,7 +3309,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                 </div>
             </div>
 
-            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'riskconfig', 'thresholds', 'colors', 'legend', 'columns'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'legend' ? 'Risk Legend' : t === 'colors' ? 'Color Scales' : t === 'riskconfig' ? 'Risk Builder' : t}</button>)}</div>
+            <div className="flex gap-2 mb-6 flex-wrap">{['registry', 'riskconfig', 'colors', 'legend', 'columns'].map(t => <button key={t} onClick={() => setSubTab(t)} className={`px-4 py-2 rounded font-medium capitalize text-sm ${subTab === t ? 'bg-cyan-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{t === 'columns' ? 'File Schema' : t === 'legend' ? 'Risk Legend' : t === 'colors' ? 'Color Scales' : t === 'riskconfig' ? 'Risk Builder' : t}</button>)}</div>
 
             {subTab === 'registry' && (
                 <div className="space-y-6">
@@ -3329,7 +3329,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
             {subTab === 'riskconfig' && (
                 <div className="card p-4">
                     <h3 className="text-lg font-bold mb-2 text-slate-700">Risk Criteria Builder</h3>
-                    <p className="text-sm text-slate-500 mb-4">Configure which criteria trigger each risk level. Toggle criteria on/off and adjust thresholds. The baseline is: HIGH = Breakfix or No Scan, MED = 2+ conditions, LOW = all criteria met.</p>
+                    <p className="text-sm text-slate-500 mb-4">Configure which criteria trigger each risk level. Toggle criteria on/off and adjust thresholds. Baseline: HIGH = Breakfix or No Scan, MED = 2+ conditions, LOW = all criteria met.</p>
 
                     <div className="grid grid-cols-3 gap-4">
                         {/* HIGH Risk Column */}
@@ -3341,59 +3341,57 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div className="space-y-2">
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
-                                        <span className="ml-auto text-xs text-slate-400 italic">Always enabled</span>
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-1">Any asset in breakfix</div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan</span>
-                                        <span className="ml-auto text-xs text-slate-400 italic">Always enabled</span>
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-1">Can't assess risk without data</div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.high_tam_past_due || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: e.target.checked ? 20 : 999}}))} />
                                         <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" value={settings.thresholds.high_tam_past_due || 20} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: parseInt(e.target.value) || 20}}))} className="w-16 text-sm p-1" disabled={(settings.thresholds.high_tam_past_due || 999) >= 999} />
-                                    </div>
+                                    {(settings.thresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.high_tam_past_due || 20} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: parseInt(e.target.value) || 20}}))} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.auto_high_ra_vph || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_ra_vph: e.target.checked ? 5 : 999}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Critical VPH</span>
+                                        <span className="text-sm font-medium text-slate-700">VPH (Critical)</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" step="0.1" value={settings.thresholds.auto_high_ra_vph || 5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_ra_vph: parseFloat(e.target.value) || 5}}))} className="w-16 text-sm p-1" disabled={(settings.thresholds.auto_high_ra_vph || 999) >= 999} />
-                                    </div>
+                                    {(settings.thresholds.auto_high_ra_vph || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" step="0.1" value={settings.thresholds.auto_high_ra_vph || 5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_ra_vph: parseFloat(e.target.value) || 5}}))} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Critical Scan Age</span>
+                                        <span className="text-sm font-medium text-slate-700">Scan Age (Critical)</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" value={settings.thresholds.auto_high_scan_age_days || 30} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30}}))} className="w-16 text-sm p-1" disabled={(settings.thresholds.auto_high_scan_age_days || 999) >= 999} />
-                                        <span className="text-xs text-slate-500">days</span>
-                                    </div>
+                                    {(settings.thresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.auto_high_scan_age_days || 30} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.high_ess_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_ess_compliance: e.target.checked ? 90 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Critical Policy</span>
+                                        <span className="text-sm font-medium text-slate-700">Policy Compliance (Critical)</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &lt;</span>
-                                        <input type="number" value={settings.thresholds.high_ess_compliance || 90} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_ess_compliance: parseInt(e.target.value) || 90}}))} className="w-16 text-sm p-1" disabled={(settings.thresholds.high_ess_compliance || 0) <= 0} />
-                                        <span className="text-xs text-slate-500">%</span>
+                                    {(settings.thresholds.high_ess_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.high_ess_compliance || 90} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_ess_compliance: parseInt(e.target.value) || 90}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(settings.thresholds.high_product_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: e.target.checked ? 50 : 0}}))} />
+                                        <span className="text-sm font-medium text-slate-700">Product Compliance (Critical)</span>
                                     </div>
+                                    {(settings.thresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.high_product_compliance || 50} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: parseInt(e.target.value) || 50}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                             </div>
                         </div>
@@ -3407,45 +3405,47 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div className="space-y-2">
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" step="0.1" value={settings.thresholds.med_ra_vph || 3.5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ra_vph: parseFloat(e.target.value) || 3.5}}))} className="w-16 text-sm p-1" />
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" step="0.1" value={settings.thresholds.med_ra_vph || 3.5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ra_vph: parseFloat(e.target.value) || 3.5}}))} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-700">Compliance</span>
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Product Compliance</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &lt;</span>
-                                        <input type="number" value={settings.thresholds.med_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" />
-                                        <span className="text-xs text-slate-500">%</span>
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.med_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Policy Compliance</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.med_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">Scan Age</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" value={settings.thresholds.med_scan_age_days || 14} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_scan_age_days: parseInt(e.target.value) || 14}}))} className="w-16 text-sm p-1" />
-                                        <span className="text-xs text-slate-500">days</span>
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.med_scan_age_days || 14} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_scan_age_days: parseInt(e.target.value) || 14}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" value={settings.thresholds.med_tam_past_due || 10} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_tam_past_due: parseInt(e.target.value) || 10}}))} className="w-16 text-sm p-1" />
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.med_tam_past_due || 10} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_tam_past_due: parseInt(e.target.value) || 10}}))} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-amber-100 rounded text-xs text-amber-700">
-                                <strong>Note:</strong> If 2+ of these conditions are met, the boat is MED risk.
+                                <strong>Note:</strong> If 2+ conditions are met, boat is MED risk.
                             </div>
                         </div>
 
@@ -3458,39 +3458,46 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div className="space-y-2">
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &lt;</span>
-                                        <input type="number" step="0.1" value={settings.thresholds.low_vph || 2.5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_vph: parseFloat(e.target.value) || 2.5}}))} className="w-16 text-sm p-1" />
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" step="0.1" value={settings.thresholds.low_vph || 2.5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_vph: parseFloat(e.target.value) || 2.5}}))} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">Scan Age</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: ≤</span>
-                                        <input type="number" value={settings.thresholds.low_scan_age_days || 14} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_scan_age_days: parseInt(e.target.value) || 14}}))} className="w-16 text-sm p-1" />
-                                        <span className="text-xs text-slate-500">days</span>
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≤</span><input type="number" value={settings.thresholds.low_scan_age_days || 14} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_scan_age_days: parseInt(e.target.value) || 14}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-700">Compliance</span>
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Product Compliance</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">Threshold: &gt;</span>
-                                        <input type="number" value={settings.thresholds.low_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" />
-                                        <span className="text-xs text-slate-500">%</span>
-                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
-                                    <div className="text-xs text-slate-500">+ No breakfix issues</div>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Policy Compliance</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
-                                <strong>Note:</strong> Must meet ALL criteria to be LOW risk.
+                                <strong>Note:</strong> Must meet ALL criteria to be LOW.
                             </div>
                         </div>
                     </div>
@@ -3501,38 +3508,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                     </div>
 
                     <div className="mt-4 flex gap-2">
-                        <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_ra_vph: 999, auto_high_scan_age_days: 999, high_ess_compliance: 0, high_product_compliance: 0, high_tam_past_due: 20}}))} className="btn-secondary text-sm">Reset to Baseline</button>
-                    </div>
-                </div>
-            )}
-
-            {subTab === 'thresholds' && (
-                <div className="card p-4">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">Risk Thresholds</h3>
-                    <p className="text-sm text-slate-500 mb-4">Configure the thresholds that determine risk levels. Changes affect risk calculations immediately.</p>
-
-                    {/* HIGH Risk Thresholds */}
-                    <div className="mb-6">
-                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Thresholds (Auto-HIGH if exceeded)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-red-300">
-                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('auto_high_') || k.startsWith('high_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
-                        </div>
-                    </div>
-
-                    {/* MED Risk Thresholds */}
-                    <div className="mb-6">
-                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span> Risk Thresholds (2+ conditions trigger MED)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-amber-300">
-                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('med_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
-                        </div>
-                    </div>
-
-                    {/* LOW Risk Thresholds */}
-                    <div className="mb-2">
-                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span> Risk Thresholds (Must meet all criteria)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-green-300">
-                            {Object.entries(settings.thresholds).filter(([k]) => k.startsWith('low_')).map(([k, v]) => <div key={k} className="flex items-center gap-2"><label className="text-sm text-slate-500 flex-1">{k.replace(/_/g, ' ')}</label><input type="number" value={v} step="any" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, [k]: parseFloat(e.target.value) || 0}}))} className="w-24 text-right" /></div>)}
-                        </div>
+                        <button onClick={() => setSettings(p => ({...p, thresholds: {...defaultThresholds, ...Object.fromEntries(Object.entries(p.thresholds).filter(([k]) => k.startsWith('color_')))}}))} className="btn-secondary text-sm">Reset to Defaults</button>
                     </div>
                 </div>
             )}
@@ -3545,96 +3521,124 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                     {/* Product Compliance Colors */}
                     <div className="mb-6">
                         <h4 className="text-sm font-bold mb-3 text-slate-700">Product Compliance</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-slate-300">
+                        <div className="grid grid-cols-3 gap-3 pl-2 border-l-4 border-slate-300">
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-low"></span>
                                 <label className="text-sm text-slate-500 flex-1">Green if ≥</label>
-                                <input type="number" value={settings.thresholds.color_product_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: parseFloat(e.target.value) || 95}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_product_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: parseFloat(e.target.value) || 95}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
                                 <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_product_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_yellow: parseFloat(e.target.value) || 90}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_product_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
-                            <div className="col-span-2 text-xs text-slate-400 italic">Below yellow threshold = Red</div>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-high"></span>
+                                <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
+                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_product_yellow || 90}%</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Policy Compliance (True Policy) Colors */}
                     <div className="mb-6">
                         <h4 className="text-sm font-bold mb-3 text-slate-700">Policy Compliance (True Policy)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-slate-300">
+                        <div className="grid grid-cols-3 gap-3 pl-2 border-l-4 border-slate-300">
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-low"></span>
                                 <label className="text-sm text-slate-500 flex-1">Green if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_green: parseFloat(e.target.value) || 95}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_policy_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_green: parseFloat(e.target.value) || 95}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
                                 <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_yellow: parseFloat(e.target.value) || 90}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_policy_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
-                            <div className="col-span-2 text-xs text-slate-400 italic">Below yellow threshold = Red</div>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-high"></span>
+                                <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
+                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_policy_yellow || 90}%</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Policy Enforced Raw Colors */}
                     <div className="mb-6">
                         <h4 className="text-sm font-bold mb-3 text-slate-700">Policy Enforced (Raw)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-slate-300">
+                        <div className="grid grid-cols-3 gap-3 pl-2 border-l-4 border-slate-300">
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-low"></span>
                                 <label className="text-sm text-slate-500 flex-1">Green if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_raw_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_green: parseFloat(e.target.value) || 95}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_policy_raw_green || 95} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_green: parseFloat(e.target.value) || 95}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
                                 <label className="text-sm text-slate-500 flex-1">Yellow if ≥</label>
-                                <input type="number" value={settings.thresholds.color_policy_raw_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_yellow: parseFloat(e.target.value) || 90}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_policy_raw_yellow || 90} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_policy_raw_yellow: parseFloat(e.target.value) || 90}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">%</span>
                             </div>
-                            <div className="col-span-2 text-xs text-slate-400 italic">Below yellow threshold = Red</div>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-high"></span>
+                                <label className="text-sm text-slate-500 flex-1">Red if &lt;</label>
+                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_policy_raw_yellow || 90}%</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* VPH Colors */}
                     <div className="mb-6">
                         <h4 className="text-sm font-bold mb-3 text-slate-700">VPH (Vulnerabilities Per Host)</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-slate-300">
+                        <div className="grid grid-cols-3 gap-3 pl-2 border-l-4 border-slate-300">
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-low"></span>
                                 <label className="text-sm text-slate-500 flex-1">Green if &lt;</label>
-                                <input type="number" value={settings.thresholds.color_vph_green || 2.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_green: parseFloat(e.target.value) || 2.5}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_vph_green || 2.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_green: parseFloat(e.target.value) || 2.5}}))} className="w-16 text-right" />
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-med"></span>
                                 <label className="text-sm text-slate-500 flex-1">Yellow if &lt;</label>
-                                <input type="number" value={settings.thresholds.color_vph_yellow || 3.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_yellow: parseFloat(e.target.value) || 3.5}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_vph_yellow || 3.5} step="0.1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_vph_yellow: parseFloat(e.target.value) || 3.5}}))} className="w-16 text-right" />
                             </div>
-                            <div className="col-span-2 text-xs text-slate-400 italic">Above or equal to yellow threshold = Red</div>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-high"></span>
+                                <label className="text-sm text-slate-500 flex-1">Red if ≥</label>
+                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_vph_yellow || 3.5}</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Scan Age Colors */}
                     <div className="mb-2">
                         <h4 className="text-sm font-bold mb-3 text-slate-700">Scan Age</h4>
-                        <div className="grid grid-cols-2 gap-4 pl-2 border-l-4 border-slate-300">
+                        <div className="grid grid-cols-3 gap-3 pl-2 border-l-4 border-slate-300">
                             <div className="flex items-center gap-2">
                                 <span className="inline-block w-4 h-4 rounded risk-low"></span>
                                 <label className="text-sm text-slate-500 flex-1">Green if ≤</label>
-                                <input type="number" value={settings.thresholds.color_scan_green || 14} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scan_green: parseFloat(e.target.value) || 14}}))} className="w-20 text-right" />
+                                <input type="number" value={settings.thresholds.color_scan_green || 14} step="1" onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scan_green: parseFloat(e.target.value) || 14}}))} className="w-16 text-right" />
                                 <span className="text-sm text-slate-400">days</span>
                             </div>
-                            <div className="col-span-2 text-xs text-slate-400 italic">Above threshold = Red (no yellow state)</div>
+                            <div className="flex items-center gap-2 opacity-50">
+                                <span className="inline-block w-4 h-4 rounded bg-slate-200"></span>
+                                <span className="text-sm text-slate-400 italic">No yellow state</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-block w-4 h-4 rounded risk-high"></span>
+                                <label className="text-sm text-slate-500 flex-1">Red if &gt;</label>
+                                <span className="text-sm font-medium text-slate-600">{settings.thresholds.color_scan_green || 14} days</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-6 p-3 bg-slate-50 rounded border border-slate-200">
+                    <div className="mt-6 flex gap-2">
+                        <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: 95, color_product_yellow: 90, color_policy_green: 95, color_policy_yellow: 90, color_policy_raw_green: 95, color_policy_raw_yellow: 90, color_vph_green: 2.5, color_vph_yellow: 3.5, color_scan_green: 14}}))} className="btn-secondary text-sm">Reset to Defaults</button>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
                         <p className="text-xs text-slate-500"><strong>Note:</strong> Breakfix cells are always red when &gt; 0. These color settings apply to HQ Status, CSL/CSP Summary tables, and the generated report.</p>
                     </div>
                 </div>
@@ -3951,6 +3955,21 @@ function App() {
             setShowFirstTimeSetup(true);
         }
     }, []);
+
+    // Recalculate risk levels when thresholds change
+    React.useEffect(() => {
+        if (reportData && reportData.boats?.length > 0) {
+            const updatedBoats = reportData.boats.map(b => {
+                const { level, reasons } = calculateRisk(b, settings.thresholds);
+                return { ...b, riskLevel: level, riskReasons: reasons };
+            });
+            // Only update if risk levels actually changed
+            const hasChanges = updatedBoats.some((b, i) => b.riskLevel !== reportData.boats[i].riskLevel);
+            if (hasChanges) {
+                setReportData(prev => ({ ...prev, boats: updatedBoats }));
+            }
+        }
+    }, [JSON.stringify(settings.thresholds)]);
 
     const handleReportImport = async (file, fromSetup = false) => {
         const result = await importReportHTML(file);
