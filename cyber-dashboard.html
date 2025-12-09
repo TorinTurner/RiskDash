@@ -1529,7 +1529,7 @@ const generateReportHTML = (reportData, settings) => {
             });
         }
         // Build header row 1 with group spans
-        let hdr1 = '<tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:70px">BOAT</th>';
+        let hdr1 = '<tr><th rowspan="2" class="isic-header">ISIC</th><th rowspan="2" style="width:90px">BOAT</th>';
         if (essNiprCount > 0) hdr1 += `<th colspan="${essNiprCount}" class="col-ess-n">ESS NIPR</th>`;
         if (essSiprCount > 0) hdr1 += `<th colspan="${essSiprCount}" class="col-ess-s">ESS SIPR</th>`;
         if (vramNiprCount > 0) hdr1 += `<th colspan="${vramNiprCount}" class="col-vram-n">VRAM NIPR</th>`;
@@ -1664,7 +1664,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table{width:100%;border-collapse:collapse;font-size:8pt}
 .summary-table th{background:#e2e8f0;color:#1e293b;font-weight:600;font-size:7pt;padding:5px 4px;text-align:center;border:1px solid #cbd5e1}
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
-.summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc;white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2;width:70px;min-width:70px;max-width:70px}
+.summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc;white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2;width:90px;min-width:90px;max-width:90px}
 .summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:4px 2px;font-size:7pt;width:20px;min-width:20px;max-width:20px}
 .summary-table td.notes-cell{white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2;text-align:left;width:70px;min-width:70px;max-width:70px}
 .summary-table .isic-first-row td{border-top:2px solid #1e293b}
