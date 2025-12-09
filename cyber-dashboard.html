@@ -341,7 +341,8 @@ const defaultAnalyticsConfig = {
         {id: 'lowRisk', label: 'Low Risk', visible: true},
         {id: 'avgVph', label: 'Avg RA VPH', visible: true},
         {id: 'totalBreakfix', label: 'Total Breakfix', visible: true},
-        {id: 'avgCompliance', label: 'Avg ESS Compliance', visible: true},
+        {id: 'avgCompliance', label: 'Avg True Policy %', visible: true},
+        {id: 'avgProductCompliance', label: 'Avg Product Compliance %', visible: false},
         {id: 'scanExempt', label: 'Scan Exempt', visible: true}
     ],
     charts: [
@@ -1356,26 +1357,38 @@ const generateReportHTML = (reportData, settings) => {
     const avgVph = vphValues.length > 0 ? (vphValues.reduce((s, v) => s + v, 0) / vphValues.length).toFixed(2) : 0;
     // Total breakfix: sum all (NIPR only for non-NMCI boats)
     const totalBreakfix = boats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
-    // Avg compliance: average of all compliance values (NIPR for non-NMCI, SIPR for all) - only count non-null
+    // Avg compliance (True Policy): average of all true policy values (NIPR for non-NMCI, SIPR for all) - only count non-null
     const compValues = boats.flatMap(b => {
+        const vals = [];
+        if (!b.isNmci && b.essNiprTruePolicy !== null) vals.push(b.essNiprTruePolicy);
+        if (b.essSiprTruePolicy !== null) vals.push(b.essSiprTruePolicy);
+        return vals;
+    });
+    const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : 0;
+    // Avg Product Compliance: average of product compliance values only (not true policy)
+    const prodCompValues = boats.flatMap(b => {
         const vals = [];
         if (!b.isNmci && b.essNiprProductCompliance !== null) vals.push(b.essNiprProductCompliance);
         if (b.essSiprProductCompliance !== null) vals.push(b.essSiprProductCompliance);
         return vals;
     });
-    const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : 0;
+    const avgProductCompliance = prodCompValues.length > 0 ? Math.min(100, prodCompValues.reduce((s, v) => s + v, 0) / prodCompValues.length).toFixed(1) : 0;
 
     // TYCOM data for charts (defined at outer scope so it's available for the script section)
     const tycomData = {};
     boats.forEach(b => {
-        if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[]};
+        if (!tycomData[b.tycom]) tycomData[b.tycom] = {boats:0,high:0,med:0,low:0,vphVals:[],bfSum:0,compVals:[],prodCompVals:[]};
         const t=tycomData[b.tycom]; t.boats++;
         if(b.riskLevel==='HIGH')t.high++; if(b.riskLevel==='MED')t.med++; if(b.riskLevel==='LOW')t.low++;
         if (!b.isNmci && b.vramNiprRaVph !== null) t.vphVals.push(b.vramNiprRaVph);
         if (b.vramSiprRaVph !== null) t.vphVals.push(b.vramSiprRaVph);
         t.bfSum += (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
-        if (!b.isNmci && b.essNiprProductCompliance !== null) t.compVals.push(b.essNiprProductCompliance);
-        if (b.essSiprProductCompliance !== null) t.compVals.push(b.essSiprProductCompliance);
+        // True Policy values for compVals
+        if (!b.isNmci && b.essNiprTruePolicy !== null) t.compVals.push(b.essNiprTruePolicy);
+        if (b.essSiprTruePolicy !== null) t.compVals.push(b.essSiprTruePolicy);
+        // Product Compliance values for prodCompVals
+        if (!b.isNmci && b.essNiprProductCompliance !== null) t.prodCompVals.push(b.essNiprProductCompliance);
+        if (b.essSiprProductCompliance !== null) t.prodCompVals.push(b.essSiprProductCompliance);
     });
 
     // Get label and visibility from schema config
@@ -1833,8 +1846,8 @@ ${isTabVisible('analytics') ? (() => {
         return nipr !== null ? nipr : sipr;
     };
     const getBoatMinCompliance = (b) => {
-        const nipr = b.isNmci ? null : b.essNiprProductCompliance;
-        const sipr = b.essSiprProductCompliance;
+        const nipr = b.isNmci ? null : b.essNiprTruePolicy;
+        const sipr = b.essSiprTruePolicy;
         if (nipr !== null && sipr !== null) return Math.min(nipr, sipr);
         return nipr !== null ? nipr : sipr;
     };
@@ -1884,7 +1897,8 @@ ${isTabVisible('analytics') ? (() => {
             case 'lowRisk': return `<div class="stat-card" style="${style}"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>`;
             case 'avgVph': return `<div class="stat-card" style="${style}"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>`;
             case 'totalBreakfix': return `<div class="stat-card" style="${style}"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>`;
-            case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>`;
+            case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg True Policy %</h3><div class="value">${avgCompliance}%</div></div>`;
+            case 'avgProductCompliance': return `<div class="stat-card" style="${style}"><h3>Avg Product Compliance %</h3><div class="value">${avgProductCompliance}%</div></div>`;
             case 'scanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>`;
             case 'riskPieChart': return `<div class="chart-box" style="${style}"><h3>Risk Pie Chart</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskPieChart"></canvas></div></div>`;
             case 'riskDonutChart': return `<div class="chart-box" style="${style}"><h3>Overall Risk</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskDonutChart"></canvas></div></div>`;
@@ -2438,13 +2452,16 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
     const vphValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
     const avgVph = vphValues.length > 0 ? (vphValues.reduce((s, v) => s + v, 0) / vphValues.length).toFixed(2) : '0';
     const totalBreakfix = boats.reduce((s, b) => s + (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0), 0);
-    const compValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprProductCompliance !== null) v.push(b.essNiprProductCompliance); if (b.essSiprProductCompliance !== null) v.push(b.essSiprProductCompliance); return v; });
+    const compValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
     const avgCompliance = compValues.length > 0 ? Math.min(100, compValues.reduce((s, v) => s + v, 0) / compValues.length).toFixed(1) : '0';
+    const prodCompValues = boats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprProductCompliance !== null) v.push(b.essNiprProductCompliance); if (b.essSiprProductCompliance !== null) v.push(b.essSiprProductCompliance); return v; });
+    const avgProductCompliance = prodCompValues.length > 0 ? Math.min(100, prodCompValues.reduce((s, v) => s + v, 0) / prodCompValues.length).toFixed(1) : '0';
     const scanExemptCount = boats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
 
     // Helper functions
     const getBoatMaxVph = (b) => { const nipr = b.isNmci ? null : b.vramNiprRaVph; const sipr = b.vramSiprRaVph; if (nipr !== null && sipr !== null) return Math.max(nipr, sipr); return nipr !== null ? nipr : sipr; };
-    const getBoatMinCompliance = (b) => { const nipr = b.isNmci ? null : b.essNiprProductCompliance; const sipr = b.essSiprProductCompliance; if (nipr !== null && sipr !== null) return Math.min(nipr, sipr); return nipr !== null ? nipr : sipr; };
+    const getBoatMinCompliance = (b) => { const nipr = b.isNmci ? null : b.essNiprTruePolicy; const sipr = b.essSiprTruePolicy; if (nipr !== null && sipr !== null) return Math.min(nipr, sipr); return nipr !== null ? nipr : sipr; };
+    const getBoatMinProductCompliance = (b) => { const nipr = b.isNmci ? null : b.essNiprProductCompliance; const sipr = b.essSiprProductCompliance; if (nipr !== null && sipr !== null) return Math.min(nipr, sipr); return nipr !== null ? nipr : sipr; };
     const getBoatTotalBreakfix = (b) => (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
 
     // Rankings data
@@ -2675,7 +2692,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             case 'lowRisk': return <div className={statStyle}><div className={labelStyle}>Low Risk</div><div className={`${valueStyle} text-emerald-600`}>{riskCounts.LOW}</div></div>;
             case 'avgVph': return <div className={statStyle}><div className={labelStyle}>Avg RA VPH</div><div className={valueStyle}>{avgVph}</div></div>;
             case 'totalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${totalBreakfix > 0 ? 'text-red-600' : ''}`}>{totalBreakfix}</div></div>;
-            case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg ESS Compliance</div><div className={valueStyle}>{avgCompliance}%</div></div>;
+            case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg True Policy %</div><div className={valueStyle}>{avgCompliance}%</div></div>;
+            case 'avgProductCompliance': return <div className={statStyle}><div className={labelStyle}>Avg Product Compliance %</div><div className={valueStyle}>{avgProductCompliance}%</div></div>;
             case 'scanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{scanExemptCount}</div></div>;
             case 'riskPieChart': return (
                 <div className={chartStyle}>
