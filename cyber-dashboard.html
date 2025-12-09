@@ -1555,7 +1555,7 @@ const generateReportHTML = (reportData, settings) => {
         for (const cf of tamCustomFields) hdr2 += `<th class="col-tam">${cf.label || cf.field}</th>`;
         // Status headers
         hdr2 += '<th class="col-status">Risk</th>';
-        if (showVramExempt) hdr2 += '<th class="col-status">Scan Exempt</th>';
+        if (showVramExempt) hdr2 += `<th class="col-status">${getLabel('vram', 'scanExempt', 'Scan Exempt')}</th>`;
         hdr2 += '<th class="col-status" style="width:70px;min-width:70px">Notes</th></tr>';
         return `<table class="summary-table"><thead>${hdr1}${hdr2}</thead><tbody>${bodyRows}</tbody></table>`;
     };
@@ -2999,6 +2999,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     // Schema visibility helpers
     const schema = settings.schemaConfig || defaultSchemaConfig;
     const isVisible = (type, field) => { const item = schema[type]?.find(s => s.field === field); return item?.visible !== false; };
+    const getLabel = (type, field, fallback) => { const item = schema[type]?.find(s => s.field === field); return item?.label || fallback; };
 
     // Get visible standard fields in schema order (excluding meta fields)
     const getVisibleStandardFields = (schemaArray, metaFields, type) => {
@@ -3520,7 +3521,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {tamVisibleFields.map(f => <th key={`tam-${f.field}`} className="col-tam">{f.label || f.field}</th>)}
                                 {tamCustomFields.map(cf => <th key={`tam-c-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
                                 <th className="col-status">Risk</th>
-                                {showVramExempt && <th className="col-status">Scan Exempt</th>}
+                                {showVramExempt && <th className="col-status">{getLabel('vram', 'scanExempt', 'Scan Exempt')}</th>}
                                 <th className="col-status" style={{width:'70px',minWidth:'70px'}}>Notes</th>
                             </tr>
                         </thead>
