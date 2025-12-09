@@ -16,53 +16,53 @@ const generateDynamicLegend = (thresholds) => {
     const t = thresholds || defaultThresholds;
 
     // HIGH legend - always includes Breakfix and No VRAM Scan
-    let highParts = ['Breakfix &gt; 0', 'No VRAM Scan'];
+    let highParts = ['Breakfix > 0', 'No VRAM Scan'];
 
     // Add optional HIGH triggers
     if ((t.high_tam_past_due || 999) < 999) {
-        highParts.push(`TAM &gt;${t.high_tam_past_due}`);
+        highParts.push(`TAM >${t.high_tam_past_due}`);
     }
     if ((t.auto_high_ra_vph || 999) < 999) {
-        highParts.push(`VPH &gt;${t.auto_high_ra_vph}`);
+        highParts.push(`VPH >${t.auto_high_ra_vph}`);
     }
     if ((t.auto_high_scan_age_days || 999) < 999) {
-        highParts.push(`Scan &gt;${t.auto_high_scan_age_days}d`);
+        highParts.push(`Scan >${t.auto_high_scan_age_days}d`);
     }
     if ((t.high_ess_compliance || 0) > 0) {
-        highParts.push(`TruePolicy &lt;${t.high_ess_compliance}%`);
+        highParts.push(`TruePolicy <${t.high_ess_compliance}%`);
     }
     if ((t.high_raw_policy_compliance || 0) > 0) {
-        highParts.push(`RawPolicy &lt;${t.high_raw_policy_compliance}%`);
+        highParts.push(`RawPolicy <${t.high_raw_policy_compliance}%`);
     }
     if ((t.high_product_compliance || 0) > 0) {
-        highParts.push(`Product &lt;${t.high_product_compliance}%`);
+        highParts.push(`Product <${t.high_product_compliance}%`);
     }
 
     const high = highParts.join(' OR ');
 
     // MED legend - always includes VPH and Product, add toggleable options
     let medParts = [
-        `VPH &gt;${t.med_ra_vph || 3.5}`,
-        `Product &lt;${t.med_ess_compliance || 95}%`
+        `VPH >${t.med_ra_vph || 3.5}`,
+        `Product <${t.med_ess_compliance || 95}%`
     ];
 
     // Add toggleable MED criteria
     if ((t.med_true_policy_compliance || 0) > 0) {
-        medParts.push(`TruePolicy &lt;${t.med_true_policy_compliance}%`);
+        medParts.push(`TruePolicy <${t.med_true_policy_compliance}%`);
     }
     if ((t.med_raw_policy_compliance || 0) > 0) {
-        medParts.push(`RawPolicy &lt;${t.med_raw_policy_compliance}%`);
+        medParts.push(`RawPolicy <${t.med_raw_policy_compliance}%`);
     }
 
     // Always include scan age and TAM for MED
-    medParts.push(`Scan &gt;${t.med_scan_age_days || 14}d`);
-    medParts.push(`TAM &gt;${t.med_tam_past_due || 10}`);
+    medParts.push(`Scan >${t.med_scan_age_days || 14}d`);
+    medParts.push(`TAM >${t.med_tam_past_due || 10}`);
 
     const med = `2+ of: ${medParts.join(', ')}`;
 
     // LOW legend - starts with always-required criteria
     let lowParts = [
-        `VPH &lt;${t.low_vph || 2.5}`,
+        `VPH <${t.low_vph || 2.5}`,
         `Product ≥${t.low_product_compliance || 95}%`
     ];
 
