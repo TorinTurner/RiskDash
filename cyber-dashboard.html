@@ -2662,12 +2662,21 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
     const [showHelp, setShowHelp] = React.useState(false);
     const [showGenerateConfirm, setShowGenerateConfirm] = React.useState(false);
 
-    // Sync preview thresholds when settings change
+    // Sync preview thresholds and recalculate risk levels when settings change
     React.useEffect(() => {
         if (reportData) {
-            setPreviewThresholds({ ...settings.thresholds });
+            const newThresholds = { ...settings.thresholds };
+            setPreviewThresholds(newThresholds);
+            // Recalculate risk levels with new thresholds for instant updates
+            setReportData(prev => {
+                const updatedBoats = prev.boats.map(b => {
+                    const { level, reasons } = calculateRisk(b, newThresholds);
+                    return { ...b, riskLevel: level, riskReasons: reasons };
+                });
+                return { ...prev, boats: updatedBoats };
+            });
         }
-    }, [reportData, JSON.stringify(settings.thresholds)]);
+    }, [JSON.stringify(settings.thresholds)]);
 
     if (!reportData) return <div className="text-center py-12 text-slate-400">No data loaded. Import files or drop a report.</div>;
 
@@ -2934,9 +2943,9 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
             )}
 
             {showThresholds && previewThresholds && (
-                <div className="card p-4 mb-6">
+                <div className="card p-4 mb-6 border-2 border-amber-300">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-amber-700">Temporary Threshold Adjustments</h3>
+                        <h3 className="text-lg font-bold text-amber-700">Temporary Risk Criteria Builder</h3>
                         <div className="flex gap-2">
                             {thresholdChanges.length > 0 && <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded">{thresholdChanges.length} changed</span>}
                             <button onClick={resetThresholds} className="btn-secondary text-sm">Reset to Defaults</button>
@@ -2944,52 +2953,206 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                     </div>
                     <p className="text-sm text-slate-500 mb-4">These adjustments only apply to this preview session and will be logged in the generated report.</p>
 
-                    {/* HIGH Risk Thresholds */}
-                    <div className="mb-4">
-                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-high">HIGH</span></h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-red-300">
-                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('auto_high_') || k.startsWith('high_')).map(([k, v]) => (
-                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
-                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
-                                    <div className="flex items-center gap-1">
-                                        <input type="number" step="any" key={`${k}-${v}`} defaultValue={v} onBlur={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }} onKeyDown={(e) => { if (e.key === 'Enter') { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }}} className="w-full text-right text-sm" />
-                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* HIGH Risk Column */}
+                        <div className="border-2 border-red-200 rounded-lg p-3 bg-red-50">
+                            <h4 className="font-bold text-red-700 mb-3 flex items-center gap-2">
+                                <span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span>
+                                Any triggers HIGH
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
                                     </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
-                            ))}
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.high_tam_past_due || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: e.target.checked ? 20 : 999})} />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
+                                    </div>
+                                    {(previewThresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.high_tam_past_due || 20} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: parseInt(e.target.value) || 20})} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.auto_high_ra_vph || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_ra_vph: e.target.checked ? 5 : 999})} />
+                                        <span className="text-sm font-medium text-slate-700">VPH</span>
+                                    </div>
+                                    {(previewThresholds.auto_high_ra_vph || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" step="0.1" value={previewThresholds.auto_high_ra_vph || 5} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_ra_vph: parseFloat(e.target.value) || 5})} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999})} />
+                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
+                                    </div>
+                                    {(previewThresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.auto_high_scan_age_days || 30} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.high_ess_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_ess_compliance: e.target.checked ? 90 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.high_ess_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.high_ess_compliance || 90} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_ess_compliance: parseInt(e.target.value) || 90})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.high_raw_policy_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_raw_policy_compliance: e.target.checked ? 90 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.high_raw_policy_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.high_raw_policy_compliance || 90} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_raw_policy_compliance: parseInt(e.target.value) || 90})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprPolicyEnforced, essSiprPolicyEnforced</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.high_product_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: e.target.checked ? 50 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                    </div>
+                                    {(previewThresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.high_product_compliance || 50} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: parseInt(e.target.value) || 50})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* MED Risk Column */}
+                        <div className="border-2 border-amber-200 rounded-lg p-3 bg-amber-50">
+                            <h4 className="font-bold text-amber-700 mb-3 flex items-center gap-2">
+                                <span className="inline-block px-2 py-1 rounded text-xs risk-med">MED</span>
+                                2+ triggers MED
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">VPH</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" step="0.1" value={previewThresholds.med_ra_vph || 3.5} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_ra_vph: parseFloat(e.target.value) || 3.5})} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.med_ess_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_ess_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.med_true_policy_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_true_policy_compliance: e.target.checked ? 95 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.med_true_policy_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.med_true_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_true_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.med_raw_policy_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_raw_policy_compliance: e.target.checked ? 95 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.med_raw_policy_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.med_raw_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_raw_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprPolicyEnforced, essSiprPolicyEnforced</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.med_scan_age_days || 14} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_scan_age_days: parseInt(e.target.value) || 14})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.med_tam_past_due || 10} onChange={(e) => recalculateWithThresholds({...previewThresholds, med_tam_past_due: parseInt(e.target.value) || 10})} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-amber-100 rounded text-xs text-amber-700">
+                                <strong>Note:</strong> If 2+ conditions are met, boat is MED risk.
+                            </div>
+                        </div>
+
+                        {/* LOW Risk Column */}
+                        <div className="border-2 border-green-200 rounded-lg p-3 bg-green-50">
+                            <h4 className="font-bold text-green-700 mb-3 flex items-center gap-2">
+                                <span className="inline-block px-2 py-1 rounded text-xs risk-low">LOW</span>
+                                All criteria met
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">VPH</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" step="0.1" value={previewThresholds.low_vph || 2.5} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_vph: parseFloat(e.target.value) || 2.5})} className="w-16 text-sm p-1" /></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≤</span><input type="number" value={previewThresholds.low_scan_age_days || 14} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_scan_age_days: parseInt(e.target.value) || 14})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.low_product_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_product_compliance_enabled: e.target.checked ? 1 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                    </div>
+                                    {(previewThresholds.low_product_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_product_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_product_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_true_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
+                                <strong>Note:</strong> Must meet ALL criteria to be LOW.
+                            </div>
                         </div>
                     </div>
 
-                    {/* MED Risk Thresholds */}
-                    <div className="mb-4">
-                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-med">MED</span></h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-amber-300">
-                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('med_')).map(([k, v]) => (
-                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
-                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
-                                    <div className="flex items-center gap-1">
-                                        <input type="number" step="any" key={`${k}-${v}`} defaultValue={v} onBlur={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }} onKeyDown={(e) => { if (e.key === 'Enter') { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }}} className="w-full text-right text-sm" />
-                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
-                                    </div>
-                                </div>
-                            ))}
+                    {/* Risk Equation Summary */}
+                    <div className="mt-4 p-3 bg-slate-100 rounded border border-slate-300">
+                        <h4 className="font-bold text-slate-700 mb-2 text-sm">Current Risk Equation</h4>
+                        <div className="text-xs font-mono text-slate-600 space-y-1">
+                            <div><span className="risk-high px-1 rounded">HIGH</span> = Breakfix &gt; 0 OR No VRAM Data{(previewThresholds.high_tam_past_due || 999) < 999 ? ` OR TAM > ${previewThresholds.high_tam_past_due}` : ''}{(previewThresholds.auto_high_ra_vph || 999) < 999 ? ` OR VPH > ${previewThresholds.auto_high_ra_vph}` : ''}{(previewThresholds.auto_high_scan_age_days || 999) < 999 ? ` OR ScanAge > ${previewThresholds.auto_high_scan_age_days}d` : ''}{(previewThresholds.high_ess_compliance || 0) > 0 ? ` OR TruePolicy < ${previewThresholds.high_ess_compliance}%` : ''}{(previewThresholds.high_raw_policy_compliance || 0) > 0 ? ` OR RawPolicy < ${previewThresholds.high_raw_policy_compliance}%` : ''}{(previewThresholds.high_product_compliance || 0) > 0 ? ` OR Product < ${previewThresholds.high_product_compliance}%` : ''}</div>
+                            <div><span className="risk-med px-1 rounded">MED</span> = 2+ of: VPH &gt; {previewThresholds.med_ra_vph || 3.5}, Product &lt; {previewThresholds.med_ess_compliance || 95}%{(previewThresholds.med_true_policy_compliance || 0) > 0 ? `, TruePolicy < ${previewThresholds.med_true_policy_compliance}%` : ''}{(previewThresholds.med_raw_policy_compliance || 0) > 0 ? `, RawPolicy < ${previewThresholds.med_raw_policy_compliance}%` : ''}, ScanAge &gt; {previewThresholds.med_scan_age_days || 14}d, TAM &gt; {previewThresholds.med_tam_past_due || 10}</div>
+                            <div><span className="risk-low px-1 rounded">LOW</span> = No Breakfix AND VPH &lt; {previewThresholds.low_vph || 2.5} AND ScanAge ≤ {previewThresholds.low_scan_age_days || 14}d{(previewThresholds.low_product_compliance_enabled ?? 0) === 1 ? ` AND Product ≥ ${previewThresholds.low_product_compliance || 95}%` : ''}{(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1 ? ` AND TruePolicy ≥ ${previewThresholds.low_true_policy_compliance || 95}%` : ''}</div>
                         </div>
                     </div>
 
-                    {/* LOW Risk Thresholds */}
-                    <div>
-                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2"><span className="inline-block px-2 py-0.5 rounded text-xs risk-low">LOW</span></h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-2 border-l-4 border-green-300">
-                            {Object.entries(previewThresholds).filter(([k]) => k.startsWith('low_')).map(([k, v]) => (
-                                <div key={k} className={`flex flex-col ${thresholdChanges.includes(k) ? 'bg-amber-50 p-2 rounded border border-amber-200' : ''}`}>
-                                    <label className="text-xs text-slate-500 mb-1">{k.replace(/_/g, ' ')}</label>
-                                    <div className="flex items-center gap-1">
-                                        <input type="number" step="any" key={`${k}-${v}`} defaultValue={v} onBlur={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }} onKeyDown={(e) => { if (e.key === 'Enter') { const val = parseFloat(e.target.value); if (!isNaN(val)) recalculateWithThresholds({...previewThresholds, [k]: val}); }}} className="w-full text-right text-sm" />
-                                        {thresholdChanges.includes(k) && <span className="text-amber-500 text-xs" title={`Default: ${settings.thresholds[k]}`}>*</span>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
+                        <h4 className="font-bold text-slate-700 mb-2">Scan Exempt Override</h4>
+                        <p className="text-xs text-slate-500">When a boat is marked Scan Exempt, HIGH risk is downgraded to MED <strong>only if</strong> the sole reason for HIGH was "No VRAM Scan Data". Breakfix or other HIGH triggers are NOT affected. For NMCI boats, both NIPR and SIPR must be exempt.</p>
                     </div>
                 </div>
             )}
@@ -3478,7 +3641,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.high_product_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: e.target.checked ? 50 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Product Compliance</span>
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
                                     </div>
                                     {(settings.thresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.high_product_compliance || 50} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: parseInt(e.target.value) || 50}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
                                     <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
@@ -3504,7 +3667,7 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <div className="p-2 bg-white rounded border border-amber-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">Product Compliance</span>
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.med_ess_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, med_ess_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
                                     <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
@@ -3580,17 +3743,17 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.low_product_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_product_compliance_enabled: e.target.checked ? 1 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Product Compliance</span>
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
                                     </div>
                                     {(settings.thresholds.low_product_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_product_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_product_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
                                     <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.low_true_policy_compliance_enabled ?? 1) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0}}))} />
+                                        <input type="checkbox" checked={(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0}}))} />
                                         <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
                                     </div>
-                                    {(settings.thresholds.low_true_policy_compliance_enabled ?? 1) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_true_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    {(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_true_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
                                     <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
                                 </div>
                             </div>
@@ -3600,7 +3763,17 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                         </div>
                     </div>
 
-                    <div className="mt-6 p-3 bg-slate-50 rounded border border-slate-200">
+                    {/* Risk Equation Summary */}
+                    <div className="mt-4 p-3 bg-slate-100 rounded border border-slate-300">
+                        <h4 className="font-bold text-slate-700 mb-2 text-sm">Current Risk Equation</h4>
+                        <div className="text-xs font-mono text-slate-600 space-y-1">
+                            <div><span className="risk-high px-1 rounded">HIGH</span> = Breakfix &gt; 0 OR No VRAM Data{(settings.thresholds.high_tam_past_due || 999) < 999 ? ` OR TAM > ${settings.thresholds.high_tam_past_due}` : ''}{(settings.thresholds.auto_high_ra_vph || 999) < 999 ? ` OR VPH > ${settings.thresholds.auto_high_ra_vph}` : ''}{(settings.thresholds.auto_high_scan_age_days || 999) < 999 ? ` OR ScanAge > ${settings.thresholds.auto_high_scan_age_days}d` : ''}{(settings.thresholds.high_ess_compliance || 0) > 0 ? ` OR TruePolicy < ${settings.thresholds.high_ess_compliance}%` : ''}{(settings.thresholds.high_raw_policy_compliance || 0) > 0 ? ` OR RawPolicy < ${settings.thresholds.high_raw_policy_compliance}%` : ''}{(settings.thresholds.high_product_compliance || 0) > 0 ? ` OR Product < ${settings.thresholds.high_product_compliance}%` : ''}</div>
+                            <div><span className="risk-med px-1 rounded">MED</span> = 2+ of: VPH &gt; {settings.thresholds.med_ra_vph || 3.5}, Product &lt; {settings.thresholds.med_ess_compliance || 95}%{(settings.thresholds.med_true_policy_compliance || 0) > 0 ? `, TruePolicy < ${settings.thresholds.med_true_policy_compliance}%` : ''}{(settings.thresholds.med_raw_policy_compliance || 0) > 0 ? `, RawPolicy < ${settings.thresholds.med_raw_policy_compliance}%` : ''}, ScanAge &gt; {settings.thresholds.med_scan_age_days || 14}d, TAM &gt; {settings.thresholds.med_tam_past_due || 10}</div>
+                            <div><span className="risk-low px-1 rounded">LOW</span> = No Breakfix AND VPH &lt; {settings.thresholds.low_vph || 2.5} AND ScanAge ≤ {settings.thresholds.low_scan_age_days || 14}d{(settings.thresholds.low_product_compliance_enabled ?? 0) === 1 ? ` AND Product ≥ ${settings.thresholds.low_product_compliance || 95}%` : ''}{(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1 ? ` AND TruePolicy ≥ ${settings.thresholds.low_true_policy_compliance || 95}%` : ''}</div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-200">
                         <h4 className="font-bold text-slate-700 mb-2">Scan Exempt Override</h4>
                         <p className="text-xs text-slate-500">When a boat is marked Scan Exempt, HIGH risk is downgraded to MED <strong>only if</strong> the sole reason for HIGH was "No VRAM Scan Data". Breakfix or other HIGH triggers are NOT affected. For NMCI boats, both NIPR and SIPR must be exempt.</p>
                     </div>
