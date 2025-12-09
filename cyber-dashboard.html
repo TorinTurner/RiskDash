@@ -1718,7 +1718,7 @@ ${isTabVisible('analytics') ? (() => {
             case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>`;
             case 'scanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>`;
             case 'riskPieChart': return `<div class="chart-box" style="${style}"><h3>Risk Pie Chart</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskPieChart"></canvas></div></div>`;
-            case 'riskDonutChart': return `<div class="chart-box" style="${style}"><h3>Risk Donut</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskDonutChart"></canvas></div></div>`;
+            case 'riskDonutChart': return `<div class="chart-box" style="${style}"><h3>Overall Risk</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskDonutChart"></canvas></div></div>`;
             case 'riskDistribution': return `<div class="chart-box" style="${style}"><h3>Risk Bar Chart</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskDistribution"></canvas></div></div>`;
             case 'highRiskTable': {
                 const highRiskBoats = boats.filter(b => b.riskLevel === 'HIGH');
@@ -2313,7 +2313,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         { id: 'avgCompliance', type: 'stat', label: 'Avg Compliance' },
         { id: 'scanExempt', type: 'stat', label: 'Scan Exempt' },
         { id: 'riskPieChart', type: 'chart', label: 'Risk Pie Chart' },
-        { id: 'riskDonutChart', type: 'chart', label: 'Risk Donut Chart' },
+        { id: 'riskDonutChart', type: 'chart', label: 'Overall Risk' },
         { id: 'riskDistribution', type: 'chart', label: 'Risk Bar Chart' },
         { id: 'riskByTycom', type: 'chart', label: 'Risk by TYCOM' },
         { id: 'vphByIsic', type: 'chart', label: 'VPH by ISIC' },
@@ -2518,7 +2518,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             );
             case 'riskDonutChart': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-2">Risk Donut</div>
+                    <div className="font-bold text-slate-700 mb-2">Overall Risk</div>
                     <div className="flex-1 relative" style={{minHeight: '120px'}}>
                         <canvas id="preview-chart-riskDonutChart"></canvas>
                     </div>
