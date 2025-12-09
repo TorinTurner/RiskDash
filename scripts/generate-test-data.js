@@ -187,10 +187,10 @@ function generateVramData(sub, network) {
         'Last Scan Date': randDate(daysAgo),
         'Valid Assets': randInt(50, 200),
         'RA VPH': vph,
-        'RA CRIT': crit,
-        'RA HIGH': high,
+        'RA Critical': crit,
+        'RA High': high,
         'Scan Integrity': scanIntegrity,
-        'Scan %': scanPercent
+        'Percent Scanned': scanPercent
     };
 }
 
