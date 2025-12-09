@@ -58,6 +58,10 @@ const submarines = {
         { hull: 'SSN-22', name: 'USS Connecticut' },
         { hull: 'SSN-23', name: 'USS Jimmy Carter' }
     ],
+    'TENDERS': [
+        { hull: 'AS-39', name: 'USS Emory S. Land' },
+        { hull: 'AS-40', name: 'USS Frank Cable' }
+    ],
     // Atlantic Fleet (CSL)
     'CSS4': [
         { hull: 'SSN-774', name: 'USS Virginia' },
@@ -104,6 +108,7 @@ const isicFullNames = {
     'CSS17': 'COMSUBRON 17',
     'CSS19': 'COMSUBRON 19',
     'DEVRON5': 'DEVRON 5',
+    'TENDERS': 'TENDERS',
     'CSS4': 'COMSUBRON 4',
     'CSS6': 'COMSUBRON 6',
     'CSS8': 'COMSUBRON 8',
