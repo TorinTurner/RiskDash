@@ -444,6 +444,8 @@ const defaultThresholds = {
     color_policy_raw_green: 95, color_policy_raw_red: 90,
     color_vph_green: 2.5, color_vph_red: 3.5,
     color_scan_green: 14, color_scan_red: 14,
+    color_integrity_green: 95, color_integrity_red: 90,
+    color_scanned_green: 95, color_scanned_red: 90,
     // HQ Status Table Color scale thresholds (separate from CSL/CSP)
     hq_color_product_green: 95, hq_color_product_red: 90,
     hq_color_policy_green: 95, hq_color_policy_red: 90,
@@ -1325,6 +1327,14 @@ const generateReportHTML = (reportData, settings) => {
         return age <= (sth.color_scan_green || 14) ? 'risk-low' : age > (sth.color_scan_red || 14) ? 'risk-high' : 'risk-med';
     };
 
+    // Scan Integrity % (higher is better):
+    //   GREEN: value >= green_threshold | RED: value < red_threshold | YELLOW: between
+    const integrityClass = (v) => v === null ? '' : v >= (sth.color_integrity_green || 95) ? 'risk-low' : v < (sth.color_integrity_red || 90) ? 'risk-high' : 'risk-med';
+
+    // Percent Scanned % (higher is better):
+    //   GREEN: value >= green_threshold | RED: value < red_threshold | YELLOW: between
+    const scannedClass = (v) => v === null ? '' : v >= (sth.color_scanned_green || 95) ? 'risk-low' : v < (sth.color_scanned_red || 90) ? 'risk-high' : 'risk-med';
+
     // Generate dynamic legend based on active thresholds (always up-to-date with risk equation)
     const dynamicLegend = generateDynamicLegend(settings.thresholds);
     // Use dynamic legend for reports (ignores custom legendText since it should always reflect active equation)
@@ -1451,8 +1461,8 @@ const generateReportHTML = (reportData, settings) => {
         raVph: (b) => `<td class="${vphClass(b.vramNiprRaVph)}">${fmt(b.vramNiprRaVph,2)}</td>`,
         raCrit: (b) => `<td>${fmt(b.vramNiprRaCrit)}</td>`,
         raHigh: (b) => `<td>${fmt(b.vramNiprRaHigh)}</td>`,
-        scanIntegrity: (b) => `<td>${fmtPct(b.vramNiprScanIntegrity)}</td>`,
-        scanPercent: (b) => `<td>${fmtPct(b.vramNiprScanPercent)}</td>`
+        scanIntegrity: (b) => `<td class="${integrityClass(b.vramNiprScanIntegrity)}">${fmtPct(b.vramNiprScanIntegrity)}</td>`,
+        scanPercent: (b) => `<td class="${scannedClass(b.vramNiprScanPercent)}">${fmtPct(b.vramNiprScanPercent)}</td>`
     };
     const vramSiprCellRenderers = {
         assets: (b) => `<td>${fmt(b.vramSiprAssets)}</td>`,
@@ -1460,8 +1470,8 @@ const generateReportHTML = (reportData, settings) => {
         raVph: (b) => `<td class="${vphClass(b.vramSiprRaVph)}">${fmt(b.vramSiprRaVph,2)}</td>`,
         raCrit: (b) => `<td>${fmt(b.vramSiprRaCrit)}</td>`,
         raHigh: (b) => `<td>${fmt(b.vramSiprRaHigh)}</td>`,
-        scanIntegrity: (b) => `<td>${fmtPct(b.vramSiprScanIntegrity)}</td>`,
-        scanPercent: (b) => `<td>${fmtPct(b.vramSiprScanPercent)}</td>`
+        scanIntegrity: (b) => `<td class="${integrityClass(b.vramSiprScanIntegrity)}">${fmtPct(b.vramSiprScanIntegrity)}</td>`,
+        scanPercent: (b) => `<td class="${scannedClass(b.vramSiprScanPercent)}">${fmtPct(b.vramSiprScanPercent)}</td>`
     };
 
     // Field renderers for TAM
@@ -3094,6 +3104,10 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
         const age = Math.floor((new Date() - date) / 86400000);
         return age <= (activeThresholds.color_scan_green || 14) ? 'risk-low' : age > (activeThresholds.color_scan_red || 14) ? 'risk-high' : 'risk-med';
     };
+    // Scan Integrity %: green >= threshold, red < threshold
+    const integrityClass = (v) => v === null ? '' : v >= (activeThresholds.color_integrity_green || 95) ? 'risk-low' : v < (activeThresholds.color_integrity_red || 90) ? 'risk-high' : 'risk-med';
+    // Percent Scanned %: green >= threshold, red < threshold
+    const scannedClass = (v) => v === null ? '' : v >= (activeThresholds.color_scanned_green || 95) ? 'risk-low' : v < (activeThresholds.color_scanned_red || 90) ? 'risk-high' : 'risk-med';
 
     const fieldLabels = {
         essNiprAssets: 'ESS NIPR Assets', essNiprBreakfix: 'ESS NIPR Breakfix', essNiprProductCompliance: 'ESS NIPR Compliance', essNiprPolicyEnforced: 'ESS NIPR Policy Enforced', essNiprTruePolicy: 'ESS NIPR True Policy',
@@ -3213,8 +3227,8 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
         raVph: (b) => ({ field: 'vramNiprRaVph', value: b.vramNiprRaVph, format: 'num2', className: vphClass(b.vramNiprRaVph) }),
         raCrit: (b) => ({ field: 'vramNiprRaCrit', value: fmt(b.vramNiprRaCrit) }),
         raHigh: (b) => ({ field: 'vramNiprRaHigh', value: fmt(b.vramNiprRaHigh) }),
-        scanIntegrity: (b) => ({ field: 'vramNiprScanIntegrity', value: b.vramNiprScanIntegrity, format: 'pct' }),
-        scanPercent: (b) => ({ field: 'vramNiprScanPercent', value: b.vramNiprScanPercent, format: 'pct' })
+        scanIntegrity: (b) => ({ field: 'vramNiprScanIntegrity', value: b.vramNiprScanIntegrity, format: 'pct', className: integrityClass(b.vramNiprScanIntegrity) }),
+        scanPercent: (b) => ({ field: 'vramNiprScanPercent', value: b.vramNiprScanPercent, format: 'pct', className: scannedClass(b.vramNiprScanPercent) })
     };
     const vramSiprCellConfigs = {
         assets: (b) => ({ field: 'vramSiprAssets', value: fmt(b.vramSiprAssets) }),
@@ -3222,8 +3236,8 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
         raVph: (b) => ({ field: 'vramSiprRaVph', value: b.vramSiprRaVph, format: 'num2', className: vphClass(b.vramSiprRaVph) }),
         raCrit: (b) => ({ field: 'vramSiprRaCrit', value: fmt(b.vramSiprRaCrit) }),
         raHigh: (b) => ({ field: 'vramSiprRaHigh', value: fmt(b.vramSiprRaHigh) }),
-        scanIntegrity: (b) => ({ field: 'vramSiprScanIntegrity', value: b.vramSiprScanIntegrity, format: 'pct' }),
-        scanPercent: (b) => ({ field: 'vramSiprScanPercent', value: b.vramSiprScanPercent, format: 'pct' })
+        scanIntegrity: (b) => ({ field: 'vramSiprScanIntegrity', value: b.vramSiprScanIntegrity, format: 'pct', className: integrityClass(b.vramSiprScanIntegrity) }),
+        scanPercent: (b) => ({ field: 'vramSiprScanPercent', value: b.vramSiprScanPercent, format: 'pct', className: scannedClass(b.vramSiprScanPercent) })
     };
     const tamCellConfigs = {
         pastDue: (b) => ({ field: 'tamPastDue', value: fmt(b.tamPastDue), className: (b.tamPastDue||0)>10?'risk-high':'' }),
@@ -4174,10 +4188,26 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-med"></span><span className="text-xs text-slate-500">{settings.thresholds.color_scan_green || 14}d to {settings.thresholds.color_scan_red || 14}d</span></div>
                                 <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-high"></span><span className="text-xs text-slate-500">&gt;</span><input type="number" value={settings.thresholds.color_scan_red || 14} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scan_red: parseFloat(e.target.value) || 14}}))} className="w-14 text-sm text-center" /> days</div>
                             </div>
+
+                            {/* Scan Integrity */}
+                            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded">
+                                <span className="text-sm font-medium text-slate-700 w-40">Scan Integrity</span>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-low"></span><span className="text-xs text-slate-500">≥</span><input type="number" value={settings.thresholds.color_integrity_green || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_integrity_green: parseFloat(e.target.value) || 95}}))} className="w-14 text-sm text-center" />%</div>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-med"></span><span className="text-xs text-slate-500">{settings.thresholds.color_integrity_red || 90}% to {settings.thresholds.color_integrity_green || 95}%</span></div>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-high"></span><span className="text-xs text-slate-500">&lt;</span><input type="number" value={settings.thresholds.color_integrity_red || 90} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_integrity_red: parseFloat(e.target.value) || 90}}))} className="w-14 text-sm text-center" />%</div>
+                            </div>
+
+                            {/* Percent Scanned */}
+                            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded">
+                                <span className="text-sm font-medium text-slate-700 w-40">Percent Scanned</span>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-low"></span><span className="text-xs text-slate-500">≥</span><input type="number" value={settings.thresholds.color_scanned_green || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scanned_green: parseFloat(e.target.value) || 95}}))} className="w-14 text-sm text-center" />%</div>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-med"></span><span className="text-xs text-slate-500">{settings.thresholds.color_scanned_red || 90}% to {settings.thresholds.color_scanned_green || 95}%</span></div>
+                                <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded risk-high"></span><span className="text-xs text-slate-500">&lt;</span><input type="number" value={settings.thresholds.color_scanned_red || 90} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, color_scanned_red: parseFloat(e.target.value) || 90}}))} className="w-14 text-sm text-center" />%</div>
+                            </div>
                         </div>
 
                         <div className="mt-4 flex gap-2">
-                            <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: 95, color_product_red: 90, color_policy_green: 95, color_policy_red: 90, color_policy_raw_green: 95, color_policy_raw_red: 90, color_vph_green: 2.5, color_vph_red: 3.5, color_scan_green: 14, color_scan_red: 14}}))} className="btn-secondary text-sm">Reset CSL/CSP to Defaults</button>
+                            <button onClick={() => setSettings(p => ({...p, thresholds: {...p.thresholds, color_product_green: 95, color_product_red: 90, color_policy_green: 95, color_policy_red: 90, color_policy_raw_green: 95, color_policy_raw_red: 90, color_vph_green: 2.5, color_vph_red: 3.5, color_scan_green: 14, color_scan_red: 14, color_integrity_green: 95, color_integrity_red: 90, color_scanned_green: 95, color_scanned_red: 90}}))} className="btn-secondary text-sm">Reset CSL/CSP to Defaults</button>
                         </div>
                     </div>
 
