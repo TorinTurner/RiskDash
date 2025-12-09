@@ -341,7 +341,7 @@ const defaultAnalyticsConfig = {
         {id: 'lowRisk', label: 'Low Risk', visible: true},
         {id: 'avgVph', label: 'Avg RA VPH', visible: true},
         {id: 'totalBreakfix', label: 'Total Breakfix', visible: true},
-        {id: 'avgCompliance', label: 'Avg True Policy %', visible: true},
+        {id: 'avgCompliance', label: 'True ESS Compliance', visible: true},
         {id: 'avgProductCompliance', label: 'Avg Product Compliance %', visible: false},
         {id: 'scanExempt', label: 'Scan Exempt', visible: true}
     ],
@@ -1897,7 +1897,7 @@ ${isTabVisible('analytics') ? (() => {
             case 'lowRisk': return `<div class="stat-card" style="${style}"><h3>Low Risk</h3><div class="value low">${riskCounts.LOW}</div></div>`;
             case 'avgVph': return `<div class="stat-card" style="${style}"><h3>Avg RA VPH</h3><div class="value">${avgVph}</div></div>`;
             case 'totalBreakfix': return `<div class="stat-card" style="${style}"><h3>Total Breakfix</h3><div class="value ${totalBreakfix > 0 ? 'high' : ''}">${totalBreakfix}</div></div>`;
-            case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg True Policy %</h3><div class="value">${avgCompliance}%</div></div>`;
+            case 'avgCompliance': return `<div class="stat-card" style="${style}"><h3>True ESS Compliance</h3><div class="value">${avgCompliance}%</div></div>`;
             case 'avgProductCompliance': return `<div class="stat-card" style="${style}"><h3>Avg Product Compliance %</h3><div class="value">${avgProductCompliance}%</div></div>`;
             case 'scanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${scanExemptCount}</div></div>`;
             case 'riskPieChart': return `<div class="chart-box" style="${style}"><h3>Risk Pie Chart</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-riskPieChart"></canvas></div></div>`;
@@ -2496,7 +2496,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
         { id: 'lowRisk', type: 'stat', label: 'Low Risk Count' },
         { id: 'avgVph', type: 'stat', label: 'Avg VPH' },
         { id: 'totalBreakfix', type: 'stat', label: 'Total Breakfix' },
-        { id: 'avgCompliance', type: 'stat', label: 'Avg Compliance' },
+        { id: 'avgCompliance', type: 'stat', label: 'True ESS Compliance' },
+        { id: 'avgProductCompliance', type: 'stat', label: 'Avg Product Compliance %' },
         { id: 'scanExempt', type: 'stat', label: 'Scan Exempt' },
         { id: 'riskPieChart', type: 'chart', label: 'Risk Pie Chart' },
         { id: 'riskDonutChart', type: 'chart', label: 'Overall Risk' },
@@ -2692,7 +2693,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange }) => {
             case 'lowRisk': return <div className={statStyle}><div className={labelStyle}>Low Risk</div><div className={`${valueStyle} text-emerald-600`}>{riskCounts.LOW}</div></div>;
             case 'avgVph': return <div className={statStyle}><div className={labelStyle}>Avg RA VPH</div><div className={valueStyle}>{avgVph}</div></div>;
             case 'totalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${totalBreakfix > 0 ? 'text-red-600' : ''}`}>{totalBreakfix}</div></div>;
-            case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg True Policy %</div><div className={valueStyle}>{avgCompliance}%</div></div>;
+            case 'avgCompliance': return <div className={statStyle}><div className={labelStyle}>True ESS Compliance</div><div className={valueStyle}>{avgCompliance}%</div></div>;
             case 'avgProductCompliance': return <div className={statStyle}><div className={labelStyle}>Avg Product Compliance %</div><div className={valueStyle}>{avgProductCompliance}%</div></div>;
             case 'scanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{scanExemptCount}</div></div>;
             case 'riskPieChart': return (
