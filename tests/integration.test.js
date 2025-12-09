@@ -86,8 +86,8 @@ describe('Integration: Complete Pipeline', () => {
             // Legend should reflect changes
             const strictLegend = generateDynamicLegend(defaultThresholds);
             const relaxedLegend = generateDynamicLegend(relaxedThresholds);
-            expect(strictLegend.low).toContain('VPH &lt;2.5');
-            expect(relaxedLegend.low).toContain('VPH &lt;3.5');
+            expect(strictLegend.low).toContain('VPH <2.5');
+            expect(relaxedLegend.low).toContain('VPH <3.5');
         });
 
         test('should enable/disable toggleable criteria', () => {

@@ -10,14 +10,14 @@ describe('generateDynamicLegend', () => {
     describe('HIGH legend generation', () => {
         test('should always include Breakfix and No VRAM Scan', () => {
             const legend = generateDynamicLegend(defaultThresholds);
-            expect(legend.high).toContain('Breakfix &gt; 0');
+            expect(legend.high).toContain('Breakfix > 0');
             expect(legend.high).toContain('No VRAM Scan');
         });
 
         test('should include TAM when high_tam_past_due < 999', () => {
             const thresholds = { ...defaultThresholds, high_tam_past_due: 20 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('TAM &gt;20');
+            expect(legend.high).toContain('TAM >20');
         });
 
         test('should NOT include TAM when high_tam_past_due = 999', () => {
@@ -29,31 +29,31 @@ describe('generateDynamicLegend', () => {
         test('should include VPH when auto_high_ra_vph < 999', () => {
             const thresholds = { ...defaultThresholds, auto_high_ra_vph: 5 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('VPH &gt;5');
+            expect(legend.high).toContain('VPH >5');
         });
 
         test('should include scan age when auto_high_scan_age_days < 999', () => {
             const thresholds = { ...defaultThresholds, auto_high_scan_age_days: 30 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('Scan &gt;30d');
+            expect(legend.high).toContain('Scan >30d');
         });
 
         test('should include True Policy when high_ess_compliance > 0', () => {
             const thresholds = { ...defaultThresholds, high_ess_compliance: 90 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('TruePolicy &lt;90%');
+            expect(legend.high).toContain('TruePolicy <90%');
         });
 
         test('should include Raw Policy when high_raw_policy_compliance > 0', () => {
             const thresholds = { ...defaultThresholds, high_raw_policy_compliance: 85 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('RawPolicy &lt;85%');
+            expect(legend.high).toContain('RawPolicy <85%');
         });
 
         test('should include Product when high_product_compliance > 0', () => {
             const thresholds = { ...defaultThresholds, high_product_compliance: 50 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.high).toContain('Product &lt;50%');
+            expect(legend.high).toContain('Product <50%');
         });
 
         test('should join HIGH parts with OR', () => {
@@ -65,20 +65,20 @@ describe('generateDynamicLegend', () => {
     describe('MEDIUM legend generation', () => {
         test('should always include VPH and Product', () => {
             const legend = generateDynamicLegend(defaultThresholds);
-            expect(legend.med).toContain('VPH &gt;');
-            expect(legend.med).toContain('Product &lt;');
+            expect(legend.med).toContain('VPH >');
+            expect(legend.med).toContain('Product <');
         });
 
         test('should always include Scan age and TAM', () => {
             const legend = generateDynamicLegend(defaultThresholds);
-            expect(legend.med).toContain('Scan &gt;');
-            expect(legend.med).toContain('TAM &gt;');
+            expect(legend.med).toContain('Scan >');
+            expect(legend.med).toContain('TAM >');
         });
 
         test('should include True Policy when med_true_policy_compliance > 0', () => {
             const thresholds = { ...defaultThresholds, med_true_policy_compliance: 95 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.med).toContain('TruePolicy &lt;95%');
+            expect(legend.med).toContain('TruePolicy <95%');
         });
 
         test('should NOT include True Policy when med_true_policy_compliance = 0', () => {
@@ -90,7 +90,7 @@ describe('generateDynamicLegend', () => {
         test('should include Raw Policy when med_raw_policy_compliance > 0', () => {
             const thresholds = { ...defaultThresholds, med_raw_policy_compliance: 90 };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.med).toContain('RawPolicy &lt;90%');
+            expect(legend.med).toContain('RawPolicy <90%');
         });
 
         test('should start with "2+ of:"', () => {
@@ -107,17 +107,17 @@ describe('generateDynamicLegend', () => {
                 med_tam_past_due: 15
             };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.med).toContain('VPH &gt;4');
-            expect(legend.med).toContain('Product &lt;90%');
-            expect(legend.med).toContain('Scan &gt;21d');
-            expect(legend.med).toContain('TAM &gt;15');
+            expect(legend.med).toContain('VPH >4');
+            expect(legend.med).toContain('Product <90%');
+            expect(legend.med).toContain('Scan >21d');
+            expect(legend.med).toContain('TAM >15');
         });
     });
 
     describe('LOW legend generation', () => {
         test('should always include VPH, Product, and Scan', () => {
             const legend = generateDynamicLegend(defaultThresholds);
-            expect(legend.low).toContain('VPH &lt;');
+            expect(legend.low).toContain('VPH <');
             expect(legend.low).toContain('Product');
             expect(legend.low).toContain('Scan');
         });
@@ -178,7 +178,7 @@ describe('generateDynamicLegend', () => {
                 low_scan_age_days: 7
             };
             const legend = generateDynamicLegend(thresholds);
-            expect(legend.low).toContain('VPH &lt;2');
+            expect(legend.low).toContain('VPH <2');
             expect(legend.low).toContain('Product ≥98%');
             expect(legend.low).toContain('Scan ≤7d');
         });
@@ -201,8 +201,8 @@ describe('generateDynamicLegend', () => {
 
         test('should use defaults for missing threshold values', () => {
             const legend = generateDynamicLegend({});
-            expect(legend.med).toContain('VPH &gt;3.5'); // Default med_ra_vph
-            expect(legend.low).toContain('VPH &lt;2.5'); // Default low_vph
+            expect(legend.med).toContain('VPH >3.5'); // Default med_ra_vph
+            expect(legend.low).toContain('VPH <2.5'); // Default low_vph
         });
     });
 });
@@ -290,7 +290,7 @@ describe('Property Tests - Dynamic Legend', () => {
         const legend1 = generateDynamicLegend({ ...defaultThresholds, low_vph: 2.0 });
         const legend2 = generateDynamicLegend({ ...defaultThresholds, low_vph: 3.0 });
 
-        expect(legend1.low).toContain('VPH &lt;2');
-        expect(legend2.low).toContain('VPH &lt;3');
+        expect(legend1.low).toContain('VPH <2');
+        expect(legend2.low).toContain('VPH <3');
     });
 });
