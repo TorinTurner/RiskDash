@@ -1334,6 +1334,7 @@ const generateReportHTML = (reportData, settings) => {
         return cells;
     };
 
+    const getIsicShort = (isicName) => { const info = settings.isics.find(i => i.isic_name === isicName); return info?.isic_short || isicName.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS'); };
     const summaryTable = (byISIC) => {
         const entries = Object.entries(byISIC);
         if (entries.length === 0) return '<p>No data</p>';
@@ -1341,7 +1342,7 @@ const generateReportHTML = (reportData, settings) => {
         for (const [isic, isicBoats] of entries) {
             isicBoats.forEach((b, i) => {
                 bodyRows += `<tr class="${i === 0 ? 'isic-first-row' : ''}">`;
-                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${isic}</td>`;
+                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${getIsicShort(isic)}</td>`;
                 bodyRows += boatCells(b) + '</tr>';
             });
         }
@@ -3337,7 +3338,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                         </thead>
                         <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
                             isicBoats.map((b, idx) => <tr key={b.boatName} className={idx === 0 ? 'isic-first-row' : ''}>
-                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
+                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{settings.isics.find(i => i.isic_name === isic)?.isic_short || isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS')}</td>}
                                 <td className="boat-name" style={{overflowWrap:'break-word',wordBreak:'keep-all',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}}>{b.boatFullName || b.boatName}</td>
                                 {/* ESS NIPR cells - in schema order */}
                                 {essVisibleFields.map(f => { const cfg = essNiprCellConfigs[f.field]; return cfg ? <Cell key={`essn-${f.field}`} boat={b} {...cfg(b)} /> : null; })}
