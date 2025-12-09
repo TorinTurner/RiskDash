@@ -190,7 +190,8 @@ function generateVramData(sub, network) {
         'RA Critical': crit,
         'RA High': high,
         'Scan Integrity': scanIntegrity,
-        'Percent Scanned': scanPercent
+        'Percent Scanned': scanPercent,
+        'Scan Exempt': false
     };
 }
 
@@ -219,11 +220,11 @@ function generateEssData(sub, network) {
 
     return {
         'Ships': sub.hull,
-        'ISIC': sub.isic,
+        'ISICs': sub.isic,
         'Product Compliance': productCompliance,
         'Policy Enforced': policyEnforced,
         'Assets in Breakfix': breakfix,
-        'Assets': randInt(50, 200)
+        'Asset Count': randInt(50, 200)
     };
 }
 
