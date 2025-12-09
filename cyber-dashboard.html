@@ -1164,8 +1164,8 @@ const generateReportHTML = (reportData, settings) => {
         return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
 
-    // Help modal text (? button content)
-    const helpModalText = settings.helpModalText || defaultHelpModalText;
+    // Help modal text (? button content) - use dynamic generation to reflect current thresholds
+    const helpModalText = generateDynamicHelpModal(settings.thresholds);
     const formatHelpText = (text) => {
         if (!text) return '';
         return text.replace(/\{(\w+)\}/g, (match, key) => {
