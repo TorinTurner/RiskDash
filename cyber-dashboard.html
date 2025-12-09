@@ -1334,6 +1334,7 @@ const generateReportHTML = (reportData, settings) => {
         return cells;
     };
 
+    const getIsicShort = (isicName) => { const info = settings.isics.find(i => i.isic_name === isicName); return info?.isic_short || isicName.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS'); };
     const summaryTable = (byISIC) => {
         const entries = Object.entries(byISIC);
         if (entries.length === 0) return '<p>No data</p>';
@@ -1341,7 +1342,7 @@ const generateReportHTML = (reportData, settings) => {
         for (const [isic, isicBoats] of entries) {
             isicBoats.forEach((b, i) => {
                 bodyRows += `<tr class="${i === 0 ? 'isic-first-row' : ''}">`;
-                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${isic}</td>`;
+                if (i === 0) bodyRows += `<td rowspan="${isicBoats.length}" class="isic-cell">${getIsicShort(isic)}</td>`;
                 bodyRows += boatCells(b) + '</tr>';
             });
         }
@@ -1557,6 +1558,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .summary-table thead{display:table-header-group!important}
     .summary-table tbody{display:table-row-group!important}
     .summary-table tr{page-break-inside:avoid!important;break-inside:avoid!important}
+    .hq-table{font-size:8pt!important}
+    .hq-table th{font-size:7pt!important;padding:4px 6px!important}
+    .hq-table td{font-size:8pt!important;padding:4px 6px!important}
     .hq-table th:first-child,.hq-table td:first-child{white-space:normal!important;word-wrap:break-word!important;min-width:100px!important;max-width:150px!important}
     .page-header{page-break-after:avoid!important;break-after:avoid!important}
     .page-header + .table-wrapper,.page-header + div{page-break-before:avoid!important;break-before:avoid!important}
@@ -3334,7 +3338,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                         </thead>
                         <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
                             isicBoats.map((b, idx) => <tr key={b.boatName} className={idx === 0 ? 'isic-first-row' : ''}>
-                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{isic}</td>}
+                                {idx === 0 && <td rowSpan={isicBoats.length} className="isic-cell">{settings.isics.find(i => i.isic_name === isic)?.isic_short || isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS')}</td>}
                                 <td className="boat-name" style={{overflowWrap:'break-word',wordBreak:'keep-all',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}}>{b.boatFullName || b.boatName}</td>
                                 {/* ESS NIPR cells - in schema order */}
                                 {essVisibleFields.map(f => { const cfg = essNiprCellConfigs[f.field]; return cfg ? <Cell key={`essn-${f.field}`} boat={b} {...cfg(b)} /> : null; })}
