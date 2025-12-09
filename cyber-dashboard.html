@@ -317,7 +317,57 @@ const generateDynamicLegend = (thresholds) => {
     return { high, med, low };
 };
 
-// Default help modal text (? button content) - editable in settings
+// Dynamic help modal generator - creates help items based on active thresholds
+const generateDynamicHelpModal = (thresholds) => {
+    const t = thresholds || defaultThresholds;
+
+    // HIGH items - always includes Breakfix and No VRAM
+    let highItems = [
+        'Breakfix > 0 - Any asset in either enclave in breakfix',
+        'No VRAM Scan Data - Unable to assess risk without scan data'
+    ];
+    if ((t.high_tam_past_due || 999) < 999) highItems.push(`TAM Past Due > ${t.high_tam_past_due} - Too many overdue TAMs`);
+    if ((t.auto_high_ra_vph || 999) < 999) highItems.push(`VPH > ${t.auto_high_ra_vph} - Critical vulnerabilities per host`);
+    if ((t.auto_high_scan_age_days || 999) < 999) highItems.push(`Scan Age > ${t.auto_high_scan_age_days} days - Scan data too old`);
+    if ((t.high_ess_compliance || 0) > 0) highItems.push(`True Policy < ${t.high_ess_compliance}% - Policy compliance critically low`);
+    if ((t.high_raw_policy_compliance || 0) > 0) highItems.push(`Raw Policy < ${t.high_raw_policy_compliance}% - Raw policy compliance critically low`);
+    if ((t.high_product_compliance || 0) > 0) highItems.push(`Product Compliance < ${t.high_product_compliance}% - Product compliance critically low`);
+
+    // MED items - 2+ of these trigger MED
+    let medItems = [
+        `VPH > ${t.med_ra_vph || 3.5} - Vulnerabilities per host above threshold`,
+        `Product Compliance < ${t.med_ess_compliance || 95}% - ESS compliance below threshold`
+    ];
+    if ((t.med_true_policy_compliance || 0) > 0) medItems.push(`True Policy < ${t.med_true_policy_compliance}% - True policy below threshold`);
+    if ((t.med_raw_policy_compliance || 0) > 0) medItems.push(`Raw Policy < ${t.med_raw_policy_compliance}% - Raw policy below threshold`);
+    medItems.push(`Scan Age > ${t.med_scan_age_days || 14} days - VRAM scan older than threshold`);
+    medItems.push(`TAM Past Due > ${t.med_tam_past_due || 10} - Too many overdue TAMs`);
+
+    // LOW items - all must be met
+    let lowItems = [
+        `VPH < ${t.low_vph || 2.5} - All enclaves below threshold`,
+        `Scans within ${t.low_scan_age_days || 14} days - All enclaves current`,
+        `Product Compliance ≥ ${t.low_product_compliance || 95}% - All above threshold`
+    ];
+    if ((t.low_true_policy_compliance_enabled ?? 0) === 1) lowItems.push(`True Policy ≥ ${t.low_true_policy_compliance || 95}% - True policy above threshold`);
+    if ((t.low_raw_policy_compliance_enabled ?? 0) === 1) lowItems.push(`Raw Policy ≥ ${t.low_raw_policy_compliance || 95}% - Raw policy above threshold`);
+    if ((t.low_tam_past_due_enabled ?? 0) === 1) lowItems.push(`TAM Past Due ≤ ${t.low_tam_past_due || 5} - TAMs under control`);
+    lowItems.push('No breakfix issues in any enclave');
+
+    // Static calculation explanations
+    const calcItems = [
+        'Scan Age = Days since last VRAM scan date',
+        'VPH = Vulnerabilities Per Host (from VRAM RA VPH column)',
+        'True Policy % = PolicyEnforced × ProductCompliance / 100'
+    ];
+
+    // Scan exempt explanation
+    const scanExempt = 'If a boat is marked Scan Exempt, HIGH risk is downgraded to MED only when HIGH is due to "No VRAM Scan Data". Breakfix or other HIGH triggers are NOT affected by Scan Exempt status. For NMCI boats, both NIPR and SIPR must be exempt to apply the override.';
+
+    return { highItems, medItems, lowItems, calcItems, scanExempt };
+};
+
+// Default help modal text (? button content) - used when custom override is enabled
 const defaultHelpModalText = {
     highItems: [
         'Breakfix > 0 - Any asset in either enclave in breakfix',
@@ -391,6 +441,7 @@ const SettingsManager = {
         }
         if (!settings.legendText) settings.legendText = JSON.parse(JSON.stringify(defaultLegendText));
         if (!settings.helpModalText) settings.helpModalText = JSON.parse(JSON.stringify(defaultHelpModalText));
+        if (settings.useCustomHelpText === undefined) settings.useCustomHelpText = false;
         // Ensure thresholds are populated with defaults if empty or missing
         if (!settings.thresholds || Object.keys(settings.thresholds).length === 0) {
             settings.thresholds = JSON.parse(JSON.stringify(defaultThresholds));
@@ -574,7 +625,8 @@ const SettingsManager = {
             analyticsLayout: JSON.parse(JSON.stringify(defaultAnalyticsLayout)),
             hqStatusLayout: JSON.parse(JSON.stringify(defaultHQStatusLayout)),
             legendText: JSON.parse(JSON.stringify(defaultLegendText)),
-            helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))
+            helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText)),
+            useCustomHelpText: false
         };
     }
 };
@@ -3358,7 +3410,19 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                 </div>
             )}
 
-            {showHelp && (
+            {showHelp && (() => {
+                const dynamicHelp = generateDynamicHelpModal(activeThresholds);
+                const customHelp = settings.helpModalText || defaultHelpModalText;
+                const useCustom = settings.useCustomHelpText;
+                const formatText = (text) => text.replace(/\{(\w+)\}/g, (m, k) => activeThresholds[k] !== undefined ? activeThresholds[k] : m);
+                const helpData = useCustom ? {
+                    highItems: (customHelp.highItems || []).map(formatText),
+                    medItems: (customHelp.medItems || []).map(formatText),
+                    lowItems: (customHelp.lowItems || []).map(formatText),
+                    calcItems: (customHelp.calcItems || []).map(formatText),
+                    scanExempt: formatText(customHelp.scanExempt || '')
+                } : dynamicHelp;
+                return (
                 <div className="modal-overlay" onClick={() => setShowHelp(false)}>
                     <div className="modal-content" style={{maxWidth:'650px',maxHeight:'80vh',overflow:'auto'}} onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4 text-slate-700">Risk Calculation Reference</h3>
@@ -3366,46 +3430,37 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                             <div className="p-3 bg-red-50 rounded border border-red-200">
                                 <h4 className="font-bold text-red-600 mb-2">HIGH Risk</h4>
                                 <ul className="list-disc ml-5 text-slate-700 space-y-1">
-                                    <li><strong>Breakfix &gt; 0</strong> - Any asset in NIPR or SIPR enclave in breakfix</li>
-                                    <li><strong>No VRAM Scan Data</strong> - Unable to assess risk (no scan data available)</li>
-                                    <li><strong>VPH &gt; {activeThresholds.auto_high_ra_vph || 5}</strong> - Critical vulnerabilities per host</li>
+                                    {helpData.highItems.map((item, i) => <li key={i}>{item}</li>)}
                                 </ul>
                             </div>
                             <div className="p-3 bg-amber-50 rounded border border-amber-200">
                                 <h4 className="font-bold text-amber-600 mb-2">MEDIUM Risk (2+ of the following)</h4>
                                 <ul className="list-disc ml-5 text-slate-700 space-y-1">
-                                    <li><strong>VPH &gt; {activeThresholds.med_ra_vph || 3.5}</strong> - Any enclave VPH exceeds threshold</li>
-                                    <li><strong>Product or Policy Compliance &lt; {activeThresholds.med_ess_compliance || 95}%</strong> - Below threshold</li>
-                                    <li><strong>Scan Age &gt; {activeThresholds.med_scan_age_days || 14} days</strong> - Any enclave scan older than threshold</li>
-                                    <li><strong>TAMs Past Due &gt; {activeThresholds.med_tam_past_due || 10}</strong> - Too many overdue TAMs</li>
+                                    {helpData.medItems.map((item, i) => <li key={i}>{item}</li>)}
                                 </ul>
                             </div>
                             <div className="p-3 bg-green-50 rounded border border-green-200">
                                 <h4 className="font-bold text-green-600 mb-2">LOW Risk (All conditions met)</h4>
                                 <ul className="list-disc ml-5 text-slate-700 space-y-1">
-                                    <li><strong>VPH &lt; {activeThresholds.low_vph || 2.5}</strong> - All enclaves below threshold</li>
-                                    <li><strong>Scans within {activeThresholds.low_scan_age_days || 14} days</strong> - All enclaves current</li>
-                                    <li><strong>Product &amp; Policy Compliance &gt; {activeThresholds.low_product_compliance || 95}%</strong> - All above threshold</li>
-                                    <li>No breakfix issues in any enclave</li>
+                                    {helpData.lowItems.map((item, i) => <li key={i}>{item}</li>)}
                                 </ul>
                             </div>
                             <div className="p-3 bg-blue-50 rounded border border-blue-200">
                                 <h4 className="font-bold text-blue-600 mb-2">Scan Exempt Override</h4>
-                                <p className="text-slate-700">If a boat is marked as Scan Exempt, HIGH risk will only be downgraded to MED if the HIGH status was solely due to missing/old scan data. Breakfix or other HIGH triggers are NOT overridden by scan exempt status.</p>
+                                <p className="text-slate-700">{helpData.scanExempt}</p>
                             </div>
                             <div>
                                 <h4 className="font-bold text-slate-700 mb-1">Key Calculations</h4>
                                 <ul className="list-disc ml-5 text-slate-600 space-y-1">
-                                    <li><strong>Scan Age</strong> = Days since last VRAM scan date</li>
-                                    <li><strong>VPH</strong> = Vulnerabilities Per Host (from VRAM RA VPH column)</li>
-                                    <li><strong>True Policy %</strong> = <code className="bg-slate-100 px-1 rounded">PolicyEnforced × ProductCompliance / 100</code></li>
+                                    {helpData.calcItems.map((item, i) => <li key={i}>{item}</li>)}
                                 </ul>
                             </div>
                         </div>
                         <div className="mt-6"><button onClick={() => setShowHelp(false)} className="btn-primary">Close</button></div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {showGenerateConfirm && (
                 <div className="modal-overlay" onClick={() => setShowGenerateConfirm(false)}>
@@ -3998,9 +4053,21 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
 
                     <div className="card p-4">
                         <h3 className="text-lg font-bold mb-2 text-slate-700">Help Modal Content (? Button)</h3>
-                        <p className="text-sm text-slate-500 mb-4">Customize the content shown when clicking the ? button. Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values. Each item becomes a bullet point.</p>
+                        <p className="text-sm text-slate-500 mb-4">The Risk Calculation Reference shown when clicking the ? button.</p>
 
+                        <div className="flex items-center gap-3 mb-4 p-3 bg-slate-100 rounded border border-slate-200">
+                            <label className="flex items-center cursor-pointer">
+                                <input type="checkbox" checked={settings.useCustomHelpText || false} onChange={(e) => setSettings(p => ({...p, useCustomHelpText: e.target.checked}))} className="mr-2" />
+                                <span className="text-sm font-medium text-slate-700">Use Custom Help Text</span>
+                            </label>
+                            <span className="text-xs text-slate-500">
+                                {settings.useCustomHelpText ? '(Custom text below will be used - edit as needed)' : '(Auto-updates with threshold changes)'}
+                            </span>
+                        </div>
+
+                        {settings.useCustomHelpText ? (
                         <div className="space-y-6">
+                            <p className="text-sm text-slate-500 mb-2">Use <code className="bg-slate-100 px-1 rounded">{'{threshold_name}'}</code> to insert threshold values. Each item becomes a bullet point.</p>
                             <div>
                                 <label className="block text-sm font-semibold mb-2"><span className="inline-block px-2 py-1 rounded text-xs risk-high">HIGH</span> Risk Items</label>
                                 {(helpModal.highItems || []).map((item, i) => (
@@ -4049,9 +4116,30 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <label className="block text-sm font-semibold mb-2">Scan Exempt Explanation</label>
                                 <textarea value={helpModal.scanExempt || ''} onChange={(e) => updateHelpModal('scanExempt', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono" rows={3} placeholder="Explain when Scan Exempt applies..." />
                             </div>
+                            <button onClick={() => setSettings(p => ({...p, helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))}))} className="btn-secondary mt-4 text-sm">Reset to Default Text</button>
                         </div>
-
-                        <button onClick={() => setSettings(p => ({...p, helpModalText: JSON.parse(JSON.stringify(defaultHelpModalText))}))} className="btn-secondary mt-4 text-sm">Reset Help Modal</button>
+                        ) : (
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-500 mb-2">Preview of auto-generated help content based on current thresholds:</p>
+                            {(() => {
+                                const preview = generateDynamicHelpModal(settings.thresholds);
+                                return (
+                                    <div className="text-sm space-y-3 bg-slate-50 p-4 rounded border border-slate-200">
+                                        <div><span className="font-semibold text-red-600">HIGH:</span> <span className="text-slate-600">{preview.highItems.length} items</span>
+                                            <ul className="list-disc ml-5 text-xs text-slate-500 mt-1">{preview.highItems.slice(0,3).map((item, i) => <li key={i}>{item}</li>)}{preview.highItems.length > 3 && <li>...and {preview.highItems.length - 3} more</li>}</ul>
+                                        </div>
+                                        <div><span className="font-semibold text-amber-600">MED:</span> <span className="text-slate-600">{preview.medItems.length} items</span>
+                                            <ul className="list-disc ml-5 text-xs text-slate-500 mt-1">{preview.medItems.slice(0,3).map((item, i) => <li key={i}>{item}</li>)}{preview.medItems.length > 3 && <li>...and {preview.medItems.length - 3} more</li>}</ul>
+                                        </div>
+                                        <div><span className="font-semibold text-green-600">LOW:</span> <span className="text-slate-600">{preview.lowItems.length} items</span>
+                                            <ul className="list-disc ml-5 text-xs text-slate-500 mt-1">{preview.lowItems.slice(0,3).map((item, i) => <li key={i}>{item}</li>)}{preview.lowItems.length > 3 && <li>...and {preview.lowItems.length - 3} more</li>}</ul>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                            <p className="text-xs text-slate-400 italic">Enable "Use Custom Help Text" above to customize these items.</p>
+                        </div>
+                        )}
                     </div>
 
                     <div className="card p-4">
