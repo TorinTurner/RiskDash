@@ -239,7 +239,7 @@ const defaultAnalyticsLayout = [
 const defaultLegendText = {
     high: 'Breakfix &gt; 0 OR No VRAM Scan (TAM &gt;{high_tam_past_due} optional)',
     med: '2+ of: VPH &gt;{med_ra_vph}, Prod/Policy compliance &lt;{med_ess_compliance}%, Scan &gt;{med_scan_age_days}d, TAM &gt;{med_tam_past_due}',
-    low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_ess_compliance}%'
+    low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_product_compliance}%'
 };
 
 // Default threshold values for the new risk criteria
@@ -297,7 +297,7 @@ const defaultHelpModalText = {
     lowItems: [
         'VPH < {low_vph} - Low vulnerabilities per host',
         'Scans within {low_scan_age_days} days - Recent scan data',
-        'Compliance > {low_ess_compliance}% - High product and policy compliance',
+        'Compliance > {low_product_compliance}% - High product and policy compliance',
         'No HIGH risk triggers present'
     ],
     calcItems: [
@@ -659,7 +659,7 @@ const mergeData = (sources, settings) => {
 // HIGH: Breakfix > 0, no VRAM data, Product Compliance < {high_product_compliance}%, VPH > {auto_high_ra_vph},
 //       Scan > {auto_high_scan_age_days}d, Policy Compliance < {high_ess_compliance}%, TAMs > {high_tam_past_due}
 // MED: 2+ of: VPH > {med_ra_vph}, Compliance < {med_ess_compliance}%, Scan > {med_scan_age_days}d, TAMs > {med_tam_past_due}
-// LOW: VPH < {low_vph}, Scans within {low_scan_age_days}d, Compliance > {low_ess_compliance}%, no HIGH triggers
+// LOW: VPH < {low_vph}, Scans within {low_scan_age_days}d, Compliance > {low_product_compliance}%, no HIGH triggers
 // NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
 const calculateRisk = (boat, thresholds) => {
     const reasons = [];
@@ -3307,7 +3307,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 <ul className="list-disc ml-5 text-slate-700 space-y-1">
                                     <li><strong>VPH &lt; {activeThresholds.low_vph || 2.5}</strong> - All enclaves below threshold</li>
                                     <li><strong>Scans within {activeThresholds.low_scan_age_days || 14} days</strong> - All enclaves current</li>
-                                    <li><strong>Product &amp; Policy Compliance &gt; {activeThresholds.low_ess_compliance || 95}%</strong> - All above threshold</li>
+                                    <li><strong>Product &amp; Policy Compliance &gt; {activeThresholds.low_product_compliance || 95}%</strong> - All above threshold</li>
                                     <li>No breakfix issues in any enclave</li>
                                 </ul>
                             </div>
