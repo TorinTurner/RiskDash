@@ -239,7 +239,7 @@ const defaultAnalyticsLayout = [
 const defaultLegendText = {
     high: 'Breakfix &gt; 0 OR No VRAM Scan (TAM &gt;{high_tam_past_due} optional)',
     med: '2+ of: VPH &gt;{med_ra_vph}, Prod/Policy compliance &lt;{med_ess_compliance}%, Scan &gt;{med_scan_age_days}d, TAM &gt;{med_tam_past_due}',
-    low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_ess_compliance}%'
+    low: 'VPH &lt;{low_vph}, Scans within {low_scan_age_days}d, Compliance &gt;{low_product_compliance}%'
 };
 
 // Default threshold values for the new risk criteria
@@ -248,8 +248,10 @@ const defaultThresholds = {
     // LOW risk thresholds (must meet ALL to be LOW)
     low_vph: 2.5,
     low_scan_age_days: 14,
-    low_product_compliance: 95,      // Separate threshold for product compliance
-    low_true_policy_compliance: 95,  // Separate threshold for true policy compliance
+    low_product_compliance: 95,          // Raw Product Compliance threshold
+    low_true_policy_compliance: 95,      // True Policy Compliance threshold
+    low_raw_policy_compliance: 95,       // Raw Policy Compliance threshold
+    low_tam_past_due: 5,                 // TAM Past Due threshold
     // MED risk thresholds (2+ conditions trigger MED)
     med_ra_vph: 3.5,
     med_ess_compliance: 95,
@@ -277,8 +279,42 @@ const defaultThresholds = {
     hq_color_policy_green: 95, hq_color_policy_red: 90,
     hq_color_policy_raw_green: 95, hq_color_policy_raw_red: 90,
     // LOW risk toggleable criteria (1 = enabled, 0 = disabled)
-    low_product_compliance_enabled: 0,       // Disabled by default
-    low_true_policy_compliance_enabled: 1,   // Enabled by default
+    low_product_compliance_enabled: 1,       // Always enabled (required for LOW)
+    low_true_policy_compliance_enabled: 0,   // Disabled by default
+    low_raw_policy_compliance_enabled: 0,    // Disabled by default
+    low_tam_past_due_enabled: 0,             // Disabled by default
+};
+
+// Dynamic legend text generator - creates legend based on active thresholds
+const generateDynamicLegend = (thresholds) => {
+    const t = thresholds || defaultThresholds;
+
+    // HIGH legend
+    let highParts = ['Breakfix &gt; 0', 'No VRAM Scan'];
+    if ((t.high_tam_past_due || 999) < 999) highParts.push(`TAM &gt;${t.high_tam_past_due}`);
+    if ((t.auto_high_ra_vph || 999) < 999) highParts.push(`VPH &gt;${t.auto_high_ra_vph}`);
+    if ((t.auto_high_scan_age_days || 999) < 999) highParts.push(`Scan &gt;${t.auto_high_scan_age_days}d`);
+    if ((t.high_ess_compliance || 0) > 0) highParts.push(`TruePolicy &lt;${t.high_ess_compliance}%`);
+    if ((t.high_raw_policy_compliance || 0) > 0) highParts.push(`RawPolicy &lt;${t.high_raw_policy_compliance}%`);
+    if ((t.high_product_compliance || 0) > 0) highParts.push(`Product &lt;${t.high_product_compliance}%`);
+    const high = highParts.join(' OR ');
+
+    // MED legend
+    let medParts = [`VPH &gt;${t.med_ra_vph || 3.5}`, `Product &lt;${t.med_ess_compliance || 95}%`];
+    if ((t.med_true_policy_compliance || 0) > 0) medParts.push(`TruePolicy &lt;${t.med_true_policy_compliance}%`);
+    if ((t.med_raw_policy_compliance || 0) > 0) medParts.push(`RawPolicy &lt;${t.med_raw_policy_compliance}%`);
+    medParts.push(`Scan &gt;${t.med_scan_age_days || 14}d`, `TAM &gt;${t.med_tam_past_due || 10}`);
+    const med = `2+ of: ${medParts.join(', ')}`;
+
+    // LOW legend
+    let lowParts = [`VPH &lt;${t.low_vph || 2.5}`, `Product ≥${t.low_product_compliance || 95}%`];
+    if ((t.low_true_policy_compliance_enabled ?? 0) === 1) lowParts.push(`TruePolicy ≥${t.low_true_policy_compliance || 95}%`);
+    if ((t.low_raw_policy_compliance_enabled ?? 0) === 1) lowParts.push(`RawPolicy ≥${t.low_raw_policy_compliance || 95}%`);
+    lowParts.push(`Scan ≤${t.low_scan_age_days || 14}d`);
+    if ((t.low_tam_past_due_enabled ?? 0) === 1) lowParts.push(`TAM ≤${t.low_tam_past_due || 5}`);
+    const low = lowParts.join(', ');
+
+    return { high, med, low };
 };
 
 // Default help modal text (? button content) - editable in settings
@@ -297,7 +333,7 @@ const defaultHelpModalText = {
     lowItems: [
         'VPH < {low_vph} - Low vulnerabilities per host',
         'Scans within {low_scan_age_days} days - Recent scan data',
-        'Compliance > {low_ess_compliance}% - High product and policy compliance',
+        'Compliance > {low_product_compliance}% - High product and policy compliance',
         'No HIGH risk triggers present'
     ],
     calcItems: [
@@ -659,7 +695,7 @@ const mergeData = (sources, settings) => {
 // HIGH: Breakfix > 0, no VRAM data, Product Compliance < {high_product_compliance}%, VPH > {auto_high_ra_vph},
 //       Scan > {auto_high_scan_age_days}d, Policy Compliance < {high_ess_compliance}%, TAMs > {high_tam_past_due}
 // MED: 2+ of: VPH > {med_ra_vph}, Compliance < {med_ess_compliance}%, Scan > {med_scan_age_days}d, TAMs > {med_tam_past_due}
-// LOW: VPH < {low_vph}, Scans within {low_scan_age_days}d, Compliance > {low_ess_compliance}%, no HIGH triggers
+// LOW: VPH < {low_vph}, Scans within {low_scan_age_days}d, Compliance > {low_product_compliance}%, no HIGH triggers
 // NOTE: For NMCI boats, NIPR data is ignored entirely (they use Navy network, not SUBFOR)
 const calculateRisk = (boat, thresholds) => {
     const reasons = [];
@@ -860,43 +896,68 @@ const calculateRisk = (boat, thresholds) => {
     }
 
     // Check if LOW risk criteria are actually met (for reporting purposes)
-    // LOW: VPH <2.5, scans within 14 days, compliance >95% (if enabled)
+    // LOW: VPH <2.5, Product >=95%, TruePolicy >=95% (if enabled), RawPolicy >=95% (if enabled),
+    //      Scans within 14 days, TAM <=5 (if enabled), no breakfix
     if (level === 'LOW') {
         const lowVphThreshold = thresholds.low_vph || 2.5;
-        const lowScanThreshold = thresholds.low_scan_age_days || 14;
         const lowProductThreshold = thresholds.low_product_compliance || 95;
         const lowTruePolicyThreshold = thresholds.low_true_policy_compliance || 95;
-        const productCompEnabled = (thresholds.low_product_compliance_enabled ?? 0) === 1;
-        const truePolicyEnabled = (thresholds.low_true_policy_compliance_enabled ?? 1) === 1;
+        const lowRawPolicyThreshold = thresholds.low_raw_policy_compliance || 95;
+        const lowScanThreshold = thresholds.low_scan_age_days || 14;
+        const lowTamThreshold = thresholds.low_tam_past_due || 5;
+
+        // LOW criteria toggles (Product always enabled for LOW)
+        const productCompEnabled = true; // Always required for LOW
+        const truePolicyEnabled = (thresholds.low_true_policy_compliance_enabled ?? 0) === 1;
+        const rawPolicyEnabled = (thresholds.low_raw_policy_compliance_enabled ?? 0) === 1;
+        const tamEnabled = (thresholds.low_tam_past_due_enabled ?? 0) === 1;
 
         // Verify LOW criteria
         let meetsLowCriteria = true;
+
+        // VPH check (always enabled)
         if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph >= lowVphThreshold) meetsLowCriteria = false;
         if (boat.vramSiprRaVph !== null && boat.vramSiprRaVph >= lowVphThreshold) meetsLowCriteria = false;
-        if (nAge !== null && nAge > lowScanThreshold) meetsLowCriteria = false;
-        if (sAge !== null && sAge > lowScanThreshold) meetsLowCriteria = false;
-        // Only check product compliance if enabled
+
+        // Product compliance check (always enabled)
         if (productCompEnabled) {
             if (boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < lowProductThreshold) meetsLowCriteria = false;
             if (boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < lowProductThreshold) meetsLowCriteria = false;
         }
-        // Only check true policy compliance if enabled
+
+        // True policy compliance check (if enabled)
         if (truePolicyEnabled) {
             if (boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < lowTruePolicyThreshold) meetsLowCriteria = false;
             if (boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < lowTruePolicyThreshold) meetsLowCriteria = false;
         }
+
+        // Raw policy compliance check (if enabled)
+        if (rawPolicyEnabled) {
+            if (boat.essNiprPolicyEnforced !== null && boat.essNiprPolicyEnforced < lowRawPolicyThreshold) meetsLowCriteria = false;
+            if (boat.essSiprPolicyEnforced !== null && boat.essSiprPolicyEnforced < lowRawPolicyThreshold) meetsLowCriteria = false;
+        }
+
+        // Scan age check (always enabled)
+        if (nAge !== null && nAge > lowScanThreshold) meetsLowCriteria = false;
+        if (sAge !== null && sAge > lowScanThreshold) meetsLowCriteria = false;
+
+        // TAM past due check (if enabled)
+        if (tamEnabled && (boat.tamPastDue || 0) > lowTamThreshold) meetsLowCriteria = false;
 
         if (!meetsLowCriteria) {
             // Upgrade to MED if doesn't meet LOW criteria but not bad enough for HIGH
             level = 'MED';
             if (boat.vramNiprRaVph !== null && boat.vramNiprRaVph >= lowVphThreshold) reasons.push(`NIPR VPH: ${boat.vramNiprRaVph.toFixed(2)}`);
             if (boat.vramSiprRaVph !== null && boat.vramSiprRaVph >= lowVphThreshold) reasons.push(`SIPR VPH: ${boat.vramSiprRaVph.toFixed(2)}`);
+            if (productCompEnabled && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < lowProductThreshold) reasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
+            if (productCompEnabled && boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < lowProductThreshold) reasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
+            if (truePolicyEnabled && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < lowTruePolicyThreshold) reasons.push(`NIPR TruePolicy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
+            if (truePolicyEnabled && boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < lowTruePolicyThreshold) reasons.push(`SIPR TruePolicy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
+            if (rawPolicyEnabled && boat.essNiprPolicyEnforced !== null && boat.essNiprPolicyEnforced < lowRawPolicyThreshold) reasons.push(`NIPR RawPolicy: ${boat.essNiprPolicyEnforced.toFixed(1)}%`);
+            if (rawPolicyEnabled && boat.essSiprPolicyEnforced !== null && boat.essSiprPolicyEnforced < lowRawPolicyThreshold) reasons.push(`SIPR RawPolicy: ${boat.essSiprPolicyEnforced.toFixed(1)}%`);
             if (nAge !== null && nAge > lowScanThreshold) reasons.push(`NIPR Scan: ${nAge}d`);
             if (sAge !== null && sAge > lowScanThreshold) reasons.push(`SIPR Scan: ${sAge}d`);
-            if (productCompEnabled && boat.essNiprProductCompliance !== null && boat.essNiprProductCompliance < lowProductThreshold) reasons.push(`NIPR Prod: ${boat.essNiprProductCompliance.toFixed(1)}%`);
-            if (truePolicyEnabled && boat.essNiprTruePolicy !== null && boat.essNiprTruePolicy < lowTruePolicyThreshold) reasons.push(`NIPR True Policy: ${boat.essNiprTruePolicy.toFixed(1)}%`);
-            if (productCompEnabled && boat.essSiprProductCompliance !== null && boat.essSiprProductCompliance < lowProductThreshold) reasons.push(`SIPR Prod: ${boat.essSiprProductCompliance.toFixed(1)}%`);
-            if (truePolicyEnabled && boat.essSiprTruePolicy !== null && boat.essSiprTruePolicy < lowTruePolicyThreshold) reasons.push(`SIPR True Policy: ${boat.essSiprTruePolicy.toFixed(1)}%`);
+            if (tamEnabled && (boat.tamPastDue || 0) > lowTamThreshold) reasons.push(`TAMs: ${boat.tamPastDue}`);
         }
     }
 
@@ -1042,12 +1103,13 @@ const generateReportHTML = (reportData, settings) => {
         return age <= (sth.color_scan_green || 14) ? 'risk-low' : age > (sth.color_scan_red || 14) ? 'risk-high' : 'risk-med';
     };
 
-    // Format legend text by substituting threshold values
-    const legendText = settings.legendText || defaultLegendText;
+    // Generate dynamic legend based on active thresholds (always up-to-date with risk equation)
+    const dynamicLegend = generateDynamicLegend(settings.thresholds);
+    // Use dynamic legend for reports (ignores custom legendText since it should always reflect active equation)
+    const legendText = dynamicLegend;
     const formatLegend = (text) => {
-        return text.replace(/\{(\w+)\}/g, (match, key) => {
-            return settings.thresholds[key] !== undefined ? settings.thresholds[key] : match;
-        }).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // For dynamic legend, text is already formatted, just escape HTML
+        return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
 
     // Help modal text (? button content)
@@ -2963,28 +3025,6 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                             <div className="space-y-2">
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(previewThresholds.high_tam_past_due || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: e.target.checked ? 20 : 999})} />
-                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
-                                    </div>
-                                    {(previewThresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.high_tam_past_due || 20} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: parseInt(e.target.value) || 20})} className="w-16 text-sm p-1" /></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(previewThresholds.auto_high_ra_vph || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_ra_vph: e.target.checked ? 5 : 999})} />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
@@ -2993,11 +3033,11 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(previewThresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999})} />
-                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
+                                        <input type="checkbox" checked={(previewThresholds.high_product_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: e.target.checked ? 50 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
                                     </div>
-                                    {(previewThresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.auto_high_scan_age_days || 30} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                    {(previewThresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.high_product_compliance || 50} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: parseInt(e.target.value) || 50})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
@@ -3017,11 +3057,33 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(previewThresholds.high_product_compliance || 0) > 0} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: e.target.checked ? 50 : 0})} />
-                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                        <input type="checkbox" checked={(previewThresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999})} />
+                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
                                     </div>
-                                    {(previewThresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={previewThresholds.high_product_compliance || 50} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_product_compliance: parseInt(e.target.value) || 50})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                    {(previewThresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.auto_high_scan_age_days || 30} onChange={(e) => recalculateWithThresholds({...previewThresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.high_tam_past_due || 999) < 999} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: e.target.checked ? 20 : 999})} />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
+                                    </div>
+                                    {(previewThresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={previewThresholds.high_tam_past_due || 20} onChange={(e) => recalculateWithThresholds({...previewThresholds, high_tam_past_due: parseInt(e.target.value) || 20})} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
                             </div>
                         </div>
@@ -3097,17 +3159,34 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-green-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" step="0.1" value={previewThresholds.low_vph || 2.5} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_vph: parseFloat(e.target.value) || 2.5})} className="w-16 text-sm p-1" /></div>
                                     <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_product_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_product_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_true_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(previewThresholds.low_raw_policy_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_raw_policy_compliance_enabled: e.target.checked ? 1 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Policy Compliance</span>
+                                    </div>
+                                    {(previewThresholds.low_raw_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_raw_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_raw_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprPolicyEnforced, essSiprPolicyEnforced</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
@@ -3119,19 +3198,18 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(previewThresholds.low_product_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_product_compliance_enabled: e.target.checked ? 1 : 0})} />
-                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                        <input type="checkbox" checked={(previewThresholds.low_tam_past_due_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_tam_past_due_enabled: e.target.checked ? 1 : 0})} />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
                                     </div>
-                                    {(previewThresholds.low_product_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_product_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_product_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                    {(previewThresholds.low_tam_past_due_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≤</span><input type="number" value={previewThresholds.low_tam_past_due || 5} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_tam_past_due: parseInt(e.target.value) || 5})} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0})} />
-                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
                                     </div>
-                                    {(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={previewThresholds.low_true_policy_compliance || 95} onChange={(e) => recalculateWithThresholds({...previewThresholds, low_true_policy_compliance: parseInt(e.target.value) || 95})} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
@@ -3144,9 +3222,9 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                     <div className="mt-4 p-3 bg-slate-100 rounded border border-slate-300">
                         <h4 className="font-bold text-slate-700 mb-2 text-sm">Current Risk Equation</h4>
                         <div className="text-xs font-mono text-slate-600 space-y-1">
-                            <div><span className="risk-high px-1 rounded">HIGH</span> = Breakfix &gt; 0 OR No VRAM Data{(previewThresholds.high_tam_past_due || 999) < 999 ? ` OR TAM > ${previewThresholds.high_tam_past_due}` : ''}{(previewThresholds.auto_high_ra_vph || 999) < 999 ? ` OR VPH > ${previewThresholds.auto_high_ra_vph}` : ''}{(previewThresholds.auto_high_scan_age_days || 999) < 999 ? ` OR ScanAge > ${previewThresholds.auto_high_scan_age_days}d` : ''}{(previewThresholds.high_ess_compliance || 0) > 0 ? ` OR TruePolicy < ${previewThresholds.high_ess_compliance}%` : ''}{(previewThresholds.high_raw_policy_compliance || 0) > 0 ? ` OR RawPolicy < ${previewThresholds.high_raw_policy_compliance}%` : ''}{(previewThresholds.high_product_compliance || 0) > 0 ? ` OR Product < ${previewThresholds.high_product_compliance}%` : ''}</div>
-                            <div><span className="risk-med px-1 rounded">MED</span> = 2+ of: VPH &gt; {previewThresholds.med_ra_vph || 3.5}, Product &lt; {previewThresholds.med_ess_compliance || 95}%{(previewThresholds.med_true_policy_compliance || 0) > 0 ? `, TruePolicy < ${previewThresholds.med_true_policy_compliance}%` : ''}{(previewThresholds.med_raw_policy_compliance || 0) > 0 ? `, RawPolicy < ${previewThresholds.med_raw_policy_compliance}%` : ''}, ScanAge &gt; {previewThresholds.med_scan_age_days || 14}d, TAM &gt; {previewThresholds.med_tam_past_due || 10}</div>
-                            <div><span className="risk-low px-1 rounded">LOW</span> = No Breakfix AND VPH &lt; {previewThresholds.low_vph || 2.5} AND ScanAge ≤ {previewThresholds.low_scan_age_days || 14}d{(previewThresholds.low_product_compliance_enabled ?? 0) === 1 ? ` AND Product ≥ ${previewThresholds.low_product_compliance || 95}%` : ''}{(previewThresholds.low_true_policy_compliance_enabled ?? 0) === 1 ? ` AND TruePolicy ≥ ${previewThresholds.low_true_policy_compliance || 95}%` : ''}</div>
+                            <div><span className="risk-high px-1 rounded">HIGH</span> = {generateDynamicLegend(previewThresholds).high}</div>
+                            <div><span className="risk-med px-1 rounded">MED</span> = {generateDynamicLegend(previewThresholds).med}</div>
+                            <div><span className="risk-low px-1 rounded">LOW</span> = {generateDynamicLegend(previewThresholds).low}, No Breakfix</div>
                         </div>
                     </div>
 
@@ -3307,7 +3385,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 <ul className="list-disc ml-5 text-slate-700 space-y-1">
                                     <li><strong>VPH &lt; {activeThresholds.low_vph || 2.5}</strong> - All enclaves below threshold</li>
                                     <li><strong>Scans within {activeThresholds.low_scan_age_days || 14} days</strong> - All enclaves current</li>
-                                    <li><strong>Product &amp; Policy Compliance &gt; {activeThresholds.low_ess_compliance || 95}%</strong> - All above threshold</li>
+                                    <li><strong>Product &amp; Policy Compliance &gt; {activeThresholds.low_product_compliance || 95}%</strong> - All above threshold</li>
                                     <li>No breakfix issues in any enclave</li>
                                 </ul>
                             </div>
@@ -3586,28 +3664,6 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                             <div className="space-y-2">
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.high_tam_past_due || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: e.target.checked ? 20 : 999}}))} />
-                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
-                                    </div>
-                                    {(settings.thresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.high_tam_past_due || 20} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: parseInt(e.target.value) || 20}}))} className="w-16 text-sm p-1" /></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-red-200">
-                                    <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={(settings.thresholds.auto_high_ra_vph || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_ra_vph: e.target.checked ? 5 : 999}}))} />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
@@ -3616,11 +3672,11 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
+                                        <input type="checkbox" checked={(settings.thresholds.high_product_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: e.target.checked ? 50 : 0}}))} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
                                     </div>
-                                    {(settings.thresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.auto_high_scan_age_days || 30} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                    {(settings.thresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.high_product_compliance || 50} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: parseInt(e.target.value) || 50}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
@@ -3640,11 +3696,33 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 </div>
                                 <div className="p-2 bg-white rounded border border-red-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.high_product_compliance || 0) > 0} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: e.target.checked ? 50 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                        <input type="checkbox" checked={(settings.thresholds.auto_high_scan_age_days || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: e.target.checked ? 30 : 999}}))} />
+                                        <span className="text-sm font-medium text-slate-700">Scan Age</span>
                                     </div>
-                                    {(settings.thresholds.high_product_compliance || 0) > 0 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" value={settings.thresholds.high_product_compliance || 50} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_product_compliance: parseInt(e.target.value) || 50}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                    {(settings.thresholds.auto_high_scan_age_days || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.auto_high_scan_age_days || 30} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, auto_high_scan_age_days: parseInt(e.target.value) || 30}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">days</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(settings.thresholds.high_tam_past_due || 999) < 999} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: e.target.checked ? 20 : 999}}))} />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
+                                    </div>
+                                    {(settings.thresholds.high_tam_past_due || 999) < 999 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &gt;</span><input type="number" value={settings.thresholds.high_tam_past_due || 20} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, high_tam_past_due: parseInt(e.target.value) || 20}}))} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No VRAM Scan Data</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprScanDate, vramSiprScanDate</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-red-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Breakfix &gt; 0</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
                             </div>
                         </div>
@@ -3720,17 +3798,34 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" checked={true} disabled className="opacity-50" />
-                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
-                                </div>
-                                <div className="p-2 bg-white rounded border border-green-200">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
                                         <span className="text-sm font-medium text-slate-700">VPH</span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: &lt;</span><input type="number" step="0.1" value={settings.thresholds.low_vph || 2.5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_vph: parseFloat(e.target.value) || 2.5}}))} className="w-16 text-sm p-1" /></div>
                                     <div className="text-xs text-slate-400 mt-1 font-mono">vramNiprRaVph, vramSiprRaVph</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_product_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_product_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0}}))} />
+                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                    </div>
+                                    {(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_true_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-green-200">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={(settings.thresholds.low_raw_policy_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_raw_policy_compliance_enabled: e.target.checked ? 1 : 0}}))} />
+                                        <span className="text-sm font-medium text-slate-700">Raw Policy Compliance</span>
+                                    </div>
+                                    {(settings.thresholds.low_raw_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_raw_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_raw_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprPolicyEnforced, essSiprPolicyEnforced</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
@@ -3742,19 +3837,18 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.low_product_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_product_compliance_enabled: e.target.checked ? 1 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">Raw Product Compliance</span>
+                                        <input type="checkbox" checked={(settings.thresholds.low_tam_past_due_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_tam_past_due_enabled: e.target.checked ? 1 : 0}}))} />
+                                        <span className="text-sm font-medium text-slate-700">TAM Past Due</span>
                                     </div>
-                                    {(settings.thresholds.low_product_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_product_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_product_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprProductCompliance, essSiprProductCompliance</div>
+                                    {(settings.thresholds.low_tam_past_due_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≤</span><input type="number" value={settings.thresholds.low_tam_past_due || 5} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_tam_past_due: parseInt(e.target.value) || 5}}))} className="w-16 text-sm p-1" /></div>}
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">tamPastDue</div>
                                 </div>
                                 <div className="p-2 bg-white rounded border border-green-200">
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance_enabled: e.target.checked ? 1 : 0}}))} />
-                                        <span className="text-sm font-medium text-slate-700">True Policy Compliance</span>
+                                        <input type="checkbox" checked={true} disabled className="opacity-50" />
+                                        <span className="text-sm font-medium text-slate-700">No Breakfix</span>
                                     </div>
-                                    {(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1 && <div className="flex items-center gap-2 mt-1"><span className="text-xs text-slate-500">Threshold: ≥</span><input type="number" value={settings.thresholds.low_true_policy_compliance || 95} onChange={(e) => setSettings(p => ({...p, thresholds: {...p.thresholds, low_true_policy_compliance: parseInt(e.target.value) || 95}}))} className="w-16 text-sm p-1" /><span className="text-xs text-slate-500">%</span></div>}
-                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprTruePolicy, essSiprTruePolicy</div>
+                                    <div className="text-xs text-slate-400 mt-1 font-mono">essNiprBreakfix, essSiprBreakfix</div>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
@@ -3767,9 +3861,9 @@ const SettingsTab = ({ settings, setSettings, onAlert, isUsingImportedSettings, 
                     <div className="mt-4 p-3 bg-slate-100 rounded border border-slate-300">
                         <h4 className="font-bold text-slate-700 mb-2 text-sm">Current Risk Equation</h4>
                         <div className="text-xs font-mono text-slate-600 space-y-1">
-                            <div><span className="risk-high px-1 rounded">HIGH</span> = Breakfix &gt; 0 OR No VRAM Data{(settings.thresholds.high_tam_past_due || 999) < 999 ? ` OR TAM > ${settings.thresholds.high_tam_past_due}` : ''}{(settings.thresholds.auto_high_ra_vph || 999) < 999 ? ` OR VPH > ${settings.thresholds.auto_high_ra_vph}` : ''}{(settings.thresholds.auto_high_scan_age_days || 999) < 999 ? ` OR ScanAge > ${settings.thresholds.auto_high_scan_age_days}d` : ''}{(settings.thresholds.high_ess_compliance || 0) > 0 ? ` OR TruePolicy < ${settings.thresholds.high_ess_compliance}%` : ''}{(settings.thresholds.high_raw_policy_compliance || 0) > 0 ? ` OR RawPolicy < ${settings.thresholds.high_raw_policy_compliance}%` : ''}{(settings.thresholds.high_product_compliance || 0) > 0 ? ` OR Product < ${settings.thresholds.high_product_compliance}%` : ''}</div>
-                            <div><span className="risk-med px-1 rounded">MED</span> = 2+ of: VPH &gt; {settings.thresholds.med_ra_vph || 3.5}, Product &lt; {settings.thresholds.med_ess_compliance || 95}%{(settings.thresholds.med_true_policy_compliance || 0) > 0 ? `, TruePolicy < ${settings.thresholds.med_true_policy_compliance}%` : ''}{(settings.thresholds.med_raw_policy_compliance || 0) > 0 ? `, RawPolicy < ${settings.thresholds.med_raw_policy_compliance}%` : ''}, ScanAge &gt; {settings.thresholds.med_scan_age_days || 14}d, TAM &gt; {settings.thresholds.med_tam_past_due || 10}</div>
-                            <div><span className="risk-low px-1 rounded">LOW</span> = No Breakfix AND VPH &lt; {settings.thresholds.low_vph || 2.5} AND ScanAge ≤ {settings.thresholds.low_scan_age_days || 14}d{(settings.thresholds.low_product_compliance_enabled ?? 0) === 1 ? ` AND Product ≥ ${settings.thresholds.low_product_compliance || 95}%` : ''}{(settings.thresholds.low_true_policy_compliance_enabled ?? 0) === 1 ? ` AND TruePolicy ≥ ${settings.thresholds.low_true_policy_compliance || 95}%` : ''}</div>
+                            <div><span className="risk-high px-1 rounded">HIGH</span> = {generateDynamicLegend(settings.thresholds).high}</div>
+                            <div><span className="risk-med px-1 rounded">MED</span> = {generateDynamicLegend(settings.thresholds).med}</div>
+                            <div><span className="risk-low px-1 rounded">LOW</span> = {generateDynamicLegend(settings.thresholds).low}, No Breakfix</div>
                         </div>
                     </div>
 
