@@ -993,19 +993,45 @@ const generateReportHTML = (reportData, settings) => {
     const fmt = (v, d=0) => v == null ? '-' : (d > 0 ? v.toFixed(d) : Math.round(v).toString());
     const fmtPct = (v) => v == null ? '-' : Math.min(100, v).toFixed(1) + '%';
     const fmtDate = (d) => d ? `${new Date(d).getMonth()+1}/${new Date(d).getDate()}` : '-';
-    // Color classes using configurable thresholds from settings
+    // ===================================================================================
+    // COLOR CLASSIFICATION FUNCTIONS
+    // ===================================================================================
+    // Boundary Behavior: "Boundary Gets Better Color"
+    // - Values exactly on a threshold boundary are assigned the better/healthier color
+    // - For compliance metrics (higher is better): boundary value gets the better color
+    //   Example: If green >= 95 and red < 90, then 95 = GREEN, 90 = YELLOW (not red)
+    // - For VPH (lower is better): boundary value gets the better color
+    //   Example: If green <= 2.5 and red > 3.5, then 2.5 = GREEN, 3.5 = YELLOW (not red)
+    // ===================================================================================
     const sth = settings.thresholds || defaultThresholds;
-    // Product Compliance: green >= threshold, red < threshold, else yellow
+
+    // Product Compliance (higher is better):
+    //   GREEN: value >= green_threshold (e.g., >= 95)
+    //   RED:   value < red_threshold (e.g., < 90)
+    //   YELLOW: red_threshold <= value < green_threshold (e.g., 90-94.99)
     const prodCompClass = (v) => v === null ? '' : v >= (sth.color_product_green || 95) ? 'risk-low' : v < (sth.color_product_red || 90) ? 'risk-high' : 'risk-med';
-    // Policy Compliance (True Policy): green >= threshold, red < threshold, else yellow
+
+    // Policy Compliance / True Policy (higher is better):
+    //   GREEN: value >= green_threshold | RED: value < red_threshold | YELLOW: between
     const policyCompClass = (v) => v === null ? '' : v >= (sth.color_policy_green || 95) ? 'risk-low' : v < (sth.color_policy_red || 90) ? 'risk-high' : 'risk-med';
-    // Policy Enforced Raw: green >= threshold, red < threshold, else yellow
+
+    // Policy Enforced Raw (higher is better):
+    //   GREEN: value >= green_threshold | RED: value < red_threshold | YELLOW: between
     const policyRawClass = (v) => v === null ? '' : v >= (sth.color_policy_raw_green || 95) ? 'risk-low' : v < (sth.color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
+
     // Generic compliance class (backward compat)
     const compClass = prodCompClass;
-    // VPH: green < threshold, red >= threshold, else yellow
-    const vphClass = (v) => v === null ? '' : v < (sth.color_vph_green || 2.5) ? 'risk-low' : v >= (sth.color_vph_red || 3.5) ? 'risk-high' : 'risk-med';
-    // Scan age: green <= threshold, red > threshold
+
+    // VPH - Vulnerabilities Per Host (lower is better):
+    //   GREEN: value <= green_threshold (e.g., <= 2.5) - boundary gets better color
+    //   RED:   value > red_threshold (e.g., > 3.5) - boundary gets better color
+    //   YELLOW: green_threshold < value <= red_threshold (e.g., 2.51-3.5)
+    const vphClass = (v) => v === null ? '' : v <= (sth.color_vph_green || 2.5) ? 'risk-low' : v > (sth.color_vph_red || 3.5) ? 'risk-high' : 'risk-med';
+
+    // Scan Age in days (lower is better):
+    //   GREEN: age <= green_threshold (e.g., <= 14 days)
+    //   RED:   age > red_threshold (e.g., > 14 days)
+    //   YELLOW: between (if thresholds differ)
     const scanAgeClass = (d) => {
         if (!d) return 'risk-high';
         const date = new Date(d);
@@ -1249,10 +1275,21 @@ const generateReportHTML = (reportData, settings) => {
     const firstVisibleTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'csl';
     const pageInfo = `<div class="page-info print-only">Generated: ${new Date().toLocaleString()} by ${reportData.createdBy || 'Unknown'} | v${reportData.version}</div>`;
 
-    // HQ page compliance class functions using HQ-specific thresholds
+    // ===================================================================================
+    // HQ STATUS TABLE - COLOR CLASSIFICATION FUNCTIONS
+    // ===================================================================================
+    // Uses same "Boundary Gets Better Color" logic as CSL/CSP tables (see above)
+    // These use separate HQ-specific thresholds (hq_color_*) for independent control
+    // ===================================================================================
     const th = settings.thresholds || defaultThresholds;
+
+    // HQ Product Compliance: GREEN >= threshold, RED < threshold, YELLOW = between
     const hqProdClass = (v) => v === null ? '' : v >= (th.hq_color_product_green || 95) ? 'risk-low' : v < (th.hq_color_product_red || 90) ? 'risk-high' : 'risk-med';
+
+    // HQ Policy Compliance: GREEN >= threshold, RED < threshold, YELLOW = between
     const hqPolicyClass = (v) => v === null ? '' : v >= (th.hq_color_policy_green || 95) ? 'risk-low' : v < (th.hq_color_policy_red || 90) ? 'risk-high' : 'risk-med';
+
+    // HQ Policy Raw: GREEN >= threshold, RED < threshold, YELLOW = between
     const hqPolicyRawClass = (v) => v === null ? '' : v >= (th.hq_color_policy_raw_green || 95) ? 'risk-low' : v < (th.hq_color_policy_raw_red || 90) ? 'risk-high' : 'risk-med';
 
     // HQ Status table with customizable metrics based on hqStatusLayout
