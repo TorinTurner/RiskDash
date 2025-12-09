@@ -1330,7 +1330,7 @@ const generateReportHTML = (reportData, settings) => {
         // Status
         cells += `<td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td>`;
         if (showVramExempt) cells += `<td class="${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''}">${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>`;
-        cells += `<td class="notes-cell" style="font-size:6pt;max-width:80px;" title="${b.notes||''}">${b.notes||'-'}</td>`;
+        cells += `<td class="notes-cell" style="width:70px;min-width:70px;" title="${b.notes||''}">${b.notes||'-'}</td>`;
         return cells;
     };
 
@@ -1373,7 +1373,7 @@ const generateReportHTML = (reportData, settings) => {
         // Status headers
         hdr2 += '<th class="col-status">Risk</th>';
         if (showVramExempt) hdr2 += '<th class="col-status">Scan Exempt</th>';
-        hdr2 += '<th class="col-status">Notes</th></tr>';
+        hdr2 += '<th class="col-status" style="width:70px;min-width:70px">Notes</th></tr>';
         return `<table class="summary-table"><thead>${hdr1}${hdr2}</thead><tbody>${bodyRows}</tbody></table>`;
     };
 
@@ -1483,7 +1483,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .summary-table td{padding:4px;text-align:center;border:1px solid #e2e8f0}
 .summary-table td.boat-name{text-align:left;font-weight:600;font-family:monospace;background:#f8fafc;white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2}
 .summary-table .isic-header,.summary-table .isic-cell{background:#1e293b;color:white;font-weight:700;text-align:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);padding:4px 2px;font-size:7pt;width:20px;min-width:20px;max-width:20px}
-.summary-table td.notes-cell{white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2;text-align:left}
+.summary-table td.notes-cell{white-space:normal;overflow-wrap:break-word;word-break:keep-all;max-height:36px;overflow:hidden;line-height:1.2;text-align:left;width:70px;min-width:70px}
 .summary-table .isic-first-row td{border-top:2px solid #1e293b}
 .col-ess-n{background:rgba(59,130,246,0.2)!important}.col-ess-s{background:rgba(99,102,241,0.2)!important}
 .col-vram-n{background:rgba(249,115,22,0.2)!important}.col-vram-s{background:rgba(234,88,12,0.2)!important}
@@ -1545,7 +1545,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .summary-table th{padding:2px 1px!important;font-size:5pt!important;overflow:hidden!important;text-overflow:ellipsis!important}
     .summary-table td{padding:2px 1px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
     .summary-table td.boat-name{white-space:normal!important;overflow-wrap:break-word!important;word-break:keep-all!important;max-height:36px!important;line-height:1.2!important}
-    .summary-table td.notes-cell{white-space:normal!important;overflow-wrap:break-word!important;word-break:keep-all!important;max-height:36px!important;line-height:1.2!important}
+    .summary-table td.notes-cell{white-space:normal!important;overflow-wrap:break-word!important;word-break:keep-all!important;max-height:36px!important;line-height:1.2!important;width:70px!important;min-width:70px!important}
     .summary-table .isic-first-row td{border-top:2px solid #1e293b!important}
     .summary-table .isic-header,.summary-table .isic-cell{font-size:5pt!important;width:16px!important;min-width:16px!important;max-width:16px!important;padding:2px 1px!important}
     /* Keep table header with table body - prevent splitting */
@@ -3328,7 +3328,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {tamCustomFields.map(cf => <th key={`tam-c-${cf.field}`} className="col-tam">{cf.label || cf.field}</th>)}
                                 <th className="col-status">Risk</th>
                                 {showVramExempt && <th className="col-status">Scan Exempt</th>}
-                                <th className="col-status">Notes</th>
+                                <th className="col-status" style={{width:'70px',minWidth:'70px'}}>Notes</th>
                             </tr>
                         </thead>
                         <tbody>{Object.entries(groupByISIC(filtered)).map(([isic, isicBoats]) =>
@@ -3352,7 +3352,7 @@ const PreviewTab = ({ reportData, setReportData, settings, setSettings, onReques
                                 {tamCustomFields.map(cf => <td key={`tam-c-${cf.field}`}>{fmtCustom(b.customFields?.tam?.[cf.field])}</td>)}
                                 <td className={`risk-${b.riskLevel.toLowerCase()} ${isOverridden(b,'riskLevel')?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'riskLevel', b.riskLevel)}>{b.riskLevel}</td>
                                 {showVramExempt && <td className={`${(b.vramNiprScanExempt||b.vramSiprScanExempt)?'alert-blue':''} ${(isOverridden(b,'vramNiprScanExempt')||isOverridden(b,'vramSiprScanExempt'))?'overridden':''} cursor-pointer hover:bg-cyan-50`} onClick={() => openOverride(b.boatName, 'vramNiprScanExempt', b.vramNiprScanExempt)} title="Click to override scan exempt status">{(b.vramNiprScanExempt||b.vramSiprScanExempt)?'Y':'N'}</td>}
-                                <td className="text-xs max-w-[80px] cursor-pointer hover:bg-cyan-50" style={{overflowWrap:'break-word',wordBreak:'keep-all',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}} onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
+                                <td className="text-xs cursor-pointer hover:bg-cyan-50" style={{width:'70px',minWidth:'70px',overflowWrap:'break-word',wordBreak:'keep-all',whiteSpace:'normal',maxHeight:'36px',overflow:'hidden',lineHeight:'1.2'}} onClick={() => openNotesEdit(b.boatName, b.notes || '')} title={b.notes || 'Click to add note'}>{b.notes || '-'}</td>
                             </tr>)
                         )}</tbody>
                     </table>
