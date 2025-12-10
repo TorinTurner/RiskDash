@@ -434,7 +434,8 @@ const defaultBoatAnalyticsLayout = [
     { id: 'boatRiskReasons', type: 'card', row: 2, col: 0, width: 2 },
     { id: 'boatMetricsSummary', type: 'table', row: 2, col: 2, width: 2 },
     { id: 'boatIsicComparison', type: 'chart', row: 3, col: 0, width: 2 },
-    { id: 'boatFleetComparison', type: 'chart', row: 3, col: 2, width: 2 },
+    { id: 'boatTycomComparison', type: 'chart', row: 3, col: 2, width: 2 },
+    { id: 'boatSubforComparison', type: 'chart', row: 4, col: 0, width: 2 },
 ];
 
 // Available ISIC analytics elements
@@ -445,12 +446,12 @@ const isicAnalyticsElements = [
     { id: 'isicLowRisk', type: 'stat', label: 'Low Risk Count' },
     { id: 'isicAvgVph', type: 'stat', label: 'Avg VPH' },
     { id: 'isicTotalBreakfix', type: 'stat', label: 'Total Breakfix' },
-    { id: 'isicAvgCompliance', type: 'stat', label: 'Avg True Policy' },
+    { id: 'isicAvgCompliance', type: 'stat', label: 'Avg True ESS Compliance' },
     { id: 'isicScanExempt', type: 'stat', label: 'Scan Exempt' },
     { id: 'isicRiskPie', type: 'chart', label: 'ISIC Risk Distribution' },
     { id: 'isicBoatsTable', type: 'table', label: 'Boats in ISIC Table' },
     { id: 'isicVphComparison', type: 'chart', label: 'VPH by Boat' },
-    { id: 'isicComplianceComparison', type: 'chart', label: 'Compliance by Boat' },
+    { id: 'isicComplianceComparison', type: 'chart', label: 'True ESS Compliance % by Boat' },
     { id: 'isicWorstBoats', type: 'ranking', label: 'Worst Boats in ISIC' },
     { id: 'isicBestBoats', type: 'ranking', label: 'Best Boats in ISIC' },
 ];
@@ -463,12 +464,13 @@ const boatAnalyticsElements = [
     { id: 'boatScanAge', type: 'stat', label: 'Scan Age (days)' },
     { id: 'boatBreakfixNipr', type: 'stat', label: 'NIPR Breakfix' },
     { id: 'boatBreakfixSipr', type: 'stat', label: 'SIPR Breakfix' },
-    { id: 'boatComplianceNipr', type: 'stat', label: 'NIPR True Policy' },
-    { id: 'boatComplianceSipr', type: 'stat', label: 'SIPR True Policy' },
+    { id: 'boatComplianceNipr', type: 'stat', label: 'NIPR True ESS Compliance' },
+    { id: 'boatComplianceSipr', type: 'stat', label: 'SIPR True ESS Compliance' },
     { id: 'boatRiskReasons', type: 'card', label: 'Risk Factors' },
-    { id: 'boatMetricsSummary', type: 'table', label: 'Full Metrics Table' },
+    { id: 'boatMetricsSummary', type: 'table', label: 'Metrics Table' },
     { id: 'boatIsicComparison', type: 'chart', label: 'vs ISIC Average' },
-    { id: 'boatFleetComparison', type: 'chart', label: 'vs Fleet Average' },
+    { id: 'boatTycomComparison', type: 'chart', label: 'vs TYCOM Average' },
+    { id: 'boatSubforComparison', type: 'chart', label: 'vs SUBFOR Average' },
     { id: 'boatTamStatus', type: 'stat', label: 'TAM Status' },
     { id: 'boatOverrides', type: 'table', label: 'Active Overrides' },
 ];
@@ -2079,12 +2081,12 @@ ${isTabVisible('analytics') ? (() => {
             case 'isicLowRisk': return `<div class="stat-card" style="${style}"><h3>Low Risk</h3><div class="value low">${isicRiskCounts.LOW}</div></div>`;
             case 'isicAvgVph': return `<div class="stat-card" style="${style}"><h3>Avg VPH</h3><div class="value">${isicAvgVphVal}</div></div>`;
             case 'isicTotalBreakfix': return `<div class="stat-card" style="${style}"><h3>Total Breakfix</h3><div class="value ${isicBreakfix > 0 ? 'high' : ''}">${isicBreakfix}</div></div>`;
-            case 'isicAvgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg True Policy</h3><div class="value">${isicCompAvg}%</div></div>`;
+            case 'isicAvgCompliance': return `<div class="stat-card" style="${style}"><h3>Avg True ESS Compliance</h3><div class="value">${isicCompAvg}%</div></div>`;
             case 'isicScanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${isicExempt}</div></div>`;
             case 'isicRiskPie': return `<div class="chart-box" style="${style}"><h3>ISIC Risk Distribution</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-isicRiskPie"></canvas></div></div>`;
             case 'isicBoatsTable': return `<div class="chart-box" style="${style}"><h3>Boats in ${selectedIsic}</h3><div style="overflow:auto;max-height:200px;"><table class="mini-table"><thead><tr><th>Boat</th><th>Risk</th><th>VPH</th><th>Comp</th><th>BF</th></tr></thead><tbody>${isicBoats.map(b => `<tr><td style="font-family:monospace">${b.boatName}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td>${(getBoatMaxVph(b)||0).toFixed(2)}</td><td>${(getBoatMinCompliance(b)||0).toFixed(1)}%</td><td class="${getBoatTotalBreakfix(b)>0?'risk-high':''}">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div></div>`;
             case 'isicVphComparison': return `<div class="chart-box" style="${style}"><h3>VPH by Boat</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-isicVphComparison"></canvas></div></div>`;
-            case 'isicComplianceComparison': return `<div class="chart-box" style="${style}"><h3>Compliance by Boat</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-isicComplianceComparison"></canvas></div></div>`;
+            case 'isicComplianceComparison': return `<div class="chart-box" style="${style}"><h3>True ESS Compliance % by Boat</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-isicComplianceComparison"></canvas></div></div>`;
             default: return '';
         }
     };
@@ -2107,15 +2109,16 @@ ${isTabVisible('analytics') ? (() => {
             case 'boatRiskLevel': return `<div class="stat-card" style="${style}"><h3>Risk Level</h3><div class="value ${b.riskLevel.toLowerCase()}">${b.riskLevel}</div></div>`;
             case 'boatVphNipr': return `<div class="stat-card" style="${style}"><h3>NIPR VPH</h3><div class="value">${b.isNmci ? 'NMCI' : (b.vramNiprRaVph !== null ? b.vramNiprRaVph.toFixed(2) : '-')}</div></div>`;
             case 'boatVphSipr': return `<div class="stat-card" style="${style}"><h3>SIPR VPH</h3><div class="value">${b.vramSiprRaVph !== null ? b.vramSiprRaVph.toFixed(2) : '-'}</div></div>`;
-            case 'boatScanAge': return `<div class="stat-card" style="${style}"><h3>Max Scan Age</h3><div class="value ${maxScanAge > 14 ? 'high' : ''}">${maxScanAge || '-'} days</div></div>`;
+            case 'boatScanAge': return `<div class="stat-card" style="${style}"><h3>Scan Age</h3><div class="value ${maxScanAge > 14 ? 'high' : ''}">${maxScanAge || '-'} days</div></div>`;
             case 'boatBreakfixNipr': return `<div class="stat-card" style="${style}"><h3>NIPR Breakfix</h3><div class="value ${(b.essNiprBreakfix || 0) > 0 ? 'high' : ''}">${b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</div></div>`;
             case 'boatBreakfixSipr': return `<div class="stat-card" style="${style}"><h3>SIPR Breakfix</h3><div class="value ${(b.essSiprBreakfix || 0) > 0 ? 'high' : ''}">${b.essSiprBreakfix || 0}</div></div>`;
-            case 'boatComplianceNipr': return `<div class="stat-card" style="${style}"><h3>NIPR True Policy</h3><div class="value">${b.isNmci ? 'NMCI' : (b.essNiprTruePolicy !== null ? b.essNiprTruePolicy.toFixed(1) + '%' : '-')}</div></div>`;
-            case 'boatComplianceSipr': return `<div class="stat-card" style="${style}"><h3>SIPR True Policy</h3><div class="value">${b.essSiprTruePolicy !== null ? b.essSiprTruePolicy.toFixed(1) + '%' : '-'}</div></div>`;
+            case 'boatComplianceNipr': return `<div class="stat-card" style="${style}"><h3>NIPR True ESS Compliance</h3><div class="value">${b.isNmci ? 'NMCI' : (b.essNiprTruePolicy !== null ? b.essNiprTruePolicy.toFixed(1) + '%' : '-')}</div></div>`;
+            case 'boatComplianceSipr': return `<div class="stat-card" style="${style}"><h3>SIPR True ESS Compliance</h3><div class="value">${b.essSiprTruePolicy !== null ? b.essSiprTruePolicy.toFixed(1) + '%' : '-'}</div></div>`;
             case 'boatRiskReasons': return `<div class="chart-box" style="${style}"><h3>Risk Factors</h3><div style="padding:8px;">${b.riskReasons?.length > 0 ? b.riskReasons.map(r => `<div style="color:#dc2626;padding:4px 0;border-bottom:1px solid #f1f5f9;">${r}</div>`).join('') : '<div style="color:#059669;">No risk factors</div>'}</div></div>`;
-            case 'boatMetricsSummary': return `<div class="chart-box" style="${style}"><h3>Full Metrics</h3><div style="overflow:auto;"><table class="mini-table"><thead><tr><th>Metric</th><th>NIPR</th><th>SIPR</th></tr></thead><tbody><tr><td>VPH</td><td>${b.isNmci ? 'NMCI' : (b.vramNiprRaVph?.toFixed(2) || '-')}</td><td>${b.vramSiprRaVph?.toFixed(2) || '-'}</td></tr><tr><td>Breakfix</td><td class="${b.essNiprBreakfix > 0 ? 'risk-high' : ''}">${b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</td><td class="${b.essSiprBreakfix > 0 ? 'risk-high' : ''}">${b.essSiprBreakfix || 0}</td></tr><tr><td>Product Comp</td><td>${b.isNmci ? 'NMCI' : (b.essNiprProductCompliance?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprProductCompliance?.toFixed(1) + '%' || '-'}</td></tr><tr><td>True Policy</td><td>${b.isNmci ? 'NMCI' : (b.essNiprTruePolicy?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprTruePolicy?.toFixed(1) + '%' || '-'}</td></tr><tr><td>Scan Age</td><td>${b.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr + 'd' : '-')}</td><td>${scanAgeSipr !== null ? scanAgeSipr + 'd' : '-'}</td></tr></tbody></table></div></div>`;
+            case 'boatMetricsSummary': return `<div class="chart-box" style="${style}"><h3>Metrics</h3><div style="overflow:auto;"><table class="mini-table"><thead><tr><th>Metric</th><th>NIPR</th><th>SIPR</th></tr></thead><tbody><tr><td>VPH</td><td>${b.isNmci ? 'NMCI' : (b.vramNiprRaVph?.toFixed(2) || '-')}</td><td>${b.vramSiprRaVph?.toFixed(2) || '-'}</td></tr><tr><td>Breakfix</td><td class="${b.essNiprBreakfix > 0 ? 'risk-high' : ''}">${b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</td><td class="${b.essSiprBreakfix > 0 ? 'risk-high' : ''}">${b.essSiprBreakfix || 0}</td></tr><tr><td>Product Comp</td><td>${b.isNmci ? 'NMCI' : (b.essNiprProductCompliance?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprProductCompliance?.toFixed(1) + '%' || '-'}</td></tr><tr><td>True Policy</td><td>${b.isNmci ? 'NMCI' : (b.essNiprTruePolicy?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprTruePolicy?.toFixed(1) + '%' || '-'}</td></tr><tr><td>Scan Age</td><td>${b.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr + 'd' : '-')}</td><td>${scanAgeSipr !== null ? scanAgeSipr + 'd' : '-'}</td></tr></tbody></table></div></div>`;
             case 'boatIsicComparison': return `<div class="chart-box" style="${style}"><h3>vs ISIC Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatIsicComparison"></canvas></div></div>`;
-            case 'boatFleetComparison': return `<div class="chart-box" style="${style}"><h3>vs Fleet Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatFleetComparison"></canvas></div></div>`;
+            case 'boatTycomComparison': return `<div class="chart-box" style="${style}"><h3>vs ${b.tycom || 'TYCOM'} Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatTycomComparison"></canvas></div></div>`;
+            case 'boatSubforComparison': return `<div class="chart-box" style="${style}"><h3>vs SUBFOR Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatSubforComparison"></canvas></div></div>`;
             case 'boatTamStatus': return `<div class="stat-card" style="${style}"><h3>TAM Past Due</h3><div class="value ${(b.tamPastDue || 0) > 10 ? 'high' : ''}">${b.tamPastDue || 0}</div></div>`;
             case 'boatOverrides': return `<div class="chart-box" style="${style}"><h3>Active Overrides</h3><div style="padding:8px;">${b.overrides?.length > 0 ? b.overrides.map(o => `<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;"><span style="color:#7c3aed;font-weight:500;">${o.field}:</span> ${o.originalValue} → ${o.overrideValue}</div>`).join('') : '<div style="color:#94a3b8;">No overrides</div>'}</div></div>`;
             default: return '';
@@ -2470,7 +2473,7 @@ function initIsicCharts(isic) {
         const boatComps = isicBoats.map(b => ({ name: b.boatName, comp: getBoatMinCompliance(b) || 0 })).sort((a, b) => a.comp - b.comp);
         isicCharts.comp = new Chart(compEl, {
             type: 'bar',
-            data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
+            data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'True ESS Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
             options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
         });
     }
@@ -2511,11 +2514,18 @@ function initBoatCharts(boatName) {
     const isicComps = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
     const isicAvgComp = isicComps.length > 0 ? isicComps.reduce((s, v) => s + v, 0) / isicComps.length : 0;
 
-    // Fleet average
-    const fleetVphs = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
-    const fleetAvgVph = fleetVphs.length > 0 ? fleetVphs.reduce((s, v) => s + v, 0) / fleetVphs.length : 0;
-    const fleetComps = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
-    const fleetAvgComp = fleetComps.length > 0 ? fleetComps.reduce((s, v) => s + v, 0) / fleetComps.length : 0;
+    // TYCOM average (CSL or CSP boats only)
+    const tycomBoats = allBoatsData.filter(b => b.tycom === boat.tycom);
+    const tycomVphs = tycomBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const tycomAvgVph = tycomVphs.length > 0 ? tycomVphs.reduce((s, v) => s + v, 0) / tycomVphs.length : 0;
+    const tycomComps = tycomBoats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
+    const tycomAvgComp = tycomComps.length > 0 ? tycomComps.reduce((s, v) => s + v, 0) / tycomComps.length : 0;
+
+    // SUBFOR average (all boats in submarine force)
+    const subforVphs = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const subforAvgVph = subforVphs.length > 0 ? subforVphs.reduce((s, v) => s + v, 0) / subforVphs.length : 0;
+    const subforComps = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
+    const subforAvgComp = subforComps.length > 0 ? subforComps.reduce((s, v) => s + v, 0) / subforComps.length : 0;
 
     // vs ISIC comparison chart
     const isicCompEl = document.getElementById('analytics-chart-boatIsicComparison');
@@ -2523,7 +2533,7 @@ function initBoatCharts(boatName) {
         boatCharts.isic = new Chart(isicCompEl, {
             type: 'bar',
             data: {
-                labels: ['VPH', 'Compliance %'],
+                labels: ['VPH', 'True ESS Compliance %'],
                 datasets: [
                     { label: boat.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
                     { label: 'ISIC Avg', data: [isicAvgVph, isicAvgComp], backgroundColor: '#94a3b8' }
@@ -2533,16 +2543,32 @@ function initBoatCharts(boatName) {
         });
     }
 
-    // vs Fleet comparison chart
-    const fleetCompEl = document.getElementById('analytics-chart-boatFleetComparison');
-    if (fleetCompEl) {
-        boatCharts.fleet = new Chart(fleetCompEl, {
+    // vs TYCOM comparison chart (boat vs their CSL or CSP average)
+    const tycomCompEl = document.getElementById('analytics-chart-boatTycomComparison');
+    if (tycomCompEl) {
+        boatCharts.tycom = new Chart(tycomCompEl, {
             type: 'bar',
             data: {
-                labels: ['VPH', 'Compliance %'],
+                labels: ['VPH', 'True ESS Compliance %'],
                 datasets: [
                     { label: boat.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
-                    { label: 'Fleet Avg', data: [fleetAvgVph, fleetAvgComp], backgroundColor: '#94a3b8' }
+                    { label: (boat.tycom || 'TYCOM') + ' Avg', data: [tycomAvgVph, tycomAvgComp], backgroundColor: '#f59e0b' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        });
+    }
+
+    // vs SUBFOR comparison chart (all submarine force boats)
+    const subforCompEl = document.getElementById('analytics-chart-boatSubforComparison');
+    if (subforCompEl) {
+        boatCharts.subfor = new Chart(subforCompEl, {
+            type: 'bar',
+            data: {
+                labels: ['VPH', 'True ESS Compliance %'],
+                datasets: [
+                    { label: boat.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
+                    { label: 'SUBFOR Avg', data: [subforAvgVph, subforAvgComp], backgroundColor: '#94a3b8' }
                 ]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
@@ -3729,7 +3755,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             case 'isicLowRisk': return <div className={statStyle}><div className={labelStyle}>Low Risk</div><div className={`${valueStyle} text-emerald-600`}>{isicRiskCounts.LOW}</div></div>;
             case 'isicAvgVph': return <div className={statStyle}><div className={labelStyle}>Avg VPH</div><div className={valueStyle}>{isicAvgVph}</div></div>;
             case 'isicTotalBreakfix': return <div className={statStyle}><div className={labelStyle}>Total Breakfix</div><div className={`${valueStyle} ${isicTotalBreakfix > 0 ? 'text-red-600' : ''}`}>{isicTotalBreakfix}</div></div>;
-            case 'isicAvgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg True Policy</div><div className={valueStyle}>{isicAvgCompliance}%</div></div>;
+            case 'isicAvgCompliance': return <div className={statStyle}><div className={labelStyle}>Avg True ESS Compliance</div><div className={valueStyle}>{isicAvgCompliance}%</div></div>;
             case 'isicScanExempt': return <div className={statStyle}><div className={labelStyle}>Scan Exempt</div><div className={valueStyle}>{isicScanExemptCount}</div></div>;
             case 'isicRiskPie': return (
                 <div className={chartStyle}>
@@ -3766,7 +3792,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             );
             case 'isicComplianceComparison': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-2">Compliance by Boat</div>
+                    <div className="font-bold text-slate-700 mb-2">True ESS Compliance % by Boat</div>
                     <div className="flex-1 relative" style={{minHeight: '120px'}}>
                         <canvas id="preview-chart-isicComplianceComparison"></canvas>
                     </div>
@@ -3833,11 +3859,11 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             );
             case 'boatVphNipr': return <div className={statStyle}><div className={labelStyle}>NIPR VPH</div><div className={valueStyle}>{b.isNmci ? 'NMCI' : (b.vramNiprRaVph !== null ? b.vramNiprRaVph.toFixed(2) : '-')}</div></div>;
             case 'boatVphSipr': return <div className={statStyle}><div className={labelStyle}>SIPR VPH</div><div className={valueStyle}>{b.vramSiprRaVph !== null ? b.vramSiprRaVph.toFixed(2) : '-'}</div></div>;
-            case 'boatScanAge': return <div className={statStyle}><div className={labelStyle}>Max Scan Age</div><div className={`${valueStyle} ${maxScanAge > 14 ? 'text-red-600' : ''}`}>{maxScanAge || '-'} days</div></div>;
+            case 'boatScanAge': return <div className={statStyle}><div className={labelStyle}>Scan Age</div><div className={`${valueStyle} ${maxScanAge > 14 ? 'text-red-600' : ''}`}>{maxScanAge || '-'} days</div></div>;
             case 'boatBreakfixNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Breakfix</div><div className={`${valueStyle} ${(b.essNiprBreakfix || 0) > 0 ? 'text-red-600' : ''}`}>{b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</div></div>;
             case 'boatBreakfixSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Breakfix</div><div className={`${valueStyle} ${(b.essSiprBreakfix || 0) > 0 ? 'text-red-600' : ''}`}>{b.essSiprBreakfix || 0}</div></div>;
-            case 'boatComplianceNipr': return <div className={statStyle}><div className={labelStyle}>NIPR True Policy</div><div className={valueStyle}>{b.isNmci ? 'NMCI' : (b.essNiprTruePolicy !== null ? b.essNiprTruePolicy.toFixed(1) + '%' : '-')}</div></div>;
-            case 'boatComplianceSipr': return <div className={statStyle}><div className={labelStyle}>SIPR True Policy</div><div className={valueStyle}>{b.essSiprTruePolicy !== null ? b.essSiprTruePolicy.toFixed(1) + '%' : '-'}</div></div>;
+            case 'boatComplianceNipr': return <div className={statStyle}><div className={labelStyle}>NIPR True ESS Compliance</div><div className={valueStyle}>{b.isNmci ? 'NMCI' : (b.essNiprTruePolicy !== null ? b.essNiprTruePolicy.toFixed(1) + '%' : '-')}</div></div>;
+            case 'boatComplianceSipr': return <div className={statStyle}><div className={labelStyle}>SIPR True ESS Compliance</div><div className={valueStyle}>{b.essSiprTruePolicy !== null ? b.essSiprTruePolicy.toFixed(1) + '%' : '-'}</div></div>;
             case 'boatRiskReasons': return (
                 <div className={chartStyle}>
                     <div className="font-bold text-slate-700 mb-3">Risk Factors</div>
@@ -3852,7 +3878,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             );
             case 'boatMetricsSummary': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-3">Full Metrics</div>
+                    <div className="font-bold text-slate-700 mb-3">Metrics</div>
                     <div className="text-sm flex-1 overflow-auto">
                         <div className="grid grid-cols-3 gap-1 text-xs font-medium text-slate-500 mb-1 sticky top-0 bg-white"><span>Metric</span><span>NIPR</span><span>SIPR</span></div>
                         <div className="grid grid-cols-3 gap-1 text-xs py-1 border-b border-slate-100"><span>VPH</span><span>{b.isNmci ? 'NMCI' : (b.vramNiprRaVph?.toFixed(2) || '-')}</span><span>{b.vramSiprRaVph?.toFixed(2) || '-'}</span></div>
@@ -3871,11 +3897,19 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
                     </div>
                 </div>
             );
-            case 'boatFleetComparison': return (
+            case 'boatTycomComparison': return (
                 <div className={chartStyle}>
-                    <div className="font-bold text-slate-700 mb-2">vs Fleet Average</div>
+                    <div className="font-bold text-slate-700 mb-2">vs {b.tycom || 'TYCOM'} Average</div>
                     <div className="flex-1 relative" style={{minHeight: '120px'}}>
-                        <canvas id="preview-chart-boatFleetComparison"></canvas>
+                        <canvas id="preview-chart-boatTycomComparison"></canvas>
+                    </div>
+                </div>
+            );
+            case 'boatSubforComparison': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">vs SUBFOR Average</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-boatSubforComparison"></canvas>
                     </div>
                 </div>
             );
@@ -3931,7 +3965,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             const boatComps = isicBoats.map(b => ({ name: b.boatName, comp: getBoatMinCompliance(b) || 0 })).sort((a, b) => a.comp - b.comp);
             initChart('isicComplianceComparison', {
                 type: 'bar',
-                data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
+                data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'True ESS Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
                 options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
             });
         }
@@ -3958,16 +3992,23 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
         const isicCompAvg = boatIsicData.flatMap(x => { const v = []; if (!x.isNmci && x.essNiprTruePolicy !== null) v.push(x.essNiprTruePolicy); if (x.essSiprTruePolicy !== null) v.push(x.essSiprTruePolicy); return v; });
         const isicCompAvgVal = isicCompAvg.length > 0 ? isicCompAvg.reduce((s, v) => s + v, 0) / isicCompAvg.length : 0;
 
-        // Fleet average
-        const fleetAvg = parseFloat(avgVph);
-        const fleetCompAvg = parseFloat(avgCompliance);
+        // TYCOM average (CSL or CSP boats only)
+        const tycomBoats = boats.filter(boat => boat.tycom === b.tycom);
+        const tycomVphs = tycomBoats.flatMap(x => { const v = []; if (!x.isNmci && x.vramNiprRaVph !== null) v.push(x.vramNiprRaVph); if (x.vramSiprRaVph !== null) v.push(x.vramSiprRaVph); return v; });
+        const tycomAvg = tycomVphs.length > 0 ? tycomVphs.reduce((s, v) => s + v, 0) / tycomVphs.length : 0;
+        const tycomCompAvg = tycomBoats.flatMap(x => { const v = []; if (!x.isNmci && x.essNiprTruePolicy !== null) v.push(x.essNiprTruePolicy); if (x.essSiprTruePolicy !== null) v.push(x.essSiprTruePolicy); return v; });
+        const tycomCompAvgVal = tycomCompAvg.length > 0 ? tycomCompAvg.reduce((s, v) => s + v, 0) / tycomCompAvg.length : 0;
+
+        // SUBFOR average (all boats)
+        const subforAvg = parseFloat(avgVph);
+        const subforCompAvg = parseFloat(avgCompliance);
 
         // vs ISIC comparison
         if (boatLayout.some(l => l.id === 'boatIsicComparison')) {
             initChart('boatIsicComparison', {
                 type: 'bar',
                 data: {
-                    labels: ['VPH', 'Compliance %'],
+                    labels: ['VPH', 'True ESS Compliance %'],
                     datasets: [
                         { label: b.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
                         { label: 'ISIC Avg', data: [isicAvg, isicCompAvgVal], backgroundColor: '#94a3b8' }
@@ -3977,15 +4018,30 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             });
         }
 
-        // vs Fleet comparison
-        if (boatLayout.some(l => l.id === 'boatFleetComparison')) {
-            initChart('boatFleetComparison', {
+        // vs TYCOM comparison (CSL or CSP average)
+        if (boatLayout.some(l => l.id === 'boatTycomComparison')) {
+            initChart('boatTycomComparison', {
                 type: 'bar',
                 data: {
-                    labels: ['VPH', 'Compliance %'],
+                    labels: ['VPH', 'True ESS Compliance %'],
                     datasets: [
                         { label: b.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
-                        { label: 'Fleet Avg', data: [fleetAvg, fleetCompAvg], backgroundColor: '#94a3b8' }
+                        { label: (b.tycom || 'TYCOM') + ' Avg', data: [tycomAvg, tycomCompAvgVal], backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+            });
+        }
+
+        // vs SUBFOR comparison (all submarine force)
+        if (boatLayout.some(l => l.id === 'boatSubforComparison')) {
+            initChart('boatSubforComparison', {
+                type: 'bar',
+                data: {
+                    labels: ['VPH', 'True ESS Compliance %'],
+                    datasets: [
+                        { label: b.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
+                        { label: 'SUBFOR Avg', data: [subforAvg, subforCompAvg], backgroundColor: '#94a3b8' }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
