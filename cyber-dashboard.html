@@ -1714,6 +1714,9 @@ const generateReportHTML = (reportData, settings) => {
     });
     const isicVphAvg = Object.entries(isicVph).map(([isic, vphs]) => ({ isic, avg: vphs.length > 0 ? (vphs.reduce((a,b)=>a+b,0)/vphs.length).toFixed(2) : '0' }));
 
+    // Get unique ISICs for analytics dropdowns and data export
+    const uniqueIsics = [...new Set(boats.map(b => b.isic))].sort();
+
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cyber Report ${new Date().toLocaleDateString()}</title>
 <script src="libs/chart.min.js"><\/script>
 <style>
