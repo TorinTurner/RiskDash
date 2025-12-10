@@ -2163,12 +2163,14 @@ ${pageInfo}
     <div id="isic-selector" style="display:none;align-items:center;gap:8px;">
         <label style="font-size:9pt;color:#475569;">Select ISIC:</label>
         <select id="analytics-isic-select" onchange="updateIsicAnalytics(this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;font-size:9pt;">
+            <option value="">-- Select ISIC --</option>
             ${uniqueIsics.map(isic => `<option value="${isic}">${isic}</option>`).join('')}
         </select>
     </div>
     <div id="boat-selector" style="display:none;align-items:center;gap:8px;">
         <label style="font-size:9pt;color:#475569;">Select Boat:</label>
         <select id="analytics-boat-select" onchange="updateBoatAnalytics(this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;font-size:9pt;">
+            <option value="">-- Select Boat --</option>
             ${uniqueBoats.map(b => `<option value="${b.boatName}">${b.boatName} - ${b.boatFullName}</option>`).join('')}
         </select>
     </div>
@@ -2229,6 +2231,34 @@ const cslRisk = ${JSON.stringify(cslRiskCounts)};
 const cspRisk = ${JSON.stringify(cspRiskCounts)};
 const isicVphData = ${JSON.stringify(isicVphAvg)};
 const tycomChartData = ${JSON.stringify(Object.entries(tycomData).map(([tycom, d]) => ({ tycom, high: d.high, med: d.med, low: d.low })))};
+const allBoatsData = ${JSON.stringify(boats.map(b => ({
+    boatName: b.boatName,
+    boatFullName: b.boatFullName,
+    isic: b.isic,
+    tycom: b.tycom,
+    isNmci: b.isNmci,
+    riskLevel: b.riskLevel,
+    riskReasons: b.riskReasons,
+    vramNiprRaVph: b.vramNiprRaVph,
+    vramSiprRaVph: b.vramSiprRaVph,
+    essNiprBreakfix: b.essNiprBreakfix,
+    essSiprBreakfix: b.essSiprBreakfix,
+    essNiprTruePolicy: b.essNiprTruePolicy,
+    essSiprTruePolicy: b.essSiprTruePolicy,
+    essNiprProductCompliance: b.essNiprProductCompliance,
+    essSiprProductCompliance: b.essSiprProductCompliance,
+    vramNiprScanDate: b.vramNiprScanDate,
+    vramSiprScanDate: b.vramSiprScanDate,
+    vramNiprScanExempt: b.vramNiprScanExempt,
+    vramSiprScanExempt: b.vramSiprScanExempt,
+    tamPastDue: b.tamPastDue,
+    overrides: b.overrides
+})))};
+const allIsicsData = ${JSON.stringify(uniqueIsics.map(isic => {
+    const isicBoats = boats.filter(b => b.isic === isic);
+    const tycom = isicBoats[0]?.tycom || '';
+    return { isic, tycom, boatCount: isicBoats.length };
+}))};
 
 function showTab(id) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -2363,54 +2393,369 @@ function showAnalyticsSubTab(tab) {
     }
 }
 
+// Helper functions for boat data
+function getBoatMaxVph(b) {
+    const nipr = b.isNmci ? null : b.vramNiprRaVph;
+    const sipr = b.vramSiprRaVph;
+    if (nipr !== null && sipr !== null) return Math.max(nipr, sipr);
+    return nipr !== null ? nipr : sipr;
+}
+function getBoatMinCompliance(b) {
+    const nipr = b.isNmci ? null : b.essNiprTruePolicy;
+    const sipr = b.essSiprTruePolicy;
+    if (nipr !== null && sipr !== null) return Math.min(nipr, sipr);
+    return nipr !== null ? nipr : sipr;
+}
+function getBoatTotalBreakfix(b) {
+    return (b.isNmci ? 0 : (b.essNiprBreakfix || 0)) + (b.essSiprBreakfix || 0);
+}
+
+// Chart instances for cleanup
+const isicCharts = {};
+const boatCharts = {};
+
 function updateIsicAnalytics(isic) {
     currentSelectedIsic = isic;
     // Hide all ISIC content
     document.querySelectorAll('.isic-analytics-content').forEach(el => el.style.display = 'none');
+
+    if (!isic) return;
+
     // Show selected ISIC content
     const isicId = 'isic-analytics-' + isic.replace(/\\s+/g, '_');
     const content = document.getElementById(isicId);
-    if (content) content.style.display = 'block';
+    if (content) {
+        content.style.display = 'block';
+        // Initialize ISIC charts after a short delay to ensure DOM is ready
+        setTimeout(() => initIsicCharts(isic), 100);
+    }
+}
+
+function initIsicCharts(isic) {
+    // Destroy existing charts
+    Object.values(isicCharts).forEach(c => { if (c) c.destroy(); });
+
+    // Get boats for this ISIC
+    const isicBoats = allBoatsData.filter(b => b.isic === isic);
+    const isicRiskCounts = {
+        HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length,
+        MED: isicBoats.filter(b => b.riskLevel === 'MED').length,
+        LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length
+    };
+
+    // ISIC Risk Pie Chart
+    const pieEl = document.getElementById('analytics-chart-isicRiskPie');
+    if (pieEl) {
+        isicCharts.pie = new Chart(pieEl, {
+            type: 'pie',
+            data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [isicRiskCounts.HIGH, isicRiskCounts.MED, isicRiskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        });
+    }
+
+    // VPH by Boat Chart
+    const vphEl = document.getElementById('analytics-chart-isicVphComparison');
+    if (vphEl) {
+        const boatVphs = isicBoats.map(b => ({ name: b.boatName, vph: getBoatMaxVph(b) || 0 })).sort((a, b) => b.vph - a.vph);
+        isicCharts.vph = new Chart(vphEl, {
+            type: 'bar',
+            data: { labels: boatVphs.map(b => b.name), datasets: [{ label: 'VPH', data: boatVphs.map(b => b.vph), backgroundColor: '#3b82f6' }] },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+    }
+
+    // Compliance by Boat Chart
+    const compEl = document.getElementById('analytics-chart-isicComplianceComparison');
+    if (compEl) {
+        const boatComps = isicBoats.map(b => ({ name: b.boatName, comp: getBoatMinCompliance(b) || 0 })).sort((a, b) => a.comp - b.comp);
+        isicCharts.comp = new Chart(compEl, {
+            type: 'bar',
+            data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+    }
 }
 
 function updateBoatAnalytics(boatName) {
     currentSelectedBoat = boatName;
     // Hide all Boat content
     document.querySelectorAll('.boat-analytics-content').forEach(el => el.style.display = 'none');
+
+    if (!boatName) return;
+
     // Show selected Boat content
     const boatId = 'boat-analytics-' + boatName.replace(/\\s+/g, '_');
     const content = document.getElementById(boatId);
-    if (content) content.style.display = 'block';
+    if (content) {
+        content.style.display = 'block';
+        // Initialize Boat charts after a short delay to ensure DOM is ready
+        setTimeout(() => initBoatCharts(boatName), 100);
+    }
+}
+
+function initBoatCharts(boatName) {
+    // Destroy existing charts
+    Object.values(boatCharts).forEach(c => { if (c) c.destroy(); });
+
+    // Get boat data
+    const boat = allBoatsData.find(b => b.boatName === boatName);
+    if (!boat) return;
+
+    const boatVph = getBoatMaxVph(boat) || 0;
+    const boatComp = getBoatMinCompliance(boat) || 0;
+
+    // ISIC average
+    const isicBoats = allBoatsData.filter(b => b.isic === boat.isic);
+    const isicVphs = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const isicAvgVph = isicVphs.length > 0 ? isicVphs.reduce((s, v) => s + v, 0) / isicVphs.length : 0;
+    const isicComps = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
+    const isicAvgComp = isicComps.length > 0 ? isicComps.reduce((s, v) => s + v, 0) / isicComps.length : 0;
+
+    // Fleet average
+    const fleetVphs = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const fleetAvgVph = fleetVphs.length > 0 ? fleetVphs.reduce((s, v) => s + v, 0) / fleetVphs.length : 0;
+    const fleetComps = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
+    const fleetAvgComp = fleetComps.length > 0 ? fleetComps.reduce((s, v) => s + v, 0) / fleetComps.length : 0;
+
+    // vs ISIC comparison chart
+    const isicCompEl = document.getElementById('analytics-chart-boatIsicComparison');
+    if (isicCompEl) {
+        boatCharts.isic = new Chart(isicCompEl, {
+            type: 'bar',
+            data: {
+                labels: ['VPH', 'Compliance %'],
+                datasets: [
+                    { label: boat.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
+                    { label: 'ISIC Avg', data: [isicAvgVph, isicAvgComp], backgroundColor: '#94a3b8' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        });
+    }
+
+    // vs Fleet comparison chart
+    const fleetCompEl = document.getElementById('analytics-chart-boatFleetComparison');
+    if (fleetCompEl) {
+        boatCharts.fleet = new Chart(fleetCompEl, {
+            type: 'bar',
+            data: {
+                labels: ['VPH', 'Compliance %'],
+                datasets: [
+                    { label: boat.boatName, data: [boatVph, boatComp], backgroundColor: '#3b82f6' },
+                    { label: 'Fleet Avg', data: [fleetAvgVph, fleetAvgComp], backgroundColor: '#94a3b8' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        });
+    }
 }
 
 function exportCurrentAnalytics() {
-    // Collect data for export based on current sub-tab and selection
-    const exportData = {
-        exportDate: new Date().toLocaleString(),
-        currentView: currentAnalyticsSubTab,
-        selection: null
-    };
+    // Show export modal with format options
+    document.getElementById('export-modal').style.display = 'flex';
+}
 
-    // Determine what to export based on current view
-    let csvContent = '';
-    let filename = 'analytics_export_';
+function hideExportModal() {
+    document.getElementById('export-modal').style.display = 'none';
+}
+
+function doExport(format) {
+    hideExportModal();
+    if (format === 'pdf') {
+        exportAsPDF();
+    } else {
+        exportAsCSV();
+    }
+}
+
+function exportAsPDF() {
+    // Get the current view context
+    const isic = currentAnalyticsSubTab === 'isic' ? document.getElementById('analytics-isic-select')?.value : null;
+    const boat = currentAnalyticsSubTab === 'boat' ? document.getElementById('analytics-boat-select')?.value : null;
+    const boatData = boat ? allBoatsData.find(b => b.boatName === boat) : null;
+
+    // Determine which content to show for printing
+    let sectionsToShow = [];
 
     if (currentAnalyticsSubTab === 'main') {
-        filename += 'main_' + new Date().toISOString().split('T')[0] + '.csv';
+        // Main: CSL + CSP + Main Analytics
+        sectionsToShow = ['tab-csl', 'tab-csp', 'analytics-main-content'];
+    } else if (currentAnalyticsSubTab === 'isic' && isic) {
+        // ISIC: CSL or CSP (based on TYCOM) + Main Analytics + ISIC Analytics
+        const isicInfo = allIsicsData.find(i => i.isic === isic);
+        const tycom = isicInfo?.tycom || 'CSL';
+        sectionsToShow = [tycom === 'CSP' ? 'tab-csp' : 'tab-csl', 'analytics-main-content', 'analytics-isic-content'];
+    } else if (currentAnalyticsSubTab === 'boat' && boat && boatData) {
+        // Boat: CSL or CSP (based on TYCOM) + Main Analytics + ISIC Analytics + Boat Analytics
+        sectionsToShow = [boatData.tycom === 'CSP' ? 'tab-csp' : 'tab-csl', 'analytics-main-content', 'analytics-isic-content', 'analytics-boat-content'];
+    }
+
+    // Create a print-specific window with the selected content
+    const printWindow = window.open('', '_blank');
+    const dateStr = new Date().toLocaleString();
+
+    let title = 'SUBFOR Cyber Analytics Export';
+    if (currentAnalyticsSubTab === 'isic' && isic) title += ' - ' + isic;
+    if (currentAnalyticsSubTab === 'boat' && boat) title += ' - ' + boat;
+
+    // Build the print HTML
+    let printHtml = '<!DOCTYPE html><html><head><title>' + title + '</title>';
+    printHtml += '<style>';
+    printHtml += 'body { font-family: Arial, sans-serif; font-size: 10pt; margin: 20px; }';
+    printHtml += 'h1 { font-size: 16pt; color: #1e293b; margin-bottom: 8px; }';
+    printHtml += 'h2 { font-size: 14pt; color: #334155; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }';
+    printHtml += 'h3 { font-size: 12pt; color: #475569; margin: 12px 0 6px; }';
+    printHtml += '.meta { font-size: 9pt; color: #64748b; margin-bottom: 16px; }';
+    printHtml += 'table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9pt; }';
+    printHtml += 'th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }';
+    printHtml += 'th { background: #f1f5f9; font-weight: 600; }';
+    printHtml += '.risk-high { color: #dc2626; font-weight: bold; }';
+    printHtml += '.risk-med { color: #d97706; font-weight: bold; }';
+    printHtml += '.risk-low { color: #059669; font-weight: bold; }';
+    printHtml += '.stat-row { display: flex; gap: 16px; margin: 8px 0; flex-wrap: wrap; }';
+    printHtml += '.stat-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 16px; min-width: 120px; }';
+    printHtml += '.stat-label { font-size: 8pt; color: #64748b; }';
+    printHtml += '.stat-value { font-size: 14pt; font-weight: bold; }';
+    printHtml += '@media print { body { margin: 0; } }';
+    printHtml += '</style></head><body>';
+
+    printHtml += '<h1>' + title + '</h1>';
+    printHtml += '<div class="meta">Generated: ' + dateStr + '</div>';
+
+    // Add summary data based on view
+    if (currentAnalyticsSubTab === 'main') {
+        // Main Analytics
+        printHtml += '<h2>Fleet Summary</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">Total Boats</div><div class="stat-value">' + (riskData.HIGH + riskData.MED + riskData.LOW) + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + riskData.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + riskData.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + riskData.LOW + '</div></div>';
+        printHtml += '</div>';
+
+        printHtml += '<h2>CSL Summary</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cslRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cslRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cslRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+
+        printHtml += '<h2>CSP Summary</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cspRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cspRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cspRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+
+    } else if (currentAnalyticsSubTab === 'isic' && isic) {
+        // ISIC Analytics
+        const isicBoats = allBoatsData.filter(b => b.isic === isic);
+        const isicInfo = allIsicsData.find(i => i.isic === isic);
+        const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
+        const isicVphs = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+        const isicAvgVph = isicVphs.length > 0 ? (isicVphs.reduce((s, v) => s + v, 0) / isicVphs.length).toFixed(2) : '0';
+        const isicBreakfix = isicBoats.reduce((s, b) => s + getBoatTotalBreakfix(b), 0);
+
+        printHtml += '<h2>' + (isicInfo?.tycom || '') + ' Summary (ISIC TYCOM)</h2>';
+        const tycomRisk = isicInfo?.tycom === 'CSP' ? cspRisk : cslRisk;
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+
+        printHtml += '<h2>ISIC Analytics: ' + isic + '</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Avg VPH</div><div class="stat-value">' + isicAvgVph + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Total Breakfix</div><div class="stat-value' + (isicBreakfix > 0 ? ' risk-high' : '') + '">' + isicBreakfix + '</div></div>';
+        printHtml += '</div>';
+
+        printHtml += '<h3>Boats in ' + isic + '</h3>';
+        printHtml += '<table><thead><tr><th>Boat</th><th>Full Name</th><th>Risk</th><th>VPH</th><th>Compliance</th><th>Breakfix</th></tr></thead><tbody>';
+        isicBoats.forEach(b => {
+            printHtml += '<tr><td>' + b.boatName + '</td><td>' + b.boatFullName + '</td><td class="risk-' + b.riskLevel.toLowerCase() + '">' + b.riskLevel + '</td><td>' + (getBoatMaxVph(b)?.toFixed(2) || '-') + '</td><td>' + (getBoatMinCompliance(b)?.toFixed(1) || '-') + '%</td><td class="' + (getBoatTotalBreakfix(b) > 0 ? 'risk-high' : '') + '">' + getBoatTotalBreakfix(b) + '</td></tr>';
+        });
+        printHtml += '</tbody></table>';
+
+    } else if (currentAnalyticsSubTab === 'boat' && boat && boatData) {
+        // Boat Analytics
+        const tycomRisk = boatData.tycom === 'CSP' ? cspRisk : cslRisk;
+
+        printHtml += '<h2>' + boatData.tycom + ' Summary (Boat TYCOM)</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+
+        // ISIC Summary for boat's ISIC
+        const isicBoats = allBoatsData.filter(b => b.isic === boatData.isic);
+        const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
+
+        printHtml += '<h2>ISIC Summary: ' + boatData.isic + '</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
+        printHtml += '</div>';
+
+        // Boat details
+        printHtml += '<h2>Boat Analytics: ' + boat + ' (' + boatData.boatFullName + ')</h2>';
+        printHtml += '<div class="stat-row">';
+        printHtml += '<div class="stat-item"><div class="stat-label">Risk Level</div><div class="stat-value risk-' + boatData.riskLevel.toLowerCase() + '">' + boatData.riskLevel + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">ISIC</div><div class="stat-value">' + boatData.isic + '</div></div>';
+        printHtml += '<div class="stat-item"><div class="stat-label">TYCOM</div><div class="stat-value">' + boatData.tycom + '</div></div>';
+        printHtml += '</div>';
+
+        printHtml += '<h3>Metrics Summary</h3>';
+        printHtml += '<table><thead><tr><th>Metric</th><th>NIPR</th><th>SIPR</th></tr></thead><tbody>';
+        printHtml += '<tr><td>VPH</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.vramNiprRaVph?.toFixed(2) || '-')) + '</td><td>' + (boatData.vramSiprRaVph?.toFixed(2) || '-') + '</td></tr>';
+        printHtml += '<tr><td>Breakfix</td><td class="' + ((boatData.essNiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprBreakfix || 0)) + '</td><td class="' + ((boatData.essSiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (boatData.essSiprBreakfix || 0) + '</td></tr>';
+        printHtml += '<tr><td>Product Compliance</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprProductCompliance?.toFixed(1) + '%' || '-')) + '</td><td>' + (boatData.essSiprProductCompliance?.toFixed(1) + '%' || '-') + '</td></tr>';
+        printHtml += '<tr><td>True Policy</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprTruePolicy?.toFixed(1) + '%' || '-')) + '</td><td>' + (boatData.essSiprTruePolicy?.toFixed(1) + '%' || '-') + '</td></tr>';
+        printHtml += '</tbody></table>';
+
+        if (boatData.riskReasons && boatData.riskReasons.length > 0) {
+            printHtml += '<h3>Risk Factors</h3>';
+            printHtml += '<ul>';
+            boatData.riskReasons.forEach(r => { printHtml += '<li class="risk-high">' + r + '</li>'; });
+            printHtml += '</ul>';
+        }
+    }
+
+    printHtml += '</body></html>';
+
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 500);
+}
+
+function exportAsCSV() {
+    let csvContent = '';
+    let filename = 'analytics_export_';
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (currentAnalyticsSubTab === 'main') {
+        filename += 'main_' + dateStr + '.csv';
         csvContent = generateMainAnalyticsCSV();
     } else if (currentAnalyticsSubTab === 'isic') {
         const isic = document.getElementById('analytics-isic-select')?.value || '';
-        filename += 'isic_' + isic.replace(/\\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.csv';
-        exportData.selection = isic;
+        if (!isic) { alert('Please select an ISIC first'); return; }
+        filename += 'isic_' + isic.replace(/\\s+/g, '_') + '_' + dateStr + '.csv';
         csvContent = generateIsicAnalyticsCSV(isic);
     } else if (currentAnalyticsSubTab === 'boat') {
         const boat = document.getElementById('analytics-boat-select')?.value || '';
-        filename += 'boat_' + boat.replace(/\\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.csv';
-        exportData.selection = boat;
+        if (!boat) { alert('Please select a Boat first'); return; }
+        filename += 'boat_' + boat.replace(/\\s+/g, '_') + '_' + dateStr + '.csv';
         csvContent = generateBoatAnalyticsCSV(boat);
     }
 
-    // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -2420,42 +2765,139 @@ function exportCurrentAnalytics() {
 
 function generateMainAnalyticsCSV() {
     let csv = 'SUBFOR Cyber Analytics Export - Main View\\n';
-    csv += 'Generated: ' + new Date().toLocaleString() + '\\n\\n';
-    csv += 'Fleet Summary\\n';
+    csv += 'Generated,' + new Date().toLocaleString() + '\\n\\n';
+
+    csv += 'FLEET SUMMARY\\n';
     csv += 'Metric,Value\\n';
-    csv += 'Total Boats,' + riskData.HIGH + riskData.MED + riskData.LOW + '\\n';
+    csv += 'Total Boats,' + (riskData.HIGH + riskData.MED + riskData.LOW) + '\\n';
     csv += 'High Risk,' + riskData.HIGH + '\\n';
     csv += 'Medium Risk,' + riskData.MED + '\\n';
-    csv += 'Low Risk,' + riskData.LOW + '\\n';
-    csv += '\\nCSL Summary\\n';
+    csv += 'Low Risk,' + riskData.LOW + '\\n\\n';
+
+    csv += 'CSL SUMMARY\\n';
+    csv += 'Metric,Value\\n';
     csv += 'High Risk,' + cslRisk.HIGH + '\\n';
     csv += 'Medium Risk,' + cslRisk.MED + '\\n';
-    csv += 'Low Risk,' + cslRisk.LOW + '\\n';
-    csv += '\\nCSP Summary\\n';
+    csv += 'Low Risk,' + cslRisk.LOW + '\\n\\n';
+
+    csv += 'CSP SUMMARY\\n';
+    csv += 'Metric,Value\\n';
     csv += 'High Risk,' + cspRisk.HIGH + '\\n';
     csv += 'Medium Risk,' + cspRisk.MED + '\\n';
-    csv += 'Low Risk,' + cspRisk.LOW + '\\n';
+    csv += 'Low Risk,' + cspRisk.LOW + '\\n\\n';
+
+    csv += 'ALL BOATS\\n';
+    csv += 'Boat,Full Name,ISIC,TYCOM,Risk Level,VPH,Compliance,Breakfix\\n';
+    allBoatsData.forEach(b => {
+        csv += b.boatName + ',' + b.boatFullName + ',' + b.isic + ',' + b.tycom + ',' + b.riskLevel + ',' + (getBoatMaxVph(b)?.toFixed(2) || '') + ',' + (getBoatMinCompliance(b)?.toFixed(1) || '') + ',' + getBoatTotalBreakfix(b) + '\\n';
+    });
+
     return csv;
 }
 
 function generateIsicAnalyticsCSV(isic) {
+    const isicBoats = allBoatsData.filter(b => b.isic === isic);
+    const isicInfo = allIsicsData.find(i => i.isic === isic);
+    const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
+    const isicVphs = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
+    const isicAvgVph = isicVphs.length > 0 ? (isicVphs.reduce((s, v) => s + v, 0) / isicVphs.length).toFixed(2) : '0';
+    const isicBreakfix = isicBoats.reduce((s, b) => s + getBoatTotalBreakfix(b), 0);
+    const tycomRisk = isicInfo?.tycom === 'CSP' ? cspRisk : cslRisk;
+
     let csv = 'SUBFOR Cyber Analytics Export - ISIC View\\n';
-    csv += 'ISIC: ' + isic + '\\n';
-    csv += 'Generated: ' + new Date().toLocaleString() + '\\n\\n';
-    csv += 'ISIC Summary - Data shown in analytics widgets above\\n';
-    csv += 'Please refer to generated report for detailed ISIC metrics\\n';
+    csv += 'ISIC,' + isic + '\\n';
+    csv += 'TYCOM,' + (isicInfo?.tycom || '') + '\\n';
+    csv += 'Generated,' + new Date().toLocaleString() + '\\n\\n';
+
+    csv += (isicInfo?.tycom || '') + ' SUMMARY\\n';
+    csv += 'Metric,Value\\n';
+    csv += 'High Risk,' + tycomRisk.HIGH + '\\n';
+    csv += 'Medium Risk,' + tycomRisk.MED + '\\n';
+    csv += 'Low Risk,' + tycomRisk.LOW + '\\n\\n';
+
+    csv += 'ISIC SUMMARY\\n';
+    csv += 'Metric,Value\\n';
+    csv += 'Boats in ISIC,' + isicBoats.length + '\\n';
+    csv += 'High Risk,' + isicRiskCounts.HIGH + '\\n';
+    csv += 'Medium Risk,' + isicRiskCounts.MED + '\\n';
+    csv += 'Low Risk,' + isicRiskCounts.LOW + '\\n';
+    csv += 'Avg VPH,' + isicAvgVph + '\\n';
+    csv += 'Total Breakfix,' + isicBreakfix + '\\n\\n';
+
+    csv += 'BOATS IN ' + isic + '\\n';
+    csv += 'Boat,Full Name,Risk Level,VPH,Compliance,Breakfix\\n';
+    isicBoats.forEach(b => {
+        csv += b.boatName + ',' + b.boatFullName + ',' + b.riskLevel + ',' + (getBoatMaxVph(b)?.toFixed(2) || '') + ',' + (getBoatMinCompliance(b)?.toFixed(1) || '') + ',' + getBoatTotalBreakfix(b) + '\\n';
+    });
+
     return csv;
 }
 
-function generateBoatAnalyticsCSV(boat) {
+function generateBoatAnalyticsCSV(boatName) {
+    const boat = allBoatsData.find(b => b.boatName === boatName);
+    if (!boat) return '';
+
+    const tycomRisk = boat.tycom === 'CSP' ? cspRisk : cslRisk;
+    const isicBoats = allBoatsData.filter(b => b.isic === boat.isic);
+    const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
+
     let csv = 'SUBFOR Cyber Analytics Export - Boat View\\n';
-    csv += 'Boat: ' + boat + '\\n';
-    csv += 'Generated: ' + new Date().toLocaleString() + '\\n\\n';
-    csv += 'Boat Summary - Data shown in analytics widgets above\\n';
-    csv += 'Please refer to generated report for detailed boat metrics\\n';
+    csv += 'Boat,' + boatName + '\\n';
+    csv += 'Full Name,' + boat.boatFullName + '\\n';
+    csv += 'ISIC,' + boat.isic + '\\n';
+    csv += 'TYCOM,' + boat.tycom + '\\n';
+    csv += 'Generated,' + new Date().toLocaleString() + '\\n\\n';
+
+    csv += boat.tycom + ' SUMMARY\\n';
+    csv += 'Metric,Value\\n';
+    csv += 'High Risk,' + tycomRisk.HIGH + '\\n';
+    csv += 'Medium Risk,' + tycomRisk.MED + '\\n';
+    csv += 'Low Risk,' + tycomRisk.LOW + '\\n\\n';
+
+    csv += 'ISIC SUMMARY (' + boat.isic + ')\\n';
+    csv += 'Metric,Value\\n';
+    csv += 'Boats in ISIC,' + isicBoats.length + '\\n';
+    csv += 'High Risk,' + isicRiskCounts.HIGH + '\\n';
+    csv += 'Medium Risk,' + isicRiskCounts.MED + '\\n';
+    csv += 'Low Risk,' + isicRiskCounts.LOW + '\\n\\n';
+
+    csv += 'BOAT DETAILS\\n';
+    csv += 'Metric,Value\\n';
+    csv += 'Risk Level,' + boat.riskLevel + '\\n';
+    csv += 'NMCI,' + (boat.isNmci ? 'Yes' : 'No') + '\\n\\n';
+
+    csv += 'BOAT METRICS\\n';
+    csv += 'Metric,NIPR,SIPR\\n';
+    csv += 'VPH,' + (boat.isNmci ? 'NMCI' : (boat.vramNiprRaVph?.toFixed(2) || '')) + ',' + (boat.vramSiprRaVph?.toFixed(2) || '') + '\\n';
+    csv += 'Breakfix,' + (boat.isNmci ? 'NMCI' : (boat.essNiprBreakfix || 0)) + ',' + (boat.essSiprBreakfix || 0) + '\\n';
+    csv += 'Product Compliance,' + (boat.isNmci ? 'NMCI' : (boat.essNiprProductCompliance?.toFixed(1) || '')) + ',' + (boat.essSiprProductCompliance?.toFixed(1) || '') + '\\n';
+    csv += 'True Policy,' + (boat.isNmci ? 'NMCI' : (boat.essNiprTruePolicy?.toFixed(1) || '')) + ',' + (boat.essSiprTruePolicy?.toFixed(1) || '') + '\\n\\n';
+
+    if (boat.riskReasons && boat.riskReasons.length > 0) {
+        csv += 'RISK FACTORS\\n';
+        boat.riskReasons.forEach(r => { csv += r + '\\n'; });
+    }
+
     return csv;
 }
 <\/script>
+<div id="export-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideExportModal()">
+<div style="background:white;border-radius:12px;padding:24px;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+<h3 style="font-size:14pt;font-weight:bold;margin-bottom:16px;color:#334155;">Export Current View</h3>
+<p style="font-size:10pt;color:#64748b;margin-bottom:16px;">Choose export format:</p>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button onclick="doExport('pdf')" style="background:#7c3aed;color:white;border:none;padding:12px 24px;border-radius:6px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;">
+<span style="font-size:16px;">PDF</span>
+<span style="font-size:9pt;opacity:0.8;">(Print)</span>
+</button>
+<button onclick="doExport('csv')" style="background:#0891b2;color:white;border:none;padding:12px 24px;border-radius:6px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;">
+<span style="font-size:16px;">CSV</span>
+<span style="font-size:9pt;opacity:0.8;">(Data)</span>
+</button>
+</div>
+<div style="margin-top:16px;text-align:center;"><button onclick="hideExportModal()" style="background:#e2e8f0;color:#475569;border:none;padding:8px 16px;border-radius:4px;font-weight:500;cursor:pointer;">Cancel</button></div>
+</div>
+</div>
 <div id="help-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hideHelpModal()">
 <div style="background:white;border-radius:12px;padding:24px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
 <h3 style="font-size:16pt;font-weight:bold;margin-bottom:16px;color:#334155;">Risk Calculation Reference</h3>
@@ -3330,6 +3772,38 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
                     </div>
                 </div>
             );
+            case 'isicWorstBoats': {
+                const worstByVph = [...isicBoats].filter(b => getBoatMaxVph(b) != null).sort((a, b) => (getBoatMaxVph(b) || 0) - (getBoatMaxVph(a) || 0)).slice(0, 5);
+                return (
+                    <div className={chartStyle}>
+                        <div className="font-bold text-slate-700 mb-3">Worst Boats in ISIC</div>
+                        <div className="text-sm flex-1 overflow-auto">
+                            {worstByVph.length === 0 ? <div className="text-slate-400">No data</div> : worstByVph.map(b => (
+                                <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100">
+                                    <span className="font-mono text-cyan-600">{b.boatName}</span>
+                                    <span className="text-red-600">{(getBoatMaxVph(b) || 0).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+            case 'isicBestBoats': {
+                const bestByVph = [...isicBoats].filter(b => getBoatMaxVph(b) != null).sort((a, b) => (getBoatMaxVph(a) || 0) - (getBoatMaxVph(b) || 0)).slice(0, 5);
+                return (
+                    <div className={chartStyle}>
+                        <div className="font-bold text-slate-700 mb-3">Best Boats in ISIC</div>
+                        <div className="text-sm flex-1 overflow-auto">
+                            {bestByVph.length === 0 ? <div className="text-slate-400">No data</div> : bestByVph.map(b => (
+                                <div key={b.boatName} className="flex justify-between py-1 border-b border-slate-100">
+                                    <span className="font-mono text-cyan-600">{b.boatName}</span>
+                                    <span className="text-emerald-600">{(getBoatMaxVph(b) || 0).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
             default: return <div className="bg-slate-100 rounded-lg p-4">{item.id}</div>;
         }
     };
