@@ -2452,7 +2452,11 @@ function showPrintScaleModal(tabId) {
     pendingPrintTabId = tabId;
     const modal = document.getElementById('print-scale-modal');
     const scaleText = document.getElementById('print-scale-text');
-    scaleText.innerHTML = 'For best results, set your Chrome print scale to <strong>100%</strong>';
+    if (tabId === 'analytics') {
+        scaleText.innerHTML = 'For best results, set your Chrome print scale to <strong>75%</strong>';
+    } else {
+        scaleText.innerHTML = 'For best results, set your Chrome print scale between <strong>90% - 100%</strong>';
+    }
     modal.style.display = 'flex';
 }
 function hidePrintScaleModal() { document.getElementById('print-scale-modal').style.display = 'none'; }
