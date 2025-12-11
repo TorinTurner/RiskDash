@@ -1818,11 +1818,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .stat-card .value{font-size:18pt!important}
     .chart-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
     /* Chart containers */
-    .chart-box{page-break-inside:avoid;padding:8px!important;overflow:visible!important;box-sizing:border-box!important}
+    .chart-box{page-break-inside:avoid;padding:8px!important;overflow:hidden!important;box-sizing:border-box!important;max-width:100%!important}
     .chart-box h3{font-size:11pt!important;margin-bottom:6px!important}
-    .chart-box > div{overflow:visible!important;padding-right:10px!important}
-    /* Horizontal bar charts need extra padding for y-axis labels */
-    .horizontal-chart{padding-left:10px!important;padding-right:15px!important}
+    .chart-box > div{overflow:hidden!important;max-width:100%!important;box-sizing:border-box!important}
+    .chart-box canvas{max-width:100%!important;width:100%!important}
+    /* Horizontal bar charts need constrained width */
+    .horizontal-chart{max-width:100%!important;width:100%!important;box-sizing:border-box!important}
+    .horizontal-chart canvas{max-width:100%!important}
     .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
     .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:visible!important;box-sizing:border-box!important}
     .ranking-box h4{font-size:10pt!important;margin-bottom:4px!important}
@@ -2121,8 +2123,8 @@ ${isTabVisible('analytics') ? (() => {
             case 'isicScanExempt': return `<div class="stat-card" style="${style}"><h3>Scan Exempt</h3><div class="value">${isicExempt}</div></div>`;
             case 'isicRiskPie': return `<div class="chart-box" style="${style}"><h3>ISIC Risk Distribution</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="chart-isic-${isicIdSafe}-pie"></canvas></div></div>`;
             case 'isicBoatsTable': return `<div class="chart-box" style="${style}"><h3>Boats in ${selectedIsic}</h3><div style="overflow:auto;max-height:200px;"><table class="mini-table"><thead><tr><th>Boat</th><th>Risk</th><th>VPH</th><th>ESS Comp</th><th>BF</th></tr></thead><tbody>${isicBoats.map(b => `<tr><td style="font-family:monospace">${b.boatName}</td><td class="risk-${b.riskLevel.toLowerCase()}">${b.riskLevel}</td><td>${(getBoatMaxVph(b)||0).toFixed(2)}</td><td>${(getBoatMinCompliance(b)||0).toFixed(1)}%</td><td class="${getBoatTotalBreakfix(b)>0?'risk-high':''}">${getBoatTotalBreakfix(b)}</td></tr>`).join('')}</tbody></table></div></div>`;
-            case 'isicVphComparison': return `<div class="chart-box" style="${style}"><h3>VPH by Boat</h3><div class="horizontal-chart" style="flex:1;position:relative;min-height:150px;"><canvas id="chart-isic-${isicIdSafe}-vph"></canvas></div></div>`;
-            case 'isicComplianceComparison': return `<div class="chart-box" style="${style}"><h3>True ESS Compliance % by Boat</h3><div class="horizontal-chart" style="flex:1;position:relative;min-height:150px;"><canvas id="chart-isic-${isicIdSafe}-comp"></canvas></div></div>`;
+            case 'isicVphComparison': return `<div class="chart-box" style="${style}"><h3>VPH by Boat</h3><div class="horizontal-chart" style="flex:1;position:relative;min-height:150px;max-width:100%;overflow:hidden;"><canvas id="chart-isic-${isicIdSafe}-vph" style="max-width:100%;"></canvas></div></div>`;
+            case 'isicComplianceComparison': return `<div class="chart-box" style="${style}"><h3>True ESS Compliance % by Boat</h3><div class="horizontal-chart" style="flex:1;position:relative;min-height:150px;max-width:100%;overflow:hidden;"><canvas id="chart-isic-${isicIdSafe}-comp" style="max-width:100%;"></canvas></div></div>`;
             case 'isicWorstBoatsVph': {
                 const worstVph = [...isicBoats].filter(b => getBoatMaxVph(b) != null).sort((a, b) => (getBoatMaxVph(b) || 0) - (getBoatMaxVph(a) || 0)).slice(0, 5);
                 return `<div class="ranking-box" style="${style}"><h4>Worst Boats by VPH</h4><table class="mini-table"><thead><tr><th>Boat</th><th>VPH</th></tr></thead><tbody>${worstVph.map(b => `<tr><td>${b.boatName}</td><td class="risk-high">${(getBoatMaxVph(b)||0).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`;
@@ -2558,7 +2560,7 @@ function initIsicCharts(isic) {
         isicCharts.vph = new Chart(vphEl, {
             type: 'bar',
             data: { labels: boatVphs.map(b => b.name), datasets: [{ label: 'VPH', data: boatVphs.map(b => b.vph), backgroundColor: '#3b82f6' }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 } } } }
         });
     }
 
@@ -2569,7 +2571,7 @@ function initIsicCharts(isic) {
         isicCharts.comp = new Chart(compEl, {
             type: 'bar',
             data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'True ESS Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 }, max: 100 } } }
         });
     }
 }
@@ -3884,7 +3886,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             initChart('isicVphComparison', {
                 type: 'bar',
                 data: { labels: boatVphs.map(b => b.name), datasets: [{ label: 'VPH', data: boatVphs.map(b => b.vph), backgroundColor: '#3b82f6' }] },
-                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 } } } }
             });
         }
 
@@ -3894,7 +3896,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             initChart('isicComplianceComparison', {
                 type: 'bar',
                 data: { labels: boatComps.map(b => b.name), datasets: [{ label: 'True ESS Compliance %', data: boatComps.map(b => b.comp), backgroundColor: '#10b981' }] },
-                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 }, max: 100 } } }
             });
         }
     }, [analyticsSubTab, selectedIsic, isicLayout, JSON.stringify(isicRiskCounts)]);
