@@ -2461,11 +2461,13 @@ function showPrintScaleModal(tabId) {
     }
     modal.style.display = 'flex';
 }
-function hidePrintScaleModal() { document.getElementById('print-scale-modal').style.display = 'none'; pendingPrintTabId = null; }
+function hidePrintScaleModal() { document.getElementById('print-scale-modal').style.display = 'none'; }
 function proceedToPrint() {
+    const tabId = pendingPrintTabId;
     hidePrintScaleModal();
-    if (pendingPrintTabId) {
-        printTab(pendingPrintTabId);
+    pendingPrintTabId = null;
+    if (tabId) {
+        printTab(tabId);
     }
 }
 
