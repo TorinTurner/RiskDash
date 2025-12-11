@@ -2412,13 +2412,13 @@ function initCharts() {
     if (pieChart) new Chart(pieChart, {
         type: 'pie',
         data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskData.HIGH, riskData.MED, riskData.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
     });
     const donutChart = document.getElementById('analytics-chart-riskDonutChart');
     if (donutChart) new Chart(donutChart, {
         type: 'doughnut',
         data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskData.HIGH, riskData.MED, riskData.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+        options: { responsive: true, maintainAspectRatio: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
     });
     const barChart = document.getElementById('analytics-chart-riskDistribution');
     if (barChart) new Chart(barChart, {
@@ -2569,7 +2569,7 @@ function initIsicCharts(isic) {
         isicCharts.pie = new Chart(pieEl, {
             type: 'pie',
             data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [isicRiskCounts.HIGH, isicRiskCounts.MED, isicRiskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
         });
     }
 
@@ -3221,7 +3221,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             initChart('riskPieChart', {
                 type: 'pie',
                 data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskCounts.HIGH, riskCounts.MED, riskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
             });
         }
 
@@ -3230,7 +3230,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             initChart('riskDonutChart', {
                 type: 'doughnut',
                 data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [riskCounts.HIGH, riskCounts.MED, riskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+                options: { responsive: true, maintainAspectRatio: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
             });
         }
 
@@ -3907,7 +3907,7 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             initChart('isicRiskPie', {
                 type: 'pie',
                 data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [isicRiskCounts.HIGH, isicRiskCounts.MED, isicRiskCounts.LOW], backgroundColor: ['#dc2626', '#d97706', '#059669'] }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
             });
         }
 
