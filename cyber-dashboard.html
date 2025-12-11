@@ -1794,7 +1794,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
 .mini-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 .mini-table tr:last-child td{border-bottom:none}
 .high-risk-table{}
-.high-risk-table .reason-cell{white-space:normal;word-wrap:break-word;overflow-wrap:break-word;font-size:7pt}
+.high-risk-table .reason-cell{white-space:normal;word-wrap:break-word;overflow-wrap:break-word;font-size:9pt}
 .print-only{display:none}
 .print-header{padding:0;margin-bottom:16px}
 .print-header h1{font-size:14pt;font-weight:600;color:#1e293b;margin-bottom:4px}
@@ -1806,6 +1806,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11pt!important}
     .tab-content{display:none!important;padding:8px}
     .tab-content.print-active{display:block!important}
+    /* Analytics pages print at 74% scale */
+    #tab-analytics.print-active .page{transform:scale(0.74);transform-origin:top left;width:135%}
     .page{box-shadow:none;margin:0 0 10px 0;page-break-inside:avoid;border:none;padding:8px;overflow:visible!important}
     .isic-section{page-break-inside:avoid}
     /* Analytics grid - auto-fit rows to content */
@@ -1819,6 +1821,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .chart-box{page-break-inside:avoid;padding:8px!important;overflow:visible!important;box-sizing:border-box!important}
     .chart-box h3{font-size:11pt!important;margin-bottom:6px!important}
     .chart-box > div{overflow:visible!important;padding-right:10px!important}
+    /* Horizontal bar charts need extra padding for y-axis labels */
+    .horizontal-chart{padding-left:10px!important;padding-right:15px!important}
     .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
     .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:visible!important;box-sizing:border-box!important}
     .ranking-box h4{font-size:10pt!important;margin-bottom:4px!important}
