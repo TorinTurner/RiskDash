@@ -5898,9 +5898,9 @@ function App() {
     const [isUsingImportedSettings, setIsUsingImportedSettings] = React.useState(false);
     const [showFirstTimeSetup, setShowFirstTimeSetup] = React.useState(false);
 
-    // Check if settings are blank on first load
+    // Check if settings are blank on first load (no boats and no ISICs configured)
     React.useEffect(() => {
-        const isBlank = !settings.boats?.length && !settings.isics?.length && !Object.keys(settings.thresholds || {}).length;
+        const isBlank = !settings.boats?.length && !settings.isics?.length;
         const hasStoredSettings = SettingsManager.hasSavedSettings();
         if (isBlank && !hasStoredSettings) {
             setShowFirstTimeSetup(true);
