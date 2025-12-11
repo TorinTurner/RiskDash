@@ -1800,18 +1800,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .tab-content.print-active{display:block!important}
     .page{box-shadow:none;margin:0 0 15px 0;page-break-inside:avoid;border:none;padding:10px;overflow:hidden!important}
     .isic-section{page-break-inside:avoid}
-    .analytics-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;grid-auto-rows:minmax(80px,200px)!important}
+    .analytics-grid{page-break-inside:avoid}
     .stat-cards{display:grid!important;gap:8px!important}
     .stat-card{padding:8px!important;page-break-inside:avoid;overflow:hidden!important}
     .stat-card h3{font-size:8pt!important;margin-bottom:4px!important}
     .stat-card .value{font-size:16pt!important}
     .chart-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
-    .chart-box{padding:10px!important;page-break-inside:avoid;max-width:100%!important;overflow:hidden!important;display:block!important}
-    .chart-box h3{font-size:9pt!important;margin-bottom:8px!important}
-    .chart-box > div{width:100%!important;height:150px!important;position:relative!important;min-height:unset!important;flex:unset!important}
-    .chart-box > div canvas{width:100%!important;height:100%!important;max-height:150px!important}
-    .chart-box .horizontal-chart{width:100%!important;height:180px!important;min-height:unset!important;max-height:180px!important;position:relative!important;flex:unset!important}
-    .chart-box .horizontal-chart canvas{width:100%!important;height:160px!important;max-height:160px!important}
+    .chart-box{page-break-inside:avoid}
     .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
     .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:hidden!important;box-sizing:border-box!important}
     .ranking-box h4{font-size:7pt!important;margin-bottom:4px!important}
@@ -1842,7 +1837,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     .legend-box{page-break-inside:avoid!important;break-inside:avoid!important}
 }
 @media print and (orientation:landscape){
-    .analytics-grid{grid-template-columns:repeat(4,1fr)!important;gap:6px!important}
     .chart-grid{grid-template-columns:repeat(2,1fr)!important}
     .stat-cards{grid-template-columns:repeat(4,1fr)!important}
 }
