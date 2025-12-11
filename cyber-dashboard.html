@@ -426,12 +426,13 @@ const defaultBoatAnalyticsLayout = [
     { id: 'boatRiskLevel', type: 'stat', row: 0, col: 0 },
     { id: 'boatVphNipr', type: 'stat', row: 0, col: 1 },
     { id: 'boatVphSipr', type: 'stat', row: 0, col: 2 },
-    { id: 'boatScanAge', type: 'stat', row: 0, col: 3 },
-    { id: 'boatBreakfixNipr', type: 'stat', row: 1, col: 0 },
-    { id: 'boatBreakfixSipr', type: 'stat', row: 1, col: 1 },
-    { id: 'boatComplianceNipr', type: 'stat', row: 1, col: 2 },
-    { id: 'boatComplianceSipr', type: 'stat', row: 1, col: 3 },
-    { id: 'boatRiskReasons', type: 'card', row: 2, col: 0, width: 2 },
+    { id: 'boatScanAgeNipr', type: 'stat', row: 0, col: 3 },
+    { id: 'boatScanAgeSipr', type: 'stat', row: 1, col: 0 },
+    { id: 'boatBreakfixNipr', type: 'stat', row: 1, col: 1 },
+    { id: 'boatBreakfixSipr', type: 'stat', row: 1, col: 2 },
+    { id: 'boatComplianceNipr', type: 'stat', row: 1, col: 3 },
+    { id: 'boatComplianceSipr', type: 'stat', row: 2, col: 0 },
+    { id: 'boatRiskReasons', type: 'card', row: 2, col: 1, width: 1 },
     { id: 'boatMetricsSummary', type: 'table', row: 2, col: 2, width: 2 },
     { id: 'boatIsicComparisonVph', type: 'chart', row: 3, col: 0 },
     { id: 'boatIsicComparisonEss', type: 'chart', row: 3, col: 1 },
@@ -467,7 +468,8 @@ const boatAnalyticsElements = [
     { id: 'boatRiskLevel', type: 'stat', label: 'Risk Level' },
     { id: 'boatVphNipr', type: 'stat', label: 'NIPR VPH' },
     { id: 'boatVphSipr', type: 'stat', label: 'SIPR VPH' },
-    { id: 'boatScanAge', type: 'stat', label: 'Scan Age (days)' },
+    { id: 'boatScanAgeNipr', type: 'stat', label: 'NIPR Scan Age (days)' },
+    { id: 'boatScanAgeSipr', type: 'stat', label: 'SIPR Scan Age (days)' },
     { id: 'boatBreakfixNipr', type: 'stat', label: 'NIPR Breakfix' },
     { id: 'boatBreakfixSipr', type: 'stat', label: 'SIPR Breakfix' },
     { id: 'boatComplianceNipr', type: 'stat', label: 'NIPR True ESS Compliance' },
@@ -1804,22 +1806,21 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.3;backg
     body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11pt!important}
     .tab-content{display:none!important;padding:8px}
     .tab-content.print-active{display:block!important}
-    .page{box-shadow:none;margin:0 0 10px 0;page-break-inside:avoid;border:none;padding:8px;overflow:hidden!important}
+    .page{box-shadow:none;margin:0 0 10px 0;page-break-inside:avoid;border:none;padding:8px;overflow:visible!important}
     .isic-section{page-break-inside:avoid}
-    /* Analytics grid - fixed 4 columns with constrained heights */
-    .analytics-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;grid-auto-rows:minmax(80px,180px)!important;width:100%!important;box-sizing:border-box!important}
+    /* Analytics grid - auto-fit rows to content */
+    .analytics-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;grid-auto-rows:auto!important;width:100%!important;box-sizing:border-box!important}
     .stat-cards{display:grid!important;gap:8px!important}
-    .stat-card{padding:8px!important;page-break-inside:avoid;overflow:hidden!important}
+    .stat-card{padding:8px!important;page-break-inside:avoid;overflow:visible!important;height:auto!important}
     .stat-card h3{font-size:10pt!important;margin-bottom:4px!important}
     .stat-card .value{font-size:18pt!important}
     .chart-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
-    /* Chart containers - constrained sizing */
-    .chart-box{page-break-inside:avoid;padding:8px!important;overflow:hidden!important;box-sizing:border-box!important}
+    /* Chart containers */
+    .chart-box{page-break-inside:avoid;padding:8px!important;overflow:visible!important;box-sizing:border-box!important}
     .chart-box h3{font-size:11pt!important;margin-bottom:6px!important}
-    .chart-box > div{max-height:160px!important;overflow:hidden!important}
-    .chart-box canvas{max-height:140px!important}
+    .chart-box > div{overflow:visible!important;padding-right:10px!important}
     .rankings-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;width:100%!important}
-    .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:hidden!important;box-sizing:border-box!important}
+    .ranking-box{padding:8px!important;page-break-inside:avoid;overflow:visible!important;box-sizing:border-box!important}
     .ranking-box h4{font-size:10pt!important;margin-bottom:4px!important}
     .mini-table{font-size:9pt!important;width:100%!important;table-layout:fixed!important}
     .mini-table th,.mini-table td{padding:3px 4px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
@@ -2165,6 +2166,8 @@ ${isTabVisible('analytics') ? (() => {
             case 'boatRiskLevel': return `<div class="stat-card" style="${style}"><h3>Risk Level</h3><div class="value ${b.riskLevel.toLowerCase()}">${b.riskLevel}</div></div>`;
             case 'boatVphNipr': return `<div class="stat-card" style="${style}"><h3>NIPR VPH</h3><div class="value">${b.isNmci ? 'NMCI' : (b.vramNiprRaVph !== null ? b.vramNiprRaVph.toFixed(2) : '-')}</div></div>`;
             case 'boatVphSipr': return `<div class="stat-card" style="${style}"><h3>SIPR VPH</h3><div class="value">${b.vramSiprRaVph !== null ? b.vramSiprRaVph.toFixed(2) : '-'}</div></div>`;
+            case 'boatScanAgeNipr': return `<div class="stat-card" style="${style}"><h3>NIPR Scan Age</h3><div class="value ${(scanAgeNipr || 0) > 14 ? 'high' : ''}">${b.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr + ' days' : '-')}</div></div>`;
+            case 'boatScanAgeSipr': return `<div class="stat-card" style="${style}"><h3>SIPR Scan Age</h3><div class="value ${(scanAgeSipr || 0) > 14 ? 'high' : ''}">${scanAgeSipr !== null ? scanAgeSipr + ' days' : '-'}</div></div>`;
             case 'boatScanAge': return `<div class="stat-card" style="${style}"><h3>Scan Age</h3><div class="value ${maxScanAge > 14 ? 'high' : ''}">${maxScanAge || '-'} days</div></div>`;
             case 'boatBreakfixNipr': return `<div class="stat-card" style="${style}"><h3>NIPR Breakfix</h3><div class="value ${(b.essNiprBreakfix || 0) > 0 ? 'high' : ''}">${b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</div></div>`;
             case 'boatBreakfixSipr': return `<div class="stat-card" style="${style}"><h3>SIPR Breakfix</h3><div class="value ${(b.essSiprBreakfix || 0) > 0 ? 'high' : ''}">${b.essSiprBreakfix || 0}</div></div>`;
@@ -2616,76 +2619,82 @@ function initBoatCharts(boatName) {
     const subforComps = allBoatsData.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprTruePolicy !== null) v.push(b.essNiprTruePolicy); if (b.essSiprTruePolicy !== null) v.push(b.essSiprTruePolicy); return v; });
     const subforAvgComp = subforComps.length > 0 ? subforComps.reduce((s, v) => s + v, 0) / subforComps.length : 0;
 
-    // VPH vs ISIC comparison chart
+    // VPH vs ISIC comparison chart (lower VPH is better: green if below avg, red if above)
     const isicVphEl = document.getElementById('chart-boat-' + boatIdSafe + '-isic-vph');
     if (isicVphEl) {
+        const isicVphBoatColor = boatVph < isicAvgVph ? '#22c55e' : boatVph > isicAvgVph ? '#ef4444' : '#3b82f6';
         boatCharts.isicVph = new Chart(isicVphEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, 'ISIC Avg'],
-                datasets: [{ data: [boatVph, isicAvgVph], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatVph, isicAvgVph], backgroundColor: [isicVphBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
     }
-    // True ESS vs ISIC comparison chart
+    // True ESS vs ISIC comparison chart (higher ESS is better: green if above avg, red if below)
     const isicEssEl = document.getElementById('chart-boat-' + boatIdSafe + '-isic-ess');
     if (isicEssEl) {
+        const isicEssBoatColor = boatComp > isicAvgComp ? '#22c55e' : boatComp < isicAvgComp ? '#ef4444' : '#3b82f6';
         boatCharts.isicEss = new Chart(isicEssEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, 'ISIC Avg'],
-                datasets: [{ data: [boatComp, isicAvgComp], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatComp, isicAvgComp], backgroundColor: [isicEssBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
-    // VPH vs TYCOM comparison chart
+    // VPH vs TYCOM comparison chart (lower VPH is better)
     const tycomVphEl = document.getElementById('chart-boat-' + boatIdSafe + '-tycom-vph');
     if (tycomVphEl) {
+        const tycomVphBoatColor = boatVph < tycomAvgVph ? '#22c55e' : boatVph > tycomAvgVph ? '#ef4444' : '#3b82f6';
         boatCharts.tycomVph = new Chart(tycomVphEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, (boat.tycom || 'TYCOM') + ' Avg'],
-                datasets: [{ data: [boatVph, tycomAvgVph], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatVph, tycomAvgVph], backgroundColor: [tycomVphBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
     }
-    // True ESS vs TYCOM comparison chart
+    // True ESS vs TYCOM comparison chart (higher ESS is better)
     const tycomEssEl = document.getElementById('chart-boat-' + boatIdSafe + '-tycom-ess');
     if (tycomEssEl) {
+        const tycomEssBoatColor = boatComp > tycomAvgComp ? '#22c55e' : boatComp < tycomAvgComp ? '#ef4444' : '#3b82f6';
         boatCharts.tycomEss = new Chart(tycomEssEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, (boat.tycom || 'TYCOM') + ' Avg'],
-                datasets: [{ data: [boatComp, tycomAvgComp], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatComp, tycomAvgComp], backgroundColor: [tycomEssBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
-    // VPH vs SUBFOR comparison chart
+    // VPH vs SUBFOR comparison chart (lower VPH is better)
     const subforVphEl = document.getElementById('chart-boat-' + boatIdSafe + '-subfor-vph');
     if (subforVphEl) {
+        const subforVphBoatColor = boatVph < subforAvgVph ? '#22c55e' : boatVph > subforAvgVph ? '#ef4444' : '#3b82f6';
         boatCharts.subforVph = new Chart(subforVphEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, 'SUBFOR Avg'],
-                datasets: [{ data: [boatVph, subforAvgVph], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatVph, subforAvgVph], backgroundColor: [subforVphBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
     }
-    // True ESS vs SUBFOR comparison chart
+    // True ESS vs SUBFOR comparison chart (higher ESS is better)
     const subforEssEl = document.getElementById('chart-boat-' + boatIdSafe + '-subfor-ess');
     if (subforEssEl) {
+        const subforEssBoatColor = boatComp > subforAvgComp ? '#22c55e' : boatComp < subforAvgComp ? '#ef4444' : '#3b82f6';
         boatCharts.subforEss = new Chart(subforEssEl, {
             type: 'bar',
             data: {
                 labels: [boat.boatName, 'SUBFOR Avg'],
-                datasets: [{ data: [boatComp, subforAvgComp], backgroundColor: ['#3b82f6', '#94a3b8'] }]
+                datasets: [{ data: [boatComp, subforAvgComp], backgroundColor: [subforEssBoatColor, '#3b82f6'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
         });
@@ -3723,6 +3732,8 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
             );
             case 'boatVphNipr': return <div className={statStyle}><div className={labelStyle}>NIPR VPH</div><div className={valueStyle}>{b.isNmci ? 'NMCI' : (b.vramNiprRaVph !== null ? b.vramNiprRaVph.toFixed(2) : '-')}</div></div>;
             case 'boatVphSipr': return <div className={statStyle}><div className={labelStyle}>SIPR VPH</div><div className={valueStyle}>{b.vramSiprRaVph !== null ? b.vramSiprRaVph.toFixed(2) : '-'}</div></div>;
+            case 'boatScanAgeNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Scan Age</div><div className={`${valueStyle} ${(scanAgeNipr || 0) > 14 ? 'text-red-600' : ''}`}>{b.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr + ' days' : '-')}</div></div>;
+            case 'boatScanAgeSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Scan Age</div><div className={`${valueStyle} ${(scanAgeSipr || 0) > 14 ? 'text-red-600' : ''}`}>{scanAgeSipr !== null ? scanAgeSipr + ' days' : '-'}</div></div>;
             case 'boatScanAge': return <div className={statStyle}><div className={labelStyle}>Scan Age</div><div className={`${valueStyle} ${maxScanAge > 14 ? 'text-red-600' : ''}`}>{maxScanAge || '-'} days</div></div>;
             case 'boatBreakfixNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Breakfix</div><div className={`${valueStyle} ${(b.essNiprBreakfix || 0) > 0 ? 'text-red-600' : ''}`}>{b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</div></div>;
             case 'boatBreakfixSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Breakfix</div><div className={`${valueStyle} ${(b.essSiprBreakfix || 0) > 0 ? 'text-red-600' : ''}`}>{b.essSiprBreakfix || 0}</div></div>;
@@ -3916,53 +3927,59 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
         const subforAvg = parseFloat(avgVph);
         const subforCompAvg = parseFloat(avgCompliance);
 
-        // VPH vs ISIC
+        // VPH vs ISIC (lower VPH is better: green if below avg, red if above)
         if (boatLayout.some(l => l.id === 'boatIsicComparisonVph')) {
+            const vphColor = boatVph < isicAvg ? '#22c55e' : boatVph > isicAvg ? '#ef4444' : '#3b82f6';
             initChart('boatIsicComparisonVph', {
                 type: 'bar',
-                data: { labels: [b.boatName, 'ISIC Avg'], datasets: [{ data: [boatVph, isicAvg], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, 'ISIC Avg'], datasets: [{ data: [boatVph, isicAvg], backgroundColor: [vphColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
         }
-        // True ESS vs ISIC
+        // True ESS vs ISIC (higher ESS is better: green if above avg, red if below)
         if (boatLayout.some(l => l.id === 'boatIsicComparisonEss')) {
+            const essColor = boatComp > isicCompAvgVal ? '#22c55e' : boatComp < isicCompAvgVal ? '#ef4444' : '#3b82f6';
             initChart('boatIsicComparisonEss', {
                 type: 'bar',
-                data: { labels: [b.boatName, 'ISIC Avg'], datasets: [{ data: [boatComp, isicCompAvgVal], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, 'ISIC Avg'], datasets: [{ data: [boatComp, isicCompAvgVal], backgroundColor: [essColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
             });
         }
 
-        // VPH vs TYCOM
+        // VPH vs TYCOM (lower VPH is better)
         if (boatLayout.some(l => l.id === 'boatTycomComparisonVph')) {
+            const vphColor = boatVph < tycomAvg ? '#22c55e' : boatVph > tycomAvg ? '#ef4444' : '#3b82f6';
             initChart('boatTycomComparisonVph', {
                 type: 'bar',
-                data: { labels: [b.boatName, (b.tycom || 'TYCOM') + ' Avg'], datasets: [{ data: [boatVph, tycomAvg], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, (b.tycom || 'TYCOM') + ' Avg'], datasets: [{ data: [boatVph, tycomAvg], backgroundColor: [vphColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
         }
-        // True ESS vs TYCOM
+        // True ESS vs TYCOM (higher ESS is better)
         if (boatLayout.some(l => l.id === 'boatTycomComparisonEss')) {
+            const essColor = boatComp > tycomCompAvgVal ? '#22c55e' : boatComp < tycomCompAvgVal ? '#ef4444' : '#3b82f6';
             initChart('boatTycomComparisonEss', {
                 type: 'bar',
-                data: { labels: [b.boatName, (b.tycom || 'TYCOM') + ' Avg'], datasets: [{ data: [boatComp, tycomCompAvgVal], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, (b.tycom || 'TYCOM') + ' Avg'], datasets: [{ data: [boatComp, tycomCompAvgVal], backgroundColor: [essColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
             });
         }
 
-        // VPH vs SUBFOR
+        // VPH vs SUBFOR (lower VPH is better)
         if (boatLayout.some(l => l.id === 'boatSubforComparisonVph')) {
+            const vphColor = boatVph < subforAvg ? '#22c55e' : boatVph > subforAvg ? '#ef4444' : '#3b82f6';
             initChart('boatSubforComparisonVph', {
                 type: 'bar',
-                data: { labels: [b.boatName, 'SUBFOR Avg'], datasets: [{ data: [boatVph, subforAvg], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, 'SUBFOR Avg'], datasets: [{ data: [boatVph, subforAvg], backgroundColor: [vphColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
         }
-        // True ESS vs SUBFOR
+        // True ESS vs SUBFOR (higher ESS is better)
         if (boatLayout.some(l => l.id === 'boatSubforComparisonEss')) {
+            const essColor = boatComp > subforCompAvg ? '#22c55e' : boatComp < subforCompAvg ? '#ef4444' : '#3b82f6';
             initChart('boatSubforComparisonEss', {
                 type: 'bar',
-                data: { labels: [b.boatName, 'SUBFOR Avg'], datasets: [{ data: [boatComp, subforCompAvg], backgroundColor: ['#3b82f6', '#94a3b8'] }] },
+                data: { labels: [b.boatName, 'SUBFOR Avg'], datasets: [{ data: [boatComp, subforCompAvg], backgroundColor: [essColor, '#3b82f6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
             });
         }
