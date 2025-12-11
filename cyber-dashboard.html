@@ -2107,6 +2107,7 @@ ${isTabVisible('analytics') ? (() => {
         const scanAgeNipr = b.vramNiprScanDate ? Math.floor((new Date() - new Date(b.vramNiprScanDate)) / 86400000) : null;
         const scanAgeSipr = b.vramSiprScanDate ? Math.floor((new Date() - new Date(b.vramSiprScanDate)) / 86400000) : null;
         const maxScanAge = Math.max(scanAgeNipr || 0, scanAgeSipr || 0);
+        const boatIdSafe = selectedBoat.replace(/\\s+/g, '_');
 
         switch(id) {
             case 'boatRiskLevel': return `<div class="stat-card" style="${style}"><h3>Risk Level</h3><div class="value ${b.riskLevel.toLowerCase()}">${b.riskLevel}</div></div>`;
@@ -2119,9 +2120,9 @@ ${isTabVisible('analytics') ? (() => {
             case 'boatComplianceSipr': return `<div class="stat-card" style="${style}"><h3>SIPR True ESS Compliance</h3><div class="value">${b.essSiprTruePolicy !== null ? b.essSiprTruePolicy.toFixed(1) + '%' : '-'}</div></div>`;
             case 'boatRiskReasons': return `<div class="chart-box" style="${style}"><h3>Risk Factors</h3><div style="padding:8px;">${b.riskReasons?.length > 0 ? b.riskReasons.map(r => `<div style="color:#dc2626;padding:4px 0;border-bottom:1px solid #f1f5f9;">${r}</div>`).join('') : '<div style="color:#059669;">No risk factors</div>'}</div></div>`;
             case 'boatMetricsSummary': return `<div class="chart-box" style="${style}"><h3>Metrics</h3><div style="overflow:auto;"><table class="mini-table"><thead><tr><th>Metric</th><th>NIPR</th><th>SIPR</th></tr></thead><tbody><tr><td>VPH</td><td>${b.isNmci ? 'NMCI' : (b.vramNiprRaVph?.toFixed(2) || '-')}</td><td>${b.vramSiprRaVph?.toFixed(2) || '-'}</td></tr><tr><td>Breakfix</td><td class="${b.essNiprBreakfix > 0 ? 'risk-high' : ''}">${b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)}</td><td class="${b.essSiprBreakfix > 0 ? 'risk-high' : ''}">${b.essSiprBreakfix || 0}</td></tr><tr><td>Product Comp</td><td>${b.isNmci ? 'NMCI' : (b.essNiprProductCompliance?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprProductCompliance?.toFixed(1) + '%' || '-'}</td></tr><tr><td>True Policy</td><td>${b.isNmci ? 'NMCI' : (b.essNiprTruePolicy?.toFixed(1) + '%' || '-')}</td><td>${b.essSiprTruePolicy?.toFixed(1) + '%' || '-'}</td></tr><tr><td>Scan Age</td><td>${b.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr + 'd' : '-')}</td><td>${scanAgeSipr !== null ? scanAgeSipr + 'd' : '-'}</td></tr></tbody></table></div></div>`;
-            case 'boatIsicComparison': return `<div class="chart-box" style="${style}"><h3>vs ISIC Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatIsicComparison"></canvas></div></div>`;
-            case 'boatTycomComparison': return `<div class="chart-box" style="${style}"><h3>vs ${b.tycom || 'TYCOM'} Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatTycomComparison"></canvas></div></div>`;
-            case 'boatSubforComparison': return `<div class="chart-box" style="${style}"><h3>vs SUBFOR Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="analytics-chart-boatSubforComparison"></canvas></div></div>`;
+            case 'boatIsicComparison': return `<div class="chart-box" style="${style}"><h3>vs ISIC Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="chart-boat-${boatIdSafe}-isic"></canvas></div></div>`;
+            case 'boatTycomComparison': return `<div class="chart-box" style="${style}"><h3>vs ${b.tycom || 'TYCOM'} Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="chart-boat-${boatIdSafe}-tycom"></canvas></div></div>`;
+            case 'boatSubforComparison': return `<div class="chart-box" style="${style}"><h3>vs SUBFOR Average</h3><div style="flex:1;position:relative;min-height:150px;"><canvas id="chart-boat-${boatIdSafe}-subfor"></canvas></div></div>`;
             case 'boatTamStatus': return `<div class="stat-card" style="${style}"><h3>TAM Past Due</h3><div class="value ${(b.tamPastDue || 0) > 10 ? 'high' : ''}">${b.tamPastDue || 0}</div></div>`;
             case 'boatOverrides': return `<div class="chart-box" style="${style}"><h3>Active Overrides</h3><div style="padding:8px;">${b.overrides?.length > 0 ? b.overrides.map(o => `<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;"><span style="color:#7c3aed;font-weight:500;">${o.field}:</span> ${o.originalValue} → ${o.overrideValue}</div>`).join('') : '<div style="color:#94a3b8;">No overrides</div>'}</div></div>`;
             default: return '';
@@ -2156,7 +2157,7 @@ ${isTabVisible('analytics') ? (() => {
         <button onclick="printTab('analytics')">Print Analytics</button>
     </div>
 </div>
-<h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
+<h2 id="analytics-print-header" class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
 ${pageInfo}
 
 <!-- Sub-tab Navigation -->
@@ -2277,8 +2278,31 @@ function printTab(id) {
     // Add print-active class to the tab we want to print
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('print-active'));
     document.getElementById('tab-' + id).classList.add('print-active');
+
+    // Update analytics print header with selected ISIC/Boat if applicable
+    let originalHeader = '';
+    const analyticsHeader = document.getElementById('analytics-print-header');
+    if (id === 'analytics' && analyticsHeader) {
+        originalHeader = analyticsHeader.textContent;
+        if (currentAnalyticsSubTab === 'isic' && currentSelectedIsic) {
+            const shortIsic = currentSelectedIsic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS');
+            analyticsHeader.textContent = 'Analytics - ' + shortIsic;
+        } else if (currentAnalyticsSubTab === 'boat' && currentSelectedBoat) {
+            const boat = allBoatsData.find(b => b.boatName === currentSelectedBoat);
+            if (boat) {
+                analyticsHeader.textContent = 'Analytics - ' + boat.boatName + ' (' + boat.boatFullName + ')';
+            } else {
+                analyticsHeader.textContent = 'Analytics - ' + currentSelectedBoat;
+            }
+        }
+    }
+
     window.print();
-    // Remove print-active class after printing
+
+    // Restore original header and remove print-active class after printing
+    if (analyticsHeader && originalHeader) {
+        analyticsHeader.textContent = originalHeader;
+    }
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('print-active'));
 }
 function filterISIC(p, v) {
@@ -2507,6 +2531,7 @@ function initBoatCharts(boatName) {
     const boat = allBoatsData.find(b => b.boatName === boatName);
     if (!boat) return;
 
+    const boatIdSafe = boatName.replace(/\\s+/g, '_');
     const boatVph = getBoatMaxVph(boat) || 0;
     const boatComp = getBoatMinCompliance(boat) || 0;
 
@@ -2531,7 +2556,7 @@ function initBoatCharts(boatName) {
     const subforAvgComp = subforComps.length > 0 ? subforComps.reduce((s, v) => s + v, 0) / subforComps.length : 0;
 
     // vs ISIC comparison chart
-    const isicCompEl = document.getElementById('analytics-chart-boatIsicComparison');
+    const isicCompEl = document.getElementById('chart-boat-' + boatIdSafe + '-isic');
     if (isicCompEl) {
         boatCharts.isic = new Chart(isicCompEl, {
             type: 'bar',
@@ -2547,7 +2572,7 @@ function initBoatCharts(boatName) {
     }
 
     // vs TYCOM comparison chart (boat vs their CSL or CSP average)
-    const tycomCompEl = document.getElementById('analytics-chart-boatTycomComparison');
+    const tycomCompEl = document.getElementById('chart-boat-' + boatIdSafe + '-tycom');
     if (tycomCompEl) {
         boatCharts.tycom = new Chart(tycomCompEl, {
             type: 'bar',
@@ -2563,7 +2588,7 @@ function initBoatCharts(boatName) {
     }
 
     // vs SUBFOR comparison chart (all submarine force boats)
-    const subforCompEl = document.getElementById('analytics-chart-boatSubforComparison');
+    const subforCompEl = document.getElementById('chart-boat-' + boatIdSafe + '-subfor');
     if (subforCompEl) {
         boatCharts.subfor = new Chart(subforCompEl, {
             type: 'bar',
@@ -2603,158 +2628,211 @@ function exportAsPDF() {
     const boat = currentAnalyticsSubTab === 'boat' ? document.getElementById('analytics-boat-select')?.value : null;
     const boatData = boat ? allBoatsData.find(b => b.boatName === boat) : null;
 
-    // Determine which content to show for printing
-    let sectionsToShow = [];
-
-    if (currentAnalyticsSubTab === 'main') {
-        // Main: CSL + CSP + Main Analytics
-        sectionsToShow = ['tab-csl', 'tab-csp', 'analytics-main-content'];
-    } else if (currentAnalyticsSubTab === 'isic' && isic) {
-        // ISIC: CSL or CSP (based on TYCOM) + Main Analytics + ISIC Analytics
-        const isicInfo = allIsicsData.find(i => i.isic === isic);
-        const tycom = isicInfo?.tycom || 'CSL';
-        sectionsToShow = [tycom === 'CSP' ? 'tab-csp' : 'tab-csl', 'analytics-main-content', 'analytics-isic-content'];
-    } else if (currentAnalyticsSubTab === 'boat' && boat && boatData) {
-        // Boat: CSL or CSP (based on TYCOM) + Main Analytics + ISIC Analytics + Boat Analytics
-        sectionsToShow = [boatData.tycom === 'CSP' ? 'tab-csp' : 'tab-csl', 'analytics-main-content', 'analytics-isic-content', 'analytics-boat-content'];
-    }
-
-    // Create a print-specific window with the selected content
+    // Create a print-specific window
     const printWindow = window.open('', '_blank');
     const dateStr = new Date().toLocaleString();
 
     let title = 'SUBFOR Cyber Analytics Export';
-    if (currentAnalyticsSubTab === 'isic' && isic) title += ' - ' + isic;
-    if (currentAnalyticsSubTab === 'boat' && boat) title += ' - ' + boat;
+    if (currentAnalyticsSubTab === 'isic' && isic) {
+        const shortIsic = isic.replace('COMSUBRON ', 'CSS').replace('COMSUBDEVRON ', 'CSDS');
+        title += ' - ' + shortIsic;
+    }
+    if (currentAnalyticsSubTab === 'boat' && boatData) {
+        title += ' - ' + boatData.boatName + ' (' + boatData.boatFullName + ')';
+    } else if (currentAnalyticsSubTab === 'boat' && boat) {
+        title += ' - ' + boat;
+    }
 
-    // Build the print HTML
+    // Build the print HTML with proper sections and scaling
     let printHtml = '<!DOCTYPE html><html><head><title>' + title + '</title>';
     printHtml += '<style>';
     printHtml += 'body { font-family: Arial, sans-serif; font-size: 10pt; margin: 20px; }';
     printHtml += 'h1 { font-size: 16pt; color: #1e293b; margin-bottom: 8px; }';
-    printHtml += 'h2 { font-size: 14pt; color: #334155; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }';
+    printHtml += 'h2 { font-size: 14pt; color: #334155; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; page-break-after: avoid; }';
     printHtml += 'h3 { font-size: 12pt; color: #475569; margin: 12px 0 6px; }';
     printHtml += '.meta { font-size: 9pt; color: #64748b; margin-bottom: 16px; }';
+    printHtml += '.analytics-section { transform: scale(0.8); transform-origin: top left; width: 125%; margin-bottom: 20px; }';
+    printHtml += '.table-section { transform: scale(1); margin-bottom: 20px; }';
     printHtml += 'table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9pt; }';
     printHtml += 'th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }';
     printHtml += 'th { background: #f1f5f9; font-weight: 600; }';
     printHtml += '.risk-high { color: #dc2626; font-weight: bold; }';
     printHtml += '.risk-med { color: #d97706; font-weight: bold; }';
     printHtml += '.risk-low { color: #059669; font-weight: bold; }';
-    printHtml += '.stat-row { display: flex; gap: 16px; margin: 8px 0; flex-wrap: wrap; }';
-    printHtml += '.stat-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 16px; min-width: 120px; }';
-    printHtml += '.stat-label { font-size: 8pt; color: #64748b; }';
-    printHtml += '.stat-value { font-size: 14pt; font-weight: bold; }';
-    printHtml += '@media print { body { margin: 0; } }';
+    printHtml += '.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }';
+    printHtml += '.stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }';
+    printHtml += '.stat-label { font-size: 9pt; color: #64748b; margin-bottom: 4px; }';
+    printHtml += '.stat-value { font-size: 18pt; font-weight: bold; }';
+    printHtml += '.page-break { page-break-before: always; }';
+    printHtml += '@media print { body { margin: 0; padding: 10px; } .no-print { display: none; } }';
     printHtml += '</style></head><body>';
 
     printHtml += '<h1>' + title + '</h1>';
     printHtml += '<div class="meta">Generated: ' + dateStr + '</div>';
 
-    // Add summary data based on view
+    // Build content based on current view
     if (currentAnalyticsSubTab === 'main') {
-        // Main Analytics
-        printHtml += '<h2>Fleet Summary</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">Total Boats</div><div class="stat-value">' + (riskData.HIGH + riskData.MED + riskData.LOW) + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + riskData.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + riskData.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + riskData.LOW + '</div></div>';
+        // Main: Main Analytics (80% scale) + CSL Summary Table + CSP Summary Table (100% scale)
+
+        // Main Analytics section (80% scale)
+        printHtml += '<div class="analytics-section">';
+        printHtml += '<h2>Fleet Analytics Overview</h2>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Total Boats</div><div class="stat-value">' + (riskData.HIGH + riskData.MED + riskData.LOW) + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + riskData.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + riskData.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + riskData.LOW + '</div></div>';
+        printHtml += '</div>';
         printHtml += '</div>';
 
+        // CSL Summary Table (100% scale)
+        printHtml += '<div class="table-section page-break">';
         printHtml += '<h2>CSL Summary</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cslRisk.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cslRisk.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cslRisk.LOW + '</div></div>';
+        printHtml += '<div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); max-width: 400px;">';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cslRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cslRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cslRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+        const cslBoats = allBoatsData.filter(b => b.tycom === 'CSL');
+        printHtml += '<table><thead><tr><th>Boat</th><th>ISIC</th><th>Risk</th><th>VPH</th><th>True ESS Comp</th><th>Breakfix</th></tr></thead><tbody>';
+        cslBoats.forEach(b => {
+            printHtml += '<tr><td>' + b.boatName + '</td><td>' + b.isic + '</td><td class="risk-' + b.riskLevel.toLowerCase() + '">' + b.riskLevel + '</td><td>' + (getBoatMaxVph(b)?.toFixed(2) || '-') + '</td><td>' + (getBoatMinCompliance(b)?.toFixed(1) || '-') + '%</td><td class="' + (getBoatTotalBreakfix(b) > 0 ? 'risk-high' : '') + '">' + getBoatTotalBreakfix(b) + '</td></tr>';
+        });
+        printHtml += '</tbody></table>';
         printHtml += '</div>';
 
+        // CSP Summary Table (100% scale)
+        printHtml += '<div class="table-section page-break">';
         printHtml += '<h2>CSP Summary</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cspRisk.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cspRisk.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cspRisk.LOW + '</div></div>';
+        printHtml += '<div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); max-width: 400px;">';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + cspRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + cspRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + cspRisk.LOW + '</div></div>';
+        printHtml += '</div>';
+        const cspBoats = allBoatsData.filter(b => b.tycom === 'CSP');
+        printHtml += '<table><thead><tr><th>Boat</th><th>ISIC</th><th>Risk</th><th>VPH</th><th>True ESS Comp</th><th>Breakfix</th></tr></thead><tbody>';
+        cspBoats.forEach(b => {
+            printHtml += '<tr><td>' + b.boatName + '</td><td>' + b.isic + '</td><td class="risk-' + b.riskLevel.toLowerCase() + '">' + b.riskLevel + '</td><td>' + (getBoatMaxVph(b)?.toFixed(2) || '-') + '</td><td>' + (getBoatMinCompliance(b)?.toFixed(1) || '-') + '%</td><td class="' + (getBoatTotalBreakfix(b) > 0 ? 'risk-high' : '') + '">' + getBoatTotalBreakfix(b) + '</td></tr>';
+        });
+        printHtml += '</tbody></table>';
         printHtml += '</div>';
 
     } else if (currentAnalyticsSubTab === 'isic' && isic) {
-        // ISIC Analytics
+        // ISIC: TYCOM Analytics + ISIC Analytics (80% scale) + Boats metrics table (100% scale)
         const isicBoats = allBoatsData.filter(b => b.isic === isic);
         const isicInfo = allIsicsData.find(i => i.isic === isic);
+        const tycom = isicInfo?.tycom || 'CSL';
+        const tycomRisk = tycom === 'CSP' ? cspRisk : cslRisk;
+        const tycomBoats = allBoatsData.filter(b => b.tycom === tycom);
         const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
         const isicVphs = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.vramNiprRaVph !== null) v.push(b.vramNiprRaVph); if (b.vramSiprRaVph !== null) v.push(b.vramSiprRaVph); return v; });
         const isicAvgVph = isicVphs.length > 0 ? (isicVphs.reduce((s, v) => s + v, 0) / isicVphs.length).toFixed(2) : '0';
         const isicBreakfix = isicBoats.reduce((s, b) => s + getBoatTotalBreakfix(b), 0);
 
-        printHtml += '<h2>' + (isicInfo?.tycom || '') + ' Summary (ISIC TYCOM)</h2>';
-        const tycomRisk = isicInfo?.tycom === 'CSP' ? cspRisk : cslRisk;
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
+        // TYCOM Analytics (80% scale)
+        printHtml += '<div class="analytics-section">';
+        printHtml += '<h2>' + tycom + ' Analytics (TYCOM)</h2>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Total ' + tycom + ' Boats</div><div class="stat-value">' + tycomBoats.length + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
+        printHtml += '</div>';
         printHtml += '</div>';
 
+        // ISIC Analytics (80% scale)
+        printHtml += '<div class="analytics-section">';
         printHtml += '<h2>ISIC Analytics: ' + isic + '</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Avg VPH</div><div class="stat-value">' + isicAvgVph + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Total Breakfix</div><div class="stat-value' + (isicBreakfix > 0 ? ' risk-high' : '') + '">' + isicBreakfix + '</div></div>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Avg VPH</div><div class="stat-value">' + isicAvgVph + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Total Breakfix</div><div class="stat-value' + (isicBreakfix > 0 ? ' risk-high' : '') + '">' + isicBreakfix + '</div></div>';
+        printHtml += '</div>';
         printHtml += '</div>';
 
-        printHtml += '<h3>Boats in ' + isic + '</h3>';
-        printHtml += '<table><thead><tr><th>Boat</th><th>Full Name</th><th>Risk</th><th>VPH</th><th>Compliance</th><th>Breakfix</th></tr></thead><tbody>';
+        // Boats metrics table (100% scale)
+        printHtml += '<div class="table-section page-break">';
+        printHtml += '<h2>Boats in ' + isic + '</h2>';
+        printHtml += '<table><thead><tr><th>Boat</th><th>Full Name</th><th>Risk</th><th>NIPR VPH</th><th>SIPR VPH</th><th>NIPR Comp</th><th>SIPR Comp</th><th>NIPR BF</th><th>SIPR BF</th></tr></thead><tbody>';
         isicBoats.forEach(b => {
-            printHtml += '<tr><td>' + b.boatName + '</td><td>' + b.boatFullName + '</td><td class="risk-' + b.riskLevel.toLowerCase() + '">' + b.riskLevel + '</td><td>' + (getBoatMaxVph(b)?.toFixed(2) || '-') + '</td><td>' + (getBoatMinCompliance(b)?.toFixed(1) || '-') + '%</td><td class="' + (getBoatTotalBreakfix(b) > 0 ? 'risk-high' : '') + '">' + getBoatTotalBreakfix(b) + '</td></tr>';
+            printHtml += '<tr>';
+            printHtml += '<td>' + b.boatName + '</td>';
+            printHtml += '<td>' + (b.boatFullName || '-') + '</td>';
+            printHtml += '<td class="risk-' + b.riskLevel.toLowerCase() + '">' + b.riskLevel + '</td>';
+            printHtml += '<td>' + (b.isNmci ? 'NMCI' : (b.vramNiprRaVph?.toFixed(2) || '-')) + '</td>';
+            printHtml += '<td>' + (b.vramSiprRaVph?.toFixed(2) || '-') + '</td>';
+            printHtml += '<td>' + (b.isNmci ? 'NMCI' : (b.essNiprTruePolicy?.toFixed(1) + '%' || '-')) + '</td>';
+            printHtml += '<td>' + (b.essSiprTruePolicy?.toFixed(1) + '%' || '-') + '</td>';
+            printHtml += '<td class="' + ((b.essNiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (b.isNmci ? 'NMCI' : (b.essNiprBreakfix || 0)) + '</td>';
+            printHtml += '<td class="' + ((b.essSiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (b.essSiprBreakfix || 0) + '</td>';
+            printHtml += '</tr>';
         });
         printHtml += '</tbody></table>';
-
-    } else if (currentAnalyticsSubTab === 'boat' && boat && boatData) {
-        // Boat Analytics
-        const tycomRisk = boatData.tycom === 'CSP' ? cspRisk : cslRisk;
-
-        printHtml += '<h2>' + boatData.tycom + ' Summary (Boat TYCOM)</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
         printHtml += '</div>';
 
-        // ISIC Summary for boat's ISIC
+    } else if (currentAnalyticsSubTab === 'boat' && boat && boatData) {
+        // Boat: TYCOM Analytics + ISIC Analytics + Boat Analytics (80% scale) + Metrics table (100% scale)
+        const tycom = boatData.tycom;
+        const tycomRisk = tycom === 'CSP' ? cspRisk : cslRisk;
+        const tycomBoats = allBoatsData.filter(b => b.tycom === tycom);
         const isicBoats = allBoatsData.filter(b => b.isic === boatData.isic);
         const isicRiskCounts = { HIGH: isicBoats.filter(b => b.riskLevel === 'HIGH').length, MED: isicBoats.filter(b => b.riskLevel === 'MED').length, LOW: isicBoats.filter(b => b.riskLevel === 'LOW').length };
 
-        printHtml += '<h2>ISIC Summary: ' + boatData.isic + '</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
+        // TYCOM Analytics (80% scale)
+        printHtml += '<div class="analytics-section">';
+        printHtml += '<h2>' + tycom + ' Analytics (TYCOM)</h2>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Total ' + tycom + ' Boats</div><div class="stat-value">' + tycomBoats.length + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + tycomRisk.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + tycomRisk.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + tycomRisk.LOW + '</div></div>';
+        printHtml += '</div>';
         printHtml += '</div>';
 
-        // Boat details
-        printHtml += '<h2>Boat Analytics: ' + boat + ' (' + boatData.boatFullName + ')</h2>';
-        printHtml += '<div class="stat-row">';
-        printHtml += '<div class="stat-item"><div class="stat-label">Risk Level</div><div class="stat-value risk-' + boatData.riskLevel.toLowerCase() + '">' + boatData.riskLevel + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">ISIC</div><div class="stat-value">' + boatData.isic + '</div></div>';
-        printHtml += '<div class="stat-item"><div class="stat-label">TYCOM</div><div class="stat-value">' + boatData.tycom + '</div></div>';
+        // ISIC Analytics (80% scale)
+        printHtml += '<div class="analytics-section">';
+        printHtml += '<h2>ISIC Analytics: ' + boatData.isic + '</h2>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Boats in ISIC</div><div class="stat-value">' + isicBoats.length + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">High Risk</div><div class="stat-value risk-high">' + isicRiskCounts.HIGH + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Medium Risk</div><div class="stat-value risk-med">' + isicRiskCounts.MED + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Low Risk</div><div class="stat-value risk-low">' + isicRiskCounts.LOW + '</div></div>';
+        printHtml += '</div>';
         printHtml += '</div>';
 
-        printHtml += '<h3>Metrics Summary</h3>';
+        // Boat Analytics (80% scale)
+        printHtml += '<div class="analytics-section">';
+        printHtml += '<h2>Boat Analytics: ' + boat + ' (' + (boatData.boatFullName || '') + ')</h2>';
+        printHtml += '<div class="stat-grid">';
+        printHtml += '<div class="stat-card"><div class="stat-label">Risk Level</div><div class="stat-value risk-' + boatData.riskLevel.toLowerCase() + '">' + boatData.riskLevel + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">ISIC</div><div class="stat-value" style="font-size:14pt;">' + boatData.isic + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">TYCOM</div><div class="stat-value">' + boatData.tycom + '</div></div>';
+        printHtml += '<div class="stat-card"><div class="stat-label">Max VPH</div><div class="stat-value">' + (getBoatMaxVph(boatData)?.toFixed(2) || '-') + '</div></div>';
+        printHtml += '</div>';
+        if (boatData.riskReasons && boatData.riskReasons.length > 0) {
+            printHtml += '<div style="margin-top:12px;"><strong>Risk Factors:</strong><ul style="margin:4px 0 0 20px;">';
+            boatData.riskReasons.forEach(r => { printHtml += '<li class="risk-high">' + r + '</li>'; });
+            printHtml += '</ul></div>';
+        }
+        printHtml += '</div>';
+
+        // Boat Metrics table (100% scale)
+        printHtml += '<div class="table-section page-break">';
+        printHtml += '<h2>Detailed Metrics: ' + boat + '</h2>';
         printHtml += '<table><thead><tr><th>Metric</th><th>NIPR</th><th>SIPR</th></tr></thead><tbody>';
         printHtml += '<tr><td>VPH</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.vramNiprRaVph?.toFixed(2) || '-')) + '</td><td>' + (boatData.vramSiprRaVph?.toFixed(2) || '-') + '</td></tr>';
         printHtml += '<tr><td>Breakfix</td><td class="' + ((boatData.essNiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprBreakfix || 0)) + '</td><td class="' + ((boatData.essSiprBreakfix || 0) > 0 ? 'risk-high' : '') + '">' + (boatData.essSiprBreakfix || 0) + '</td></tr>';
         printHtml += '<tr><td>Product Compliance</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprProductCompliance?.toFixed(1) + '%' || '-')) + '</td><td>' + (boatData.essSiprProductCompliance?.toFixed(1) + '%' || '-') + '</td></tr>';
-        printHtml += '<tr><td>True Policy</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprTruePolicy?.toFixed(1) + '%' || '-')) + '</td><td>' + (boatData.essSiprTruePolicy?.toFixed(1) + '%' || '-') + '</td></tr>';
+        printHtml += '<tr><td>True ESS Compliance</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.essNiprTruePolicy?.toFixed(1) + '%' || '-')) + '</td><td>' + (boatData.essSiprTruePolicy?.toFixed(1) + '%' || '-') + '</td></tr>';
+        const scanAgeNipr = boatData.vramNiprScanDate ? Math.floor((new Date() - new Date(boatData.vramNiprScanDate)) / 86400000) : null;
+        const scanAgeSipr = boatData.vramSiprScanDate ? Math.floor((new Date() - new Date(boatData.vramSiprScanDate)) / 86400000) : null;
+        printHtml += '<tr><td>Scan Age (days)</td><td>' + (boatData.isNmci ? 'NMCI' : (scanAgeNipr !== null ? scanAgeNipr : '-')) + '</td><td>' + (scanAgeSipr !== null ? scanAgeSipr : '-') + '</td></tr>';
+        printHtml += '<tr><td>Scan Exempt</td><td>' + (boatData.isNmci ? 'NMCI' : (boatData.vramNiprScanExempt ? 'Yes' : 'No')) + '</td><td>' + (boatData.vramSiprScanExempt ? 'Yes' : 'No') + '</td></tr>';
         printHtml += '</tbody></table>';
-
-        if (boatData.riskReasons && boatData.riskReasons.length > 0) {
-            printHtml += '<h3>Risk Factors</h3>';
-            printHtml += '<ul>';
-            boatData.riskReasons.forEach(r => { printHtml += '<li class="risk-high">' + r + '</li>'; });
-            printHtml += '</ul>';
-        }
+        printHtml += '</div>';
     }
 
     printHtml += '</body></html>';
