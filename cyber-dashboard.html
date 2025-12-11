@@ -2812,7 +2812,8 @@ ${(helpModalText.calcItems || []).map(item => `<li>${formatHelpText(item)}</li>`
 <div style="background:white;border-radius:12px;padding:24px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
 <h3 style="font-size:14pt;font-weight:bold;margin-bottom:16px;color:#334155;">Print Scale Recommendation</h3>
 <p id="print-scale-text" style="font-size:11pt;color:#475569;margin-bottom:20px;"></p>
-<p style="font-size:9pt;color:#94a3b8;margin-bottom:20px;">You can adjust the scale in Chrome's print dialog under "More settings"</p>
+<p style="font-size:9pt;color:#94a3b8;margin-bottom:12px;">You can adjust the scale in Chrome's print dialog under "More settings"</p>
+<p style="font-size:9pt;color:#94a3b8;margin-bottom:20px;">For printing, set custom margins to <strong style="color:#475569;">0.25"</strong> (not necessary for PDF saving)</p>
 <div style="display:flex;gap:12px;justify-content:center;">
 <button onclick="hidePrintScaleModal()" style="background:#94a3b8;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Cancel</button>
 <button onclick="proceedToPrint()" style="background:#0ea5e9;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Continue to Print</button>
