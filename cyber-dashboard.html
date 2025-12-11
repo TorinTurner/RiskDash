@@ -1876,7 +1876,7 @@ ${isTabVisible('csl') ? `<div id="tab-csl" class="tab-content${firstVisibleTab==
 <select onchange="filterISIC('csl',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;">
 <option value="">All Squadrons</option>${Object.keys(cslByISIC).map(i=>`<option value="${getIsicShort(i)}">${getIsicShort(i)}</option>`).join('')}
 </select>
-<button onclick="printTab('csl')">Print CSL</button>
+<button onclick="showPrintScaleModal('csl')">Print CSL</button>
 </div>
 </div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSL Cyber Summary</h2>
@@ -1902,7 +1902,7 @@ ${isTabVisible('csp') ? `<div id="tab-csp" class="tab-content${firstVisibleTab==
 <select onchange="filterISIC('csp',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid #cbd5e1;">
 <option value="">All Squadrons</option>${Object.keys(cspByISIC).map(i=>`<option value="${getIsicShort(i)}">${getIsicShort(i)}</option>`).join('')}
 </select>
-<button onclick="printTab('csp')">Print CSP</button>
+<button onclick="showPrintScaleModal('csp')">Print CSP</button>
 </div>
 </div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">CSP Cyber Summary</h2>
@@ -1924,7 +1924,7 @@ ${isTabVisible('hq') ? `<div id="tab-hq" class="tab-content${firstVisibleTab==='
 <div class="page">
 <div class="page-header no-print">
 <h2>HQ Cyber Status</h2>
-<div class="toolbar"><button onclick="printTab('hq')">Print HQ Status</button></div>
+<div class="toolbar"><button onclick="showPrintScaleModal('hq')">Print HQ Status</button></div>
 </div>
 <h2 class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">HQ Cyber Status</h2>
 ${pageInfo}
@@ -2223,7 +2223,7 @@ ${isTabVisible('analytics') ? (() => {
 <div class="page-header no-print" style="margin-bottom:16px;">
     <h2>Analytics</h2>
     <div class="toolbar">
-        <button onclick="printTab('analytics')">Print Analytics</button>
+        <button onclick="showPrintScaleModal('analytics')">Print Analytics</button>
     </div>
 </div>
 <h2 id="analytics-print-header" class="print-only" style="font-size:14pt;color:#1e293b;margin-bottom:4px;">Analytics</h2>
@@ -2448,6 +2448,26 @@ function initCharts() {
 }
 function showHelpModal() { document.getElementById('help-modal').style.display = 'flex'; }
 function hideHelpModal() { document.getElementById('help-modal').style.display = 'none'; }
+
+let pendingPrintTabId = null;
+function showPrintScaleModal(tabId) {
+    pendingPrintTabId = tabId;
+    const modal = document.getElementById('print-scale-modal');
+    const scaleText = document.getElementById('print-scale-text');
+    if (tabId === 'analytics') {
+        scaleText.innerHTML = 'For best results, set your Chrome print scale to <strong>74%</strong>';
+    } else {
+        scaleText.innerHTML = 'For best results, set your Chrome print scale between <strong>90% - 100%</strong>';
+    }
+    modal.style.display = 'flex';
+}
+function hidePrintScaleModal() { document.getElementById('print-scale-modal').style.display = 'none'; pendingPrintTabId = null; }
+function proceedToPrint() {
+    hidePrintScaleModal();
+    if (pendingPrintTabId) {
+        printTab(pendingPrintTabId);
+    }
+}
 
 // Analytics Sub-tab Navigation
 let currentAnalyticsSubTab = 'main';
@@ -2786,6 +2806,17 @@ ${(helpModalText.calcItems || []).map(item => `<li>${formatHelpText(item)}</li>`
 </div>
 </div>
 <div style="margin-top:20px;"><button onclick="hideHelpModal()" style="background:#0ea5e9;color:white;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;">Close</button></div>
+</div>
+</div>
+<div id="print-scale-modal" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="hidePrintScaleModal()">
+<div style="background:white;border-radius:12px;padding:24px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+<h3 style="font-size:14pt;font-weight:bold;margin-bottom:16px;color:#334155;">Print Scale Recommendation</h3>
+<p id="print-scale-text" style="font-size:11pt;color:#475569;margin-bottom:20px;"></p>
+<p style="font-size:9pt;color:#94a3b8;margin-bottom:20px;">You can adjust the scale in Chrome's print dialog under "More settings"</p>
+<div style="display:flex;gap:12px;justify-content:center;">
+<button onclick="hidePrintScaleModal()" style="background:#94a3b8;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Cancel</button>
+<button onclick="proceedToPrint()" style="background:#0ea5e9;color:white;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;">Continue to Print</button>
+</div>
 </div>
 </div>
 </body></html>`;
