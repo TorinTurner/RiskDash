@@ -3931,6 +3931,29 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
     const isicAvgCompliance = isicCompValues.length > 0 ? Math.min(100, isicCompValues.reduce((s, v) => s + v, 0) / isicCompValues.length).toFixed(1) : '0';
     const isicScanExemptCount = isicBoats.filter(b => b.vramNiprScanExempt || b.vramSiprScanExempt).length;
 
+    // ISIC SIPR-specific calculations
+    const isicVphValuesSipr = isicBoats.filter(b => b.vramSiprRaVph !== null).map(b => b.vramSiprRaVph);
+    const isicAvgVphSipr = isicVphValuesSipr.length > 0 ? (isicVphValuesSipr.reduce((s, v) => s + v, 0) / isicVphValuesSipr.length).toFixed(2) : '0';
+    const isicTotalBreakfixSipr = isicBoats.reduce((s, b) => s + (b.essSiprBreakfix || 0), 0);
+    const isicCompValuesSipr = isicBoats.filter(b => b.essSiprTruePolicy !== null).map(b => b.essSiprTruePolicy);
+    const isicAvgComplianceSipr = isicCompValuesSipr.length > 0 ? Math.min(100, isicCompValuesSipr.reduce((s, v) => s + v, 0) / isicCompValuesSipr.length).toFixed(1) : '0';
+    const isicProdCompValuesSipr = isicBoats.filter(b => b.essSiprProductCompliance !== null).map(b => b.essSiprProductCompliance);
+    const isicAvgProductComplianceSipr = isicProdCompValuesSipr.length > 0 ? Math.min(100, isicProdCompValuesSipr.reduce((s, v) => s + v, 0) / isicProdCompValuesSipr.length).toFixed(1) : '0';
+
+    // ISIC NIPR-specific calculations (exclude NMCI)
+    const isicNonNmciBoats = isicBoats.filter(b => !b.isNmci);
+    const isicVphValuesNipr = isicNonNmciBoats.filter(b => b.vramNiprRaVph !== null).map(b => b.vramNiprRaVph);
+    const isicAvgVphNipr = isicVphValuesNipr.length > 0 ? (isicVphValuesNipr.reduce((s, v) => s + v, 0) / isicVphValuesNipr.length).toFixed(2) : '0';
+    const isicTotalBreakfixNipr = isicNonNmciBoats.reduce((s, b) => s + (b.essNiprBreakfix || 0), 0);
+    const isicCompValuesNipr = isicNonNmciBoats.filter(b => b.essNiprTruePolicy !== null).map(b => b.essNiprTruePolicy);
+    const isicAvgComplianceNipr = isicCompValuesNipr.length > 0 ? Math.min(100, isicCompValuesNipr.reduce((s, v) => s + v, 0) / isicCompValuesNipr.length).toFixed(1) : '0';
+    const isicProdCompValuesNipr = isicNonNmciBoats.filter(b => b.essNiprProductCompliance !== null).map(b => b.essNiprProductCompliance);
+    const isicAvgProductComplianceNipr = isicProdCompValuesNipr.length > 0 ? Math.min(100, isicProdCompValuesNipr.reduce((s, v) => s + v, 0) / isicProdCompValuesNipr.length).toFixed(1) : '0';
+
+    // Combined product compliance for ISIC
+    const isicProdCompValues = isicBoats.flatMap(b => { const v = []; if (!b.isNmci && b.essNiprProductCompliance !== null) v.push(b.essNiprProductCompliance); if (b.essSiprProductCompliance !== null) v.push(b.essSiprProductCompliance); return v; });
+    const isicAvgProductCompliance = isicProdCompValues.length > 0 ? Math.min(100, isicProdCompValues.reduce((s, v) => s + v, 0) / isicProdCompValues.length).toFixed(1) : '0';
+
     // Boat-specific data when a boat is selected
     const selectedBoatData = selectedBoat ? boats.find(b => b.boatName === selectedBoat) : null;
     const boatIsicData = selectedBoatData ? boats.filter(b => b.isic === selectedBoatData.isic) : [];
@@ -4070,6 +4093,51 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
                     </div>
                 );
             }
+            // SIPR-specific ISIC widgets
+            case 'isicAvgVphSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Avg VPH</div><div className={valueStyle}>{isicAvgVphSipr}</div></div>;
+            case 'isicTotalBreakfixSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Total Breakfix</div><div className={`${valueStyle} ${isicTotalBreakfixSipr > 0 ? 'text-red-600' : ''}`}>{isicTotalBreakfixSipr}</div></div>;
+            case 'isicAvgComplianceSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Avg True ESS</div><div className={valueStyle}>{isicAvgComplianceSipr}%</div></div>;
+            case 'isicAvgProductComplianceSipr': return <div className={statStyle}><div className={labelStyle}>SIPR Avg Prod Comp</div><div className={valueStyle}>{isicAvgProductComplianceSipr}%</div></div>;
+            // NIPR-specific ISIC widgets
+            case 'isicAvgVphNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Avg VPH</div><div className={valueStyle}>{isicAvgVphNipr}</div></div>;
+            case 'isicTotalBreakfixNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Total Breakfix</div><div className={`${valueStyle} ${isicTotalBreakfixNipr > 0 ? 'text-red-600' : ''}`}>{isicTotalBreakfixNipr}</div></div>;
+            case 'isicAvgComplianceNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Avg True ESS</div><div className={valueStyle}>{isicAvgComplianceNipr}%</div></div>;
+            case 'isicAvgProductComplianceNipr': return <div className={statStyle}><div className={labelStyle}>NIPR Avg Prod Comp</div><div className={valueStyle}>{isicAvgProductComplianceNipr}%</div></div>;
+            // Combined product compliance
+            case 'isicAvgProductCompliance': return <div className={statStyle}><div className={labelStyle}>Avg Product Compliance</div><div className={valueStyle}>{isicAvgProductCompliance}%</div></div>;
+            // SIPR/NIPR VPH comparison charts
+            case 'isicVphComparisonSipr': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">SIPR VPH by Boat</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-isicVphComparisonSipr"></canvas>
+                    </div>
+                </div>
+            );
+            case 'isicVphComparisonNipr': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">NIPR VPH by Boat</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-isicVphComparisonNipr"></canvas>
+                    </div>
+                </div>
+            );
+            case 'isicComplianceComparisonSipr': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">SIPR True ESS % by Boat</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-isicComplianceComparisonSipr"></canvas>
+                    </div>
+                </div>
+            );
+            case 'isicComplianceComparisonNipr': return (
+                <div className={chartStyle}>
+                    <div className="font-bold text-slate-700 mb-2">NIPR True ESS % by Boat</div>
+                    <div className="flex-1 relative" style={{minHeight: '120px'}}>
+                        <canvas id="preview-chart-isicComplianceComparisonNipr"></canvas>
+                    </div>
+                </div>
+            );
             default: return <div className="bg-slate-100 rounded-lg p-4">{item.id}</div>;
         }
     };
@@ -4295,6 +4363,46 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
                 options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 }, max: 100 } } }
             });
         }
+
+        // SIPR VPH by Boat in ISIC
+        if (isicLayout.some(l => l.id === 'isicVphComparisonSipr')) {
+            const boatVphsSipr = isicBoats.filter(b => b.vramSiprRaVph !== null).map(b => ({ name: b.boatName, vph: b.vramSiprRaVph })).sort((a, b) => b.vph - a.vph);
+            initChart('isicVphComparisonSipr', {
+                type: 'bar',
+                data: { labels: boatVphsSipr.map(b => b.name), datasets: [{ label: 'SIPR VPH', data: boatVphsSipr.map(b => b.vph), backgroundColor: '#6366f1' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 } } } }
+            });
+        }
+
+        // NIPR VPH by Boat in ISIC
+        if (isicLayout.some(l => l.id === 'isicVphComparisonNipr')) {
+            const boatVphsNipr = isicBoats.filter(b => !b.isNmci && b.vramNiprRaVph !== null).map(b => ({ name: b.boatName, vph: b.vramNiprRaVph })).sort((a, b) => b.vph - a.vph);
+            initChart('isicVphComparisonNipr', {
+                type: 'bar',
+                data: { labels: boatVphsNipr.map(b => b.name), datasets: [{ label: 'NIPR VPH', data: boatVphsNipr.map(b => b.vph), backgroundColor: '#f97316' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 } } } }
+            });
+        }
+
+        // SIPR True ESS by Boat in ISIC
+        if (isicLayout.some(l => l.id === 'isicComplianceComparisonSipr')) {
+            const boatCompsSipr = isicBoats.filter(b => b.essSiprTruePolicy !== null).map(b => ({ name: b.boatName, comp: b.essSiprTruePolicy })).sort((a, b) => a.comp - b.comp);
+            initChart('isicComplianceComparisonSipr', {
+                type: 'bar',
+                data: { labels: boatCompsSipr.map(b => b.name), datasets: [{ label: 'SIPR True ESS %', data: boatCompsSipr.map(b => b.comp), backgroundColor: '#6366f1' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 }, max: 100 } } }
+            });
+        }
+
+        // NIPR True ESS by Boat in ISIC
+        if (isicLayout.some(l => l.id === 'isicComplianceComparisonNipr')) {
+            const boatCompsNipr = isicBoats.filter(b => !b.isNmci && b.essNiprTruePolicy !== null).map(b => ({ name: b.boatName, comp: b.essNiprTruePolicy })).sort((a, b) => a.comp - b.comp);
+            initChart('isicComplianceComparisonNipr', {
+                type: 'bar',
+                data: { labels: boatCompsNipr.map(b => b.name), datasets: [{ label: 'NIPR True ESS %', data: boatCompsNipr.map(b => b.comp), backgroundColor: '#f97316' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', layout: { padding: { right: 20 } }, plugins: { legend: { display: false } }, scales: { x: { ticks: { padding: 5 }, max: 100 } } }
+            });
+        }
     }, [analyticsSubTab, selectedIsic, isicLayout, JSON.stringify(isicRiskCounts)]);
 
     // Initialize Boat charts
@@ -4426,7 +4534,88 @@ const AnalyticsPreview = ({ boats, settings, onLayoutChange, onIsicLayoutChange,
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } } }
             });
         }
-    }, [analyticsSubTab, selectedBoat, boatLayout]);
+
+        // NEW: Consolidated SIPR/NIPR comparison charts
+        // Calculate enclave-specific averages
+        const calcAvgSipr = (boatList, field) => {
+            const vals = boatList.filter(x => x[field] !== null).map(x => x[field]);
+            return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+        };
+        const calcAvgNipr = (boatList, field) => {
+            const vals = boatList.filter(x => !x.isNmci && x[field] !== null).map(x => x[field]);
+            return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+        };
+
+        const isicAvgVphSipr = calcAvgSipr(boatIsicData, 'vramSiprRaVph');
+        const isicAvgVphNipr = calcAvgNipr(boatIsicData, 'vramNiprRaVph');
+        const isicAvgEssSipr = calcAvgSipr(boatIsicData, 'essSiprTruePolicy');
+        const isicAvgEssNipr = calcAvgNipr(boatIsicData, 'essNiprTruePolicy');
+        const tycomAvgVphSipr = calcAvgSipr(tycomBoats, 'vramSiprRaVph');
+        const tycomAvgVphNipr = calcAvgNipr(tycomBoats, 'vramNiprRaVph');
+        const tycomAvgEssSipr = calcAvgSipr(tycomBoats, 'essSiprTruePolicy');
+        const tycomAvgEssNipr = calcAvgNipr(tycomBoats, 'essNiprTruePolicy');
+        const subforAvgVphSipr = calcAvgSipr(boats, 'vramSiprRaVph');
+        const subforAvgVphNipr = calcAvgNipr(boats, 'vramNiprRaVph');
+        const subforAvgEssSipr = calcAvgSipr(boats, 'essSiprTruePolicy');
+        const subforAvgEssNipr = calcAvgNipr(boats, 'essNiprTruePolicy');
+
+        const boatVphSipr = b.vramSiprRaVph;
+        const boatVphNipr = !b.isNmci ? b.vramNiprRaVph : null;
+        const boatEssSipr = b.essSiprTruePolicy;
+        const boatEssNipr = !b.isNmci ? b.essNiprTruePolicy : null;
+
+        // SIPR VPH consolidated chart (lower is better)
+        if (boatLayout.some(l => l.id === 'boatVphComparisonSipr') && boatVphSipr !== null) {
+            const boatColor = boatVphSipr <= isicAvgVphSipr && boatVphSipr <= tycomAvgVphSipr && boatVphSipr <= subforAvgVphSipr ? '#22c55e' : '#ef4444';
+            initChart('boatVphComparisonSipr', {
+                type: 'bar',
+                data: {
+                    labels: [b.boatName, 'ISIC Avg', (b.tycom || 'TYCOM') + ' Avg', 'SUBFOR Avg'],
+                    datasets: [{ data: [boatVphSipr, isicAvgVphSipr, tycomAvgVphSipr, subforAvgVphSipr], backgroundColor: [boatColor, '#3b82f6', '#3b82f6', '#3b82f6'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // NIPR VPH consolidated chart (lower is better)
+        if (boatLayout.some(l => l.id === 'boatVphComparisonNipr') && boatVphNipr !== null) {
+            const boatColor = boatVphNipr <= isicAvgVphNipr && boatVphNipr <= tycomAvgVphNipr && boatVphNipr <= subforAvgVphNipr ? '#22c55e' : '#ef4444';
+            initChart('boatVphComparisonNipr', {
+                type: 'bar',
+                data: {
+                    labels: [b.boatName, 'ISIC Avg', (b.tycom || 'TYCOM') + ' Avg', 'SUBFOR Avg'],
+                    datasets: [{ data: [boatVphNipr, isicAvgVphNipr, tycomAvgVphNipr, subforAvgVphNipr], backgroundColor: [boatColor, '#3b82f6', '#3b82f6', '#3b82f6'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // SIPR ESS consolidated chart (higher is better)
+        if (boatLayout.some(l => l.id === 'boatEssComparisonSipr') && boatEssSipr !== null) {
+            const boatColor = boatEssSipr >= isicAvgEssSipr && boatEssSipr >= tycomAvgEssSipr && boatEssSipr >= subforAvgEssSipr ? '#22c55e' : '#ef4444';
+            initChart('boatEssComparisonSipr', {
+                type: 'bar',
+                data: {
+                    labels: [b.boatName, 'ISIC Avg', (b.tycom || 'TYCOM') + ' Avg', 'SUBFOR Avg'],
+                    datasets: [{ data: [boatEssSipr, isicAvgEssSipr, tycomAvgEssSipr, subforAvgEssSipr], backgroundColor: [boatColor, '#3b82f6', '#3b82f6', '#3b82f6'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        }
+
+        // NIPR ESS consolidated chart (higher is better)
+        if (boatLayout.some(l => l.id === 'boatEssComparisonNipr') && boatEssNipr !== null) {
+            const boatColor = boatEssNipr >= isicAvgEssNipr && boatEssNipr >= tycomAvgEssNipr && boatEssNipr >= subforAvgEssNipr ? '#22c55e' : '#ef4444';
+            initChart('boatEssComparisonNipr', {
+                type: 'bar',
+                data: {
+                    labels: [b.boatName, 'ISIC Avg', (b.tycom || 'TYCOM') + ' Avg', 'SUBFOR Avg'],
+                    datasets: [{ data: [boatEssNipr, isicAvgEssNipr, tycomAvgEssNipr, subforAvgEssNipr], backgroundColor: [boatColor, '#3b82f6', '#3b82f6', '#3b82f6'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        }
+    }, [analyticsSubTab, selectedBoat, boatLayout, boats]);
 
     // Get current layout and elements based on sub-tab
     const getCurrentLayout = () => {
